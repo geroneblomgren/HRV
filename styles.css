@@ -147,6 +147,36 @@ body {
   display: none;
 }
 
+.reconnect-button {
+  background: var(--accent-amber);
+  color: #1a1a1a;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 36px;
+  font-size: 1rem;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.reconnect-button:hover {
+  background: #ffc107;
+}
+
+.reconnect-button:active {
+  transform: scale(0.98);
+}
+
+.reconnect-button.hidden {
+  display: none;
+}
+
+.connect-button.hidden {
+  display: none;
+}
+
 /* ---- Tab content ---- */
 
 .tab-content {

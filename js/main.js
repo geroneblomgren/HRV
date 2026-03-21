@@ -1,6 +1,7 @@
 // js/main.js — App bootstrap: init modules, wire subscriptions, register SW
 import { AppState, subscribe } from './state.js';
 import { initStorage, getSetting } from './storage.js';
+import { initiateConnection, tryQuickConnect } from './ble.js';
 
 // ---- DOM references ----
 const hrValue = document.getElementById('hr-value');
@@ -11,6 +12,7 @@ const connectBtn = document.getElementById('connect-btn');
 const connectLabel = document.getElementById('connect-label');
 const connectStatus = document.getElementById('connect-status');
 const connectError = document.getElementById('connect-error');
+const reconnectBtn = document.getElementById('reconnect-btn');
 const banner = document.getElementById('connection-banner');
 const bannerText = document.getElementById('banner-text');
 const navTabs = document.querySelectorAll('.nav-tab');
@@ -87,12 +89,24 @@ subscribe('connectionStatus', status => {
   connectBtn.className = 'connect-button';
   if (status === 'connected') {
     connectBtn.classList.add('connected');
+    connectBtn.classList.add('hidden');
     connectStatus.textContent = 'Connected';
+    connectError.classList.add('hidden');
   } else if (status === 'connecting' || status === 'reconnecting') {
     connectBtn.classList.add('connecting');
+    connectBtn.classList.add('hidden');
     connectStatus.textContent = status === 'connecting' ? 'Connecting...' : 'Reconnecting...';
   } else {
+    connectBtn.classList.remove('hidden');
     connectStatus.textContent = 'Not connected';
+  }
+});
+
+subscribe('showManualReconnect', show => {
+  if (show) {
+    reconnectBtn.classList.remove('hidden');
+  } else {
+    reconnectBtn.classList.add('hidden');
   }
 });
 
@@ -128,12 +142,39 @@ navTabs.forEach(tab => {
   });
 });
 
-// ---- Connect button (placeholder until BLEService in Plan 02) ----
+// ---- Connect button ----
 
-connectBtn.addEventListener('click', () => {
-  console.log('BLEService not yet loaded');
-  connectError.textContent = 'BLE connection will be available after Plan 02.';
-  connectError.classList.remove('hidden');
+connectBtn.addEventListener('click', async () => {
+  connectError.classList.add('hidden');
+  try {
+    if (AppState.savedDeviceName) {
+      await tryQuickConnect();
+    } else {
+      await initiateConnection();
+    }
+  } catch (err) {
+    console.error('BLE connection error:', err);
+    connectError.textContent = 'Make sure your HRM 600 is on and within range. Try again.';
+    connectError.classList.remove('hidden');
+  }
+});
+
+// ---- Manual reconnect button ----
+
+reconnectBtn.addEventListener('click', async () => {
+  AppState.showManualReconnect = false;
+  connectError.classList.add('hidden');
+  try {
+    if (AppState.savedDeviceName) {
+      await tryQuickConnect();
+    } else {
+      await initiateConnection();
+    }
+  } catch (err) {
+    console.error('Reconnect error:', err);
+    connectError.textContent = 'Make sure your HRM 600 is on and within range. Try again.';
+    connectError.classList.remove('hidden');
+  }
 });
 
 // ---- App initialization ----
