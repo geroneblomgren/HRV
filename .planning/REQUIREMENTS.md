@@ -102,13 +102,51 @@ Requirements for initial release. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated during roadmap creation) | | |
+| BLE-01 | Phase 1 | Pending |
+| BLE-02 | Phase 1 | Pending |
+| BLE-03 | Phase 1 | Pending |
+| BLE-04 | Phase 1 | Pending |
+| BLE-05 | Phase 1 | Pending |
+| STOR-01 | Phase 1 | Pending |
+| STOR-02 | Phase 1 | Pending |
+| STOR-03 | Phase 1 | Pending |
+| DSP-01 | Phase 2 | Pending |
+| DSP-02 | Phase 2 | Pending |
+| DSP-03 | Phase 2 | Pending |
+| DSP-04 | Phase 2 | Pending |
+| DSP-05 | Phase 2 | Pending |
+| VIZ-01 | Phase 2 | Pending |
+| VIZ-02 | Phase 2 | Pending |
+| VIZ-03 | Phase 2 | Pending |
+| PAC-01 | Phase 3 | Pending |
+| PAC-02 | Phase 3 | Pending |
+| PAC-03 | Phase 3 | Pending |
+| PAC-04 | Phase 3 | Pending |
+| PAC-05 | Phase 3 | Pending |
+| PAC-06 | Phase 3 | Pending |
+| PAC-07 | Phase 3 | Pending |
+| DISC-01 | Phase 4 | Pending |
+| DISC-02 | Phase 4 | Pending |
+| DISC-03 | Phase 4 | Pending |
+| DISC-04 | Phase 4 | Pending |
+| DISC-05 | Phase 4 | Pending |
+| PRAC-01 | Phase 4 | Pending |
+| PRAC-02 | Phase 4 | Pending |
+| PRAC-03 | Phase 4 | Pending |
+| PRAC-04 | Phase 4 | Pending |
+| PRAC-05 | Phase 4 | Pending |
+| OURA-01 | Phase 5 | Pending |
+| OURA-02 | Phase 5 | Pending |
+| OURA-03 | Phase 5 | Pending |
+| DASH-01 | Phase 5 | Pending |
+| DASH-02 | Phase 5 | Pending |
+| DASH-03 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 30 total
-- Mapped to phases: 0
-- Unmapped: 30
+- v1 requirements: 39 total (note: header previously stated 30; actual count is 39 across 9 categories)
+- Mapped to phases: 39
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-21 after initial definition*
+*Last updated: 2026-03-21 after roadmap creation*
