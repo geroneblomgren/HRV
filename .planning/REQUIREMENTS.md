@@ -69,9 +69,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Storage
 
-- [ ] **STOR-01**: All session data (date, mode, duration, frequency, mean coherence, RR summary stats) stored in IndexedDB via idb library
-- [ ] **STOR-02**: Saved resonance frequency persisted in IndexedDB, loaded on app start
-- [ ] **STOR-03**: Oura data cached in IndexedDB with timestamp for freshness checking
+- [x] **STOR-01**: All session data (date, mode, duration, frequency, mean coherence, RR summary stats) stored in IndexedDB via idb library
+- [x] **STOR-02**: Saved resonance frequency persisted in IndexedDB, loaded on app start
+- [x] **STOR-03**: Oura data cached in IndexedDB with timestamp for freshness checking
 
 ## v2 Requirements
 
@@ -107,9 +107,9 @@ Requirements for initial release. Each maps to roadmap phases.
 | BLE-03 | Phase 1 | Pending |
 | BLE-04 | Phase 1 | Pending |
 | BLE-05 | Phase 1 | Pending |
-| STOR-01 | Phase 1 | Pending |
-| STOR-02 | Phase 1 | Pending |
-| STOR-03 | Phase 1 | Pending |
+| STOR-01 | Phase 1 | Complete |
+| STOR-02 | Phase 1 | Complete |
+| STOR-03 | Phase 1 | Complete |
 | DSP-01 | Phase 2 | Pending |
 | DSP-02 | Phase 2 | Pending |
 | DSP-03 | Phase 2 | Pending |
