@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. After pairing, RR intervals appear in the app state in real-time (verifiable via console/debug overlay) with multiple RR values per notification parsed correctly
   3. When BLE drops, the app automatically attempts reconnect with visible status change; connection resumes without page reload
   4. Session records and resonance frequency are written to IndexedDB and survive a browser refresh
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
 - [ ] 01-01: AppState (Proxy-based reactive store + pub/sub bus) and StorageService (idb wrapper, session/frequency/Oura stores)
