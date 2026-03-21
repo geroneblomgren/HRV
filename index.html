@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111111">
+  <title>ResonanceHRV</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+  <!-- Connection status banner -->
+  <div id="connection-banner" class="connection-banner hidden">
+    <span id="banner-text">Reconnecting...</span>
+  </div>
+
+  <!-- Navigation tabs -->
+  <nav id="main-nav" class="nav-tabs">
+    <button class="nav-tab active" data-tab="discovery">Discovery</button>
+    <button class="nav-tab" data-tab="practice">Practice</button>
+    <button class="nav-tab" data-tab="dashboard">Dashboard</button>
+  </nav>
+
+  <!-- Connection area -->
+  <div id="connection-area" class="connection-area">
+    <button id="connect-btn" class="connect-button">
+      <span id="connect-label">Connect to HRM 600</span>
+    </button>
+    <p id="connect-status" class="connect-status">Not connected</p>
+    <p id="connect-error" class="connect-error hidden"></p>
+  </div>
+
+  <!-- Tab content areas -->
+  <main id="tab-content" class="tab-content">
+    <section id="tab-discovery" class="tab-panel active">
+      <div class="placeholder-content">
+        <h2>Discovery Mode</h2>
+        <p>Identify your personal resonance frequency by breathing at different rates.</p>
+        <p class="hint">Connect your HRM to begin.</p>
+      </div>
+    </section>
+    <section id="tab-practice" class="tab-panel">
+      <div class="placeholder-content">
+        <h2>Practice Mode</h2>
+        <p>Guided breathing sessions at your resonance frequency.</p>
+        <p class="hint">Complete Discovery first to set your frequency.</p>
+      </div>
+    </section>
+    <section id="tab-dashboard" class="tab-panel">
+      <div class="placeholder-content">
+        <h2>Dashboard</h2>
+        <p>Session history and recovery trends.</p>
+        <p class="hint">Sessions will appear here after your first practice.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Live data panel (always visible) -->
+  <div id="live-data-panel" class="live-panel">
+    <div class="data-cell" id="hr-display">
+      <span class="data-value" id="hr-value">--</span>
+      <span class="data-label">BPM</span>
+    </div>
+    <div class="data-cell">
+      <span class="data-value" id="rr-count">0</span>
+      <span class="data-label">Beats</span>
+    </div>
+    <div class="data-cell">
+      <span class="data-value" id="artifact-count">0</span>
+      <span class="data-label">Artifacts</span>
+    </div>
+    <div class="data-cell">
+      <span class="data-value" id="uptime">0:00</span>
+      <span class="data-label">Uptime</span>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
