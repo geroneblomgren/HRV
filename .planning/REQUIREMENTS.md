@@ -57,9 +57,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Oura Integration
 
-- [ ] **OURA-01**: App authenticates with Oura API v2 via OAuth2 (authorization code flow or implicit flow)
-- [ ] **OURA-02**: App pulls daily readiness/sleep data including overnight HRV (rMSSD) for the past 30 days
-- [ ] **OURA-03**: Oura data cached in IndexedDB and refreshed on each app load
+- [x] **OURA-01**: App authenticates with Oura API v2 via OAuth2 (authorization code flow or implicit flow)
+- [x] **OURA-02**: App pulls daily readiness/sleep data including overnight HRV (rMSSD) for the past 30 days
+- [x] **OURA-03**: Oura data cached in IndexedDB and refreshed on each app load
 
 ### Recovery Dashboard
 
@@ -135,9 +135,9 @@ Requirements for initial release. Each maps to roadmap phases.
 | PRAC-03 | Phase 4 | Complete |
 | PRAC-04 | Phase 4 | Complete |
 | PRAC-05 | Phase 4 | Complete |
-| OURA-01 | Phase 5 | Pending |
-| OURA-02 | Phase 5 | Pending |
-| OURA-03 | Phase 5 | Pending |
+| OURA-01 | Phase 5 | Complete |
+| OURA-02 | Phase 5 | Complete |
+| OURA-03 | Phase 5 | Complete |
 | DASH-01 | Phase 5 | Pending |
 | DASH-02 | Phase 5 | Pending |
 | DASH-03 | Phase 5 | Pending |

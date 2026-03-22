@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-22T13:14:01.548Z"
+last_updated: "2026-03-22T13:49:43.967Z"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 10
+  completed_plans: 9
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Real-time HRV biofeedback during breathing sessions — seeing your heart rate oscillate in sync with your breath and knowing you're training at your exact resonance frequency.
-**Current focus:** Phase 4 complete. Both Discovery and Practice modes built. Ready for Phase 5 (Dashboard).
+**Current focus:** Phase 5 in progress. OuraClient module built (05-01). Next: dashboard.js with Canvas chart (05-02).
 
 ## Current Position
 
-Phase: 4 of 5 (Session Modes)
-Plan: 2 of 2 in current phase
-Status: Complete
-Last activity: 2026-03-22 — Completed 04-02 (Practice mode: coherence trace, chime, summary, IndexedDB save)
+Phase: 5 of 5 (Oura Recovery Dashboard)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-03-22 — Completed 05-01 (OuraClient: PAT-first auth, PKCE fallback, HRV fetch, IndexedDB cache)
 
-Progress: [████████░░] 80%
+Progress: [████████░░] 85%
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [████████░░] 80%
 
 *Updated after each plan completion*
 | Phase 04-session-modes P02 | 7 | 1 tasks | 5 files |
+| Phase 05-oura-recovery-dashboard P01 | 15 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,9 @@ Recent decisions affecting current work:
 - 04-01: playChime() wraps _scheduleBowlCue at ctx.currentTime+0.05 for immediate one-shot bowl strike
 - [Phase 04-session-modes]: Practice mode has no spectrum chart (per prior user decision: keep it focused on breathing)
 - [Phase 04-session-modes]: Chime plays once at timer zero but session continues — user ends explicitly via End Session button
+- [Phase 05-oura-recovery-dashboard]: 05-01: PAT-first auth — try user key as Bearer token against /v2/usercollection/personal_info; PKCE only if 401
+- [Phase 05-oura-recovery-dashboard]: 05-01: setProxyBase() makes CORS proxy transparent — _apiBase variable switches all fetches from direct to proxy with one call
+- [Phase 05-oura-recovery-dashboard]: 05-01: long_sleep type filter prevents nap HRV from distorting overnight averages; fallback to longest total_sleep_duration
 
 ### Pending Todos
 
@@ -103,5 +107,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 04-02-PLAN.md (Practice mode: coherence trace, chime, 4-metric summary, IndexedDB save).
-Resume file: .planning/phases/04-session-modes/04-02-SUMMARY.md
+Stopped at: Checkpoint 05-01 Task 2 (CORS smoke test + PAT verification) — awaiting user to run live Oura API test.
+Resume file: .planning/phases/05-oura-recovery-dashboard/05-01-SUMMARY.md

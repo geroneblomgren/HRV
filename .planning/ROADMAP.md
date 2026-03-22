@@ -105,4 +105,4 @@ Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
 | 2. Signal Processing + Visualization | 2/2 | Complete    | 2026-03-22 |
 | 3. Breathing Pacer | 2/2 | Complete    | 2026-03-22 |
 | 4. Session Modes | 2/2 | Complete   | 2026-03-22 |
-| 5. Oura + Recovery Dashboard | 0/2 | Not started | - |
+| 5. Oura + Recovery Dashboard | 1/2 | In Progress|  |
