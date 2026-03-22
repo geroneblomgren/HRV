@@ -458,8 +458,8 @@ function _drawChart() {
     _ctx.fillText(Math.round(v), chartLeft - 6, y + 4);
   }
 
-  // ---- Right axis labels (Coherence 0-100, purple) ----
-  _ctx.fillStyle = '#a78bfa';
+  // ---- Right axis labels (Coherence 0-100, orange) ----
+  _ctx.fillStyle = '#fb923c';
   _ctx.textAlign = 'left';
   const cohTicks = [0, 25, 50, 75, 100];
   for (const v of cohTicks) {
@@ -478,7 +478,7 @@ function _drawChart() {
   _ctx.restore();
 
   _ctx.save();
-  _ctx.fillStyle = '#a78bfa';
+  _ctx.fillStyle = '#fb923c';
   _ctx.font      = '11px system-ui, sans-serif';
   _ctx.textAlign = 'center';
   _ctx.translate(_canvasW - 12, chartTop + chartH / 2);
@@ -526,12 +526,12 @@ function _drawChart() {
       if (x < chartLeft || x > chartRight) continue;
 
       _ctx.beginPath();
-      _ctx.fillStyle = '#a78bfa';
+      _ctx.fillStyle = '#fb923c';
       _ctx.arc(x, y, 5, 0, Math.PI * 2);
       _ctx.fill();
 
       // Outline for visibility
-      _ctx.strokeStyle = '#7c3aed';
+      _ctx.strokeStyle = '#ea580c';
       _ctx.lineWidth   = 1;
       _ctx.stroke();
 
