@@ -26,7 +26,18 @@ let _sessionStart = null;
 
 function startSession() {
   _sessionStart = Date.now();
-  initDSP();
+
+  // Show session viz, hide placeholder FIRST (before any code that might throw)
+  const viz = document.querySelector('#tab-discovery .session-viz');
+  if (viz) viz.classList.add('active');
+  const placeholder = document.getElementById('discovery-placeholder');
+  if (placeholder) placeholder.style.display = 'none';
+
+  try {
+    initDSP();
+  } catch (err) {
+    console.error('DSP init failed (FFT library may not have loaded):', err);
+  }
 
   // Get canvas elements
   const waveformCanvas = document.getElementById('waveform-canvas');
@@ -39,14 +50,12 @@ function startSession() {
   // Start DSP tick at 1-second interval (setInterval, NOT rAF — DSP runs even when tab hidden)
   _dspInterval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - _sessionStart) / 1000);
-    tick(elapsed);
+    try {
+      tick(elapsed);
+    } catch (err) {
+      console.error('DSP tick error:', err);
+    }
   }, 1000);
-
-  // Show session viz, hide placeholder
-  const viz = document.querySelector('#tab-discovery .session-viz');
-  if (viz) viz.classList.add('active');
-  const placeholder = document.getElementById('discovery-placeholder');
-  if (placeholder) placeholder.style.display = 'none';
 }
 
 function stopSession() {
