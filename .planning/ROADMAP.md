@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - BLE connection + RR streaming + IndexedDB storage wired through AppState (completed 2026-03-22)
 - [x] **Phase 2: Signal Processing + Visualization** - Artifact rejection, spectral analysis, coherence scoring, and Canvas rendering (completed 2026-03-22)
 - [x] **Phase 3: Breathing Pacer** - Visual expanding-circle animation and three audio styles with drift-free lookahead scheduler (completed 2026-03-22)
-- [ ] **Phase 4: Session Modes** - Discovery protocol (5 blocks) and Practice mode (20-min guided sessions), integrating all prior phases
+- [x] **Phase 4: Session Modes** - Discovery protocol (5 blocks) and Practice mode (20-min guided sessions), integrating all prior phases (completed 2026-03-22)
 - [ ] **Phase 5: Oura + Recovery Dashboard** - OAuth2 PKCE Oura auth, overnight HRV pull, and dual-axis recovery trend chart
 
 ## Phase Details
@@ -74,7 +74,7 @@ Plans:
   2. After Discovery completes, a comparison display shows RSA amplitude and LF peak power across all 5 frequencies; user selects and saves their resonance frequency
   3. User can start Practice mode, which loads the saved resonance frequency and runs a 20-minute guided session with live coherence score and scrolling HR waveform
   4. At Practice session end, a summary screen shows duration, mean coherence, peak coherence, and time in high coherence
-**Plans:** 1/2 plans complete
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 04-01-PLAN.md — Discovery mode: 5-block state machine, per-block RSA/LF capture, inter-block countdown, comparison bar chart, frequency selection and save
@@ -104,5 +104,5 @@ Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
 | 1. Foundation | 2/2 | Complete    | 2026-03-22 |
 | 2. Signal Processing + Visualization | 2/2 | Complete    | 2026-03-22 |
 | 3. Breathing Pacer | 2/2 | Complete    | 2026-03-22 |
-| 4. Session Modes | 1/2 | In progress | - |
+| 4. Session Modes | 2/2 | Complete   | 2026-03-22 |
 | 5. Oura + Recovery Dashboard | 0/2 | Not started | - |

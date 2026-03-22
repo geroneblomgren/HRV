@@ -43,11 +43,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Practice Mode
 
-- [ ] **PRAC-01**: Practice mode loads saved resonance frequency and runs breathing pacer at that rate
-- [ ] **PRAC-02**: Default session length is 20 minutes with visible countdown timer
-- [ ] **PRAC-03**: Real-time scrolling HR waveform displayed during practice (60s visible window)
-- [ ] **PRAC-04**: Live coherence score displayed prominently, updating every 1-2 seconds
-- [ ] **PRAC-05**: Session summary shown on completion: duration, mean coherence, peak coherence, time in high coherence
+- [x] **PRAC-01**: Practice mode loads saved resonance frequency and runs breathing pacer at that rate
+- [x] **PRAC-02**: Default session length is 20 minutes with visible countdown timer
+- [x] **PRAC-03**: Real-time scrolling HR waveform displayed during practice (60s visible window)
+- [x] **PRAC-04**: Live coherence score displayed prominently, updating every 1-2 seconds
+- [x] **PRAC-05**: Session summary shown on completion: duration, mean coherence, peak coherence, time in high coherence
 
 ### Visualization
 
@@ -130,11 +130,11 @@ Requirements for initial release. Each maps to roadmap phases.
 | DISC-03 | Phase 4 | Complete |
 | DISC-04 | Phase 4 | Complete |
 | DISC-05 | Phase 4 | Complete |
-| PRAC-01 | Phase 4 | Pending |
-| PRAC-02 | Phase 4 | Pending |
-| PRAC-03 | Phase 4 | Pending |
-| PRAC-04 | Phase 4 | Pending |
-| PRAC-05 | Phase 4 | Pending |
+| PRAC-01 | Phase 4 | Complete |
+| PRAC-02 | Phase 4 | Complete |
+| PRAC-03 | Phase 4 | Complete |
+| PRAC-04 | Phase 4 | Complete |
+| PRAC-05 | Phase 4 | Complete |
 | OURA-01 | Phase 5 | Pending |
 | OURA-02 | Phase 5 | Pending |
 | OURA-03 | Phase 5 | Pending |

@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-22T12:01:40Z"
+last_updated: "2026-03-22T12:08:16.833Z"
 progress:
-  total_phases: 5
-  completed_phases: 3
+  total_phases: 4
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Real-time HRV biofeedback during breathing sessions — seeing your heart rate oscillate in sync with your breath and knowing you're training at your exact resonance frequency.
-**Current focus:** Phase 4 Plan 1 complete. Discovery mode built. Ready for 04-02 (Practice mode).
+**Current focus:** Phase 4 complete. Both Discovery and Practice modes built. Ready for Phase 5 (Dashboard).
 
 ## Current Position
 
 Phase: 4 of 5 (Session Modes)
 Plan: 2 of 2 in current phase
-Status: In progress
-Last activity: 2026-03-22 — Completed 04-01 (Discovery mode: 5-block protocol, RSA comparison chart, frequency save)
+Status: Complete
+Last activity: 2026-03-22 — Completed 04-02 (Practice mode: coherence trace, chime, summary, IndexedDB save)
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -43,13 +43,14 @@ Progress: [███████░░░] 70%
 | 1. Foundation | 2/2 | 19 min | 10 min |
 | 2. Signal Processing | 2/2 | 51 min | 26 min |
 | 3. Breathing Pacer | 2/2 | 47 min | 24 min |
-| 4. Session Modes | 1/2 | 3 min | 3 min |
+| 4. Session Modes | 2/2 | 10 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (45 min), 03-01 (2 min), 03-02 (45 min), 04-01 (3 min)
+- Last 5 plans: 03-01 (2 min), 03-02 (45 min), 04-01 (3 min), 04-02 (7 min)
 - Trend: Well-planned single-task plans execute very fast
 
 *Updated after each plan completion*
+| Phase 04-session-modes P02 | 7 | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,8 @@ Recent decisions affecting current work:
 - 04-01: DSP tick runs continuously across all Discovery blocks; RSA snapshot scoped to block elapsed only
 - 04-01: On BLE reconnect mid-block, restart full block (not resume) for clean 2-minute data capture
 - 04-01: playChime() wraps _scheduleBowlCue at ctx.currentTime+0.05 for immediate one-shot bowl strike
+- [Phase 04-session-modes]: Practice mode has no spectrum chart (per prior user decision: keep it focused on breathing)
+- [Phase 04-session-modes]: Chime plays once at timer zero but session continues — user ends explicitly via End Session button
 
 ### Pending Todos
 
@@ -100,5 +103,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 04-01-PLAN.md (Discovery mode: 5-block resonance frequency protocol, RSA comparison chart, frequency save to IndexedDB).
-Resume file: .planning/phases/04-session-modes/04-01-SUMMARY.md
+Stopped at: Completed 04-02-PLAN.md (Practice mode: coherence trace, chime, 4-metric summary, IndexedDB save).
+Resume file: .planning/phases/04-session-modes/04-02-SUMMARY.md
