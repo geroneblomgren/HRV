@@ -47,16 +47,21 @@ function getZone(score) {
 
 /**
  * Set up a canvas for crisp rendering at the device pixel ratio.
+ * Sizes the canvas to fill its parent container.
  * @param {HTMLCanvasElement} canvas
  * @returns {CanvasRenderingContext2D}
  */
 function setupCanvas(canvas) {
   const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
+  const parent = canvas.parentElement;
+  const w = parent.clientWidth;
+  const h = parent.clientHeight;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
   const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return ctx;
 }
 

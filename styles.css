@@ -14,6 +14,7 @@
   --border: #2a2a2a;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --font-ui: system-ui, -apple-system, sans-serif;
+  --live-panel-h: 60px;
 }
 
 * {
@@ -22,14 +23,17 @@
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+  overflow: hidden; /* no scroll — everything fits in viewport */
+}
+
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-ui);
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding-bottom: 80px; /* space for fixed live data panel */
 }
 
 /* ---- Connection status banner ---- */
@@ -69,6 +73,7 @@ body {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   padding: 0 16px;
+  flex-shrink: 0;
 }
 
 .nav-tab {
@@ -77,7 +82,7 @@ body {
   color: var(--text-secondary);
   font-family: var(--font-ui);
   font-size: 0.95rem;
-  padding: 12px 24px;
+  padding: 10px 24px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color 0.2s, border-color 0.2s;
@@ -99,16 +104,11 @@ body {
   flex-direction: column;
   align-items: center;
   padding: 48px 24px 32px;
-  transition: padding 0.3s, max-height 0.3s;
+  flex-shrink: 0;
 }
 
-.connection-area.minimized {
-  padding: 8px 24px 4px;
-}
-
-.connection-area.minimized .connect-status {
-  margin-top: 4px;
-  font-size: 0.75rem;
+.connection-area.hidden {
+  display: none;
 }
 
 .connect-button {
@@ -193,11 +193,14 @@ body {
 
 .tab-content {
   flex: 1;
-  padding: 8px 12px;
+  min-height: 0; /* allow shrink */
+  padding: 4px 8px;
+  overflow: hidden;
 }
 
 .tab-panel {
   display: none;
+  height: 100%;
 }
 
 .tab-panel.active {
@@ -228,32 +231,30 @@ body {
   opacity: 0.6;
 }
 
-/* ---- Live data panel (always visible, fixed bottom) ---- */
+/* ---- Live data panel (fixed bottom) ---- */
 
 .live-panel {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  padding: 8px 16px;
-  gap: 8px;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
+  padding: 4px 16px;
+  gap: 4px;
+  flex-shrink: 0;
+  height: var(--live-panel-h);
 }
 
 .data-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 4px;
+  justify-content: center;
+  padding: 2px 4px;
 }
 
 .data-value {
   font-family: var(--font-mono);
-  font-size: 1.6rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
@@ -261,26 +262,24 @@ body {
 
 #hr-value {
   color: var(--accent-blue);
-  font-size: 2rem;
+  font-size: 1.5rem;
 }
 
 .data-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
-/* ---- Session visualization canvases ---- */
+/* ---- Session visualization ---- */
 
 .session-viz {
   display: none;
   flex-direction: column;
-  gap: 8px;
-  padding: 0;
-  height: calc(100vh - 230px);
-  min-height: 350px;
+  gap: 6px;
+  height: 100%;
 }
 
 .session-viz.active {
@@ -289,26 +288,24 @@ body {
 
 .viz-row {
   display: flex;
-  gap: 8px;
-  min-height: 0; /* allow flex children to shrink below content size */
+  gap: 6px;
+  min-height: 0;
 }
 
 .viz-row-main {
   flex: 3;
-  min-height: 0;
 }
 
 .viz-row-spectrum {
   flex: 2;
-  min-height: 0;
 }
 
 .viz-card {
   background: var(--bg-panel);
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   position: relative;
-  min-height: 0; /* critical for flex canvas sizing */
+  min-height: 0;
 }
 
 .viz-waveform {
@@ -317,9 +314,6 @@ body {
 
 .viz-gauge {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .viz-spectrum {
@@ -327,7 +321,5 @@ body {
 }
 
 .viz-card canvas {
-  width: 100%;
-  height: 100%;
   display: block;
 }

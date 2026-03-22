@@ -145,15 +145,16 @@ subscribe('connectionStatus', status => {
     connectBtn.classList.add('hidden');
     connectStatus.textContent = 'Connected';
     connectError.classList.add('hidden');
-    connectionArea.classList.add('minimized');
+    connectionArea.classList.add('hidden');
   } else if (status === 'connecting' || status === 'reconnecting') {
     connectBtn.classList.add('connecting');
     connectBtn.classList.add('hidden');
+    connectionArea.classList.add('hidden');
     connectStatus.textContent = status === 'connecting' ? 'Connecting...' : 'Reconnecting...';
   } else {
     connectBtn.classList.remove('hidden');
     connectStatus.textContent = 'Not connected';
-    connectionArea.classList.remove('minimized');
+    connectionArea.classList.remove('hidden');
   }
 });
 
