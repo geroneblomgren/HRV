@@ -3,7 +3,7 @@ import { AppState, subscribe } from './state.js';
 import { initStorage, getSetting } from './storage.js';
 import { initiateConnection, tryQuickConnect } from './ble.js';
 import { setStyle, setVolume } from './audio.js';
-import { startDiscovery, stopDiscovery, onDisconnect as discoveryDisconnect, _wireStartBtn } from './discovery.js';
+import { startDiscovery, stopDiscovery, onDisconnect as discoveryDisconnect, _wireStartBtn, loadLastDiscoveryResults } from './discovery.js';
 import { initPracticeUI, onDisconnect as practiceDisconnect } from './practice.js';
 
 // ---- DOM references ----
@@ -246,6 +246,11 @@ async function init() {
 
     // Wire practice UI
     initPracticeUI();
+
+    // Load last discovery results so user can review/change selection
+    if (AppState.savedResonanceFreq) {
+      await loadLastDiscoveryResults();
+    }
 
     console.log('ResonanceHRV initialized');
   } catch (err) {

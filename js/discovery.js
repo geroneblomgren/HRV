@@ -6,7 +6,7 @@ import { AppState, subscribe, unsubscribe } from './state.js';
 import { initAudio, startPacer, stopPacer, playChime } from './audio.js';
 import { initDSP, tick, getHRArray, computeRSAAmplitude } from './dsp.js';
 import { startRendering, stopRendering } from './renderer.js';
-import { saveSession, setSetting } from './storage.js';
+import { saveSession, setSetting, querySessions } from './storage.js';
 
 // ---- Constants ----
 
@@ -18,7 +18,7 @@ export const DISCOVERY_BLOCKS = [
   { bpm: 4.5, hz: 4.5 / 60 },
 ];
 
-export const BLOCK_DURATION_MS = 120000;   // 2 minutes per block
+export const BLOCK_DURATION_MS = 180000;   // 3 minutes per block
 const INTER_BLOCK_PAUSE_MS = 4000;         // 4 seconds between blocks
 const COUNTDOWN_SECONDS = 3;               // 3-2-1 before first block
 
@@ -52,6 +52,28 @@ function _hide(el) {
 }
 
 // ---- Public API ----
+
+/**
+ * Load last discovery results from IndexedDB so user can review/change
+ * their selection without re-running the protocol. Call during app init.
+ */
+export async function loadLastDiscoveryResults() {
+  try {
+    const sessions = await querySessions({ limit: 50 });
+    const lastDiscovery = sessions.filter(s => s.mode === 'discovery').pop();
+    if (lastDiscovery && lastDiscovery.blocks && lastDiscovery.blocks.length > 0) {
+      _blockResults = lastDiscovery.blocks;
+      const savedHz = AppState.savedResonanceFreq;
+      const matchIdx = _blockResults.findIndex(b => Math.abs(b.hz - savedHz) < 0.001);
+      const selectedBpm = matchIdx >= 0
+        ? _blockResults[matchIdx].bpm
+        : _blockResults.reduce((best, b) => b.rsaAmplitude > best.rsaAmplitude ? b : best).bpm;
+      _showCompletePlaceholder(selectedBpm, _blockResults);
+    }
+  } catch (err) {
+    console.error('Failed to load discovery results:', err);
+  }
+}
 
 /**
  * Entry point. Call from a user gesture (button click) so AudioContext can init.
@@ -470,23 +492,38 @@ async function _onConfirm(results) {
     _connectedListener = null;
   }
 
-  // Hide comparison, show placeholder with success message
+  // Hide comparison, show placeholder with success message + review button
   _hide(_getEl('discovery-comparison'));
-  const placeholder = _getEl('discovery-placeholder');
-  if (placeholder) {
-    placeholder.innerHTML = `
-      <h2>Discovery Complete</h2>
-      <p>Resonance frequency set: <strong style="color:#14b8a6">${selectedBpm} breaths/min</strong></p>
-      <p class="hint">Navigate to Practice tab to begin a session.</p>
-      <button id="discovery-start-btn" class="connect-button discovery-start-btn" style="margin-top:20px;" disabled>Start Discovery Protocol</button>
-    `;
-    placeholder.style.display = '';
+  _showCompletePlaceholder(selectedBpm, results);
+}
 
-    // Re-wire new start button
-    const newStartBtn = _getEl('discovery-start-btn');
-    if (newStartBtn) {
-      _wireStartBtn(newStartBtn);
-    }
+function _showCompletePlaceholder(selectedBpm, results) {
+  const placeholder = _getEl('discovery-placeholder');
+  if (!placeholder) return;
+
+  placeholder.innerHTML = `
+    <h2>Discovery Complete</h2>
+    <p>Resonance frequency set: <strong style="color:#14b8a6">${selectedBpm} breaths/min</strong></p>
+    <p class="hint">Navigate to Practice tab to begin a session.</p>
+    <button id="discovery-review-btn" class="connect-button" style="margin-top:12px;">Review Results</button>
+    <button id="discovery-start-btn" class="connect-button discovery-start-btn" style="margin-top:8px;" disabled>Redo Discovery Protocol</button>
+  `;
+  placeholder.style.display = '';
+
+  // Wire review button to reopen comparison chart
+  const reviewBtn = _getEl('discovery-review-btn');
+  if (reviewBtn) {
+    reviewBtn.addEventListener('click', () => {
+      _hide(placeholder);
+      _showComparison(results);
+    });
+  }
+
+  // Re-wire new start button (click handler + enable/disable)
+  const newStartBtn = _getEl('discovery-start-btn');
+  if (newStartBtn) {
+    newStartBtn.addEventListener('click', () => startDiscovery());
+    _wireStartBtn(newStartBtn);
   }
 }
 

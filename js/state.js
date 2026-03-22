@@ -32,6 +32,7 @@ export const AppState = new Proxy({
 
   // Pacer (Phase 3)
   pacingFreq: 0.0833,               // Hz = 5 breaths/min default
+  pacerEpoch: 0,                    // AudioContext time when pacer started (for circle sync)
   nextCueTime: 0,
   nextCuePhase: 'inhale',
 

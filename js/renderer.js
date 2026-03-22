@@ -98,10 +98,10 @@ function _updateWaveformBuffer() {
   // Initialize smooth value on first valid reading
   if (_smoothHR === 0) _smoothHR = _targetHR;
 
-  // Exponential interpolation toward target every frame
+  // Exponential interpolation toward target every frame (slower = smoother)
   const frameDt = now - _lastWaveformTime;
   _lastWaveformTime = now;
-  const alpha = 1 - Math.exp(-frameDt / 200);
+  const alpha = 1 - Math.exp(-frameDt / 600);
   _smoothHR += (_targetHR - _smoothHR) * alpha;
 
   // Write to circular buffer at ~5 samples/sec (every ~200ms)
@@ -170,6 +170,30 @@ function drawWaveform() {
 
   if (points.length < 2) return;
 
+  // Two-pass smoothing: moving average then downsample for gentle rolling curves
+  // Pass 1: wide moving average over raw points
+  const smoothRadius = 12;
+  const avgPoints = points.map((p, i) => {
+    let sumY = 0, count = 0;
+    for (let j = Math.max(0, i - smoothRadius); j <= Math.min(points.length - 1, i + smoothRadius); j++) {
+      sumY += points[j].y;
+      count++;
+    }
+    return { x: p.x, y: sumY / count };
+  });
+
+  // Pass 2: downsample to ~60 points so bezier curves create wide gentle arcs
+  const targetCount = 60;
+  const step = Math.max(1, Math.floor(avgPoints.length / targetCount));
+  const smoothed = [];
+  for (let i = 0; i < avgPoints.length; i += step) {
+    smoothed.push(avgPoints[i]);
+  }
+  // Always include the last point
+  if (smoothed.length > 0 && smoothed[smoothed.length - 1] !== avgPoints[avgPoints.length - 1]) {
+    smoothed.push(avgPoints[avgPoints.length - 1]);
+  }
+
   // Helper: draw smooth Bezier curve through points
   function drawSmoothCurve(pts) {
     ctx.moveTo(pts[0].x, pts[0].y);
@@ -183,8 +207,8 @@ function drawWaveform() {
 
   // Filled area
   ctx.beginPath();
-  drawSmoothCurve(points);
-  ctx.lineTo(points[points.length - 1].x, h);
+  drawSmoothCurve(smoothed);
+  ctx.lineTo(smoothed[smoothed.length - 1].x, h);
   ctx.lineTo(0, h);
   ctx.closePath();
   ctx.fillStyle = gradient;
@@ -192,7 +216,7 @@ function drawWaveform() {
 
   // Smooth line on top
   ctx.beginPath();
-  drawSmoothCurve(points);
+  drawSmoothCurve(smoothed);
   ctx.strokeStyle = TEAL;
   ctx.lineWidth = 2;
   ctx.stroke();
@@ -278,28 +302,49 @@ function drawSpectrum() {
   ctx.save();
   ctx.globalAlpha = _calibrationFadeAlpha;
 
-  // Find max for normalization
+  // Normalize against LF band peak so the resonance signal fills the chart
   const maxBin = Math.min(psd.length, Math.floor(MAX_FREQ_HZ * FFT_SIZE / SAMPLE_RATE));
-  let maxVal = 0;
-  for (let i = 1; i < maxBin; i++) {
-    if (psd[i] > maxVal) maxVal = psd[i];
-  }
-  if (maxVal === 0) { ctx.restore(); return; }
+  const lfLowBin = Math.max(1, Math.round(LF_LOW * FFT_SIZE / SAMPLE_RATE));
+  const lfHighBin = Math.min(psd.length - 1, Math.round(LF_HIGH * FFT_SIZE / SAMPLE_RATE));
 
-  // Build filled area path
-  const gradient = ctx.createLinearGradient(0, 0, 0, h);
-  gradient.addColorStop(0, TEAL_FILL_TOP);
-  gradient.addColorStop(1, TEAL_FILL_BOTTOM);
+  let lfMax = 0;
+  let peakBin = lfLowBin;
+  for (let i = lfLowBin; i <= lfHighBin; i++) {
+    if (psd[i] > lfMax) { lfMax = psd[i]; peakBin = i; }
+  }
+
+  // Use LF peak as normalization ceiling (with small headroom)
+  // Anything above is clamped — keeps the resonance peak prominent
+  const normVal = lfMax > 0 ? lfMax * 1.15 : 1;
+
+  // Also find global max (only used as fallback if LF is empty)
+  let globalMax = 0;
+  for (let i = 1; i < maxBin; i++) {
+    if (psd[i] > globalMax) globalMax = psd[i];
+  }
+  if (globalMax === 0) { ctx.restore(); return; }
+  const maxVal = lfMax > 0 ? normVal : globalMax;
 
   const chartBottom = h - 18; // leave room for x-axis labels
+  const chartHeight = chartBottom * 0.85;
+
+  // Build filled area path
+  const gradient = ctx.createLinearGradient(0, chartBottom - chartHeight, 0, chartBottom);
+  gradient.addColorStop(0, 'rgba(20, 184, 166, 0.6)');
+  gradient.addColorStop(0.5, 'rgba(20, 184, 166, 0.25)');
+  gradient.addColorStop(1, 'rgba(20, 184, 166, 0.03)');
+
+  // Start plot from LF low bound — bins below are DC/VLF noise that dominates visually
+  const plotStartBin = Math.max(1, lfLowBin - 1);
+  const startX = (binToHz(plotStartBin) / MAX_FREQ_HZ) * w;
 
   ctx.beginPath();
-  ctx.moveTo(0, chartBottom);
-  for (let i = 0; i < maxBin; i++) {
+  ctx.moveTo(startX, chartBottom);
+  for (let i = plotStartBin; i < maxBin; i++) {
     const freq = binToHz(i);
     const x = (freq / MAX_FREQ_HZ) * w;
-    const normalized = psd[i] / maxVal;
-    const y = chartBottom - normalized * chartBottom * 0.8;
+    const normalized = Math.min(1, psd[i] / maxVal);
+    const y = chartBottom - normalized * chartHeight;
     ctx.lineTo(x, y);
   }
   ctx.lineTo((binToHz(maxBin - 1) / MAX_FREQ_HZ) * w, chartBottom);
@@ -307,48 +352,43 @@ function drawSpectrum() {
   ctx.fillStyle = gradient;
   ctx.fill();
 
-  // Line on top
+  // Line on top — thicker for visibility
   ctx.beginPath();
-  for (let i = 0; i < maxBin; i++) {
+  for (let i = plotStartBin; i < maxBin; i++) {
     const freq = binToHz(i);
     const x = (freq / MAX_FREQ_HZ) * w;
-    const normalized = psd[i] / maxVal;
-    const y = chartBottom - normalized * chartBottom * 0.8;
-    if (i === 0) ctx.moveTo(x, y);
+    const normalized = Math.min(1, psd[i] / maxVal);
+    const y = chartBottom - normalized * chartHeight;
+    if (i === plotStartBin) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   }
   ctx.strokeStyle = TEAL;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2.5;
   ctx.stroke();
 
-  // Find peak in LF range
-  const lfLowBin = Math.max(1, Math.round(LF_LOW * FFT_SIZE / SAMPLE_RATE));
-  const lfHighBin = Math.min(psd.length - 1, Math.round(LF_HIGH * FFT_SIZE / SAMPLE_RATE));
-  let peakBin = lfLowBin;
-  let peakVal = 0;
-  for (let i = lfLowBin; i <= lfHighBin; i++) {
-    if (psd[i] > peakVal) {
-      peakVal = psd[i];
-      peakBin = i;
-    }
-  }
-
-  // Draw peak dot
+  // Draw peak dot (larger)
   const peakFreq = binToHz(peakBin);
   const peakX = (peakFreq / MAX_FREQ_HZ) * w;
-  const peakY = chartBottom - (peakVal / maxVal) * chartBottom * 0.8;
+  const peakNorm = Math.min(1, psd[peakBin] / maxVal);
+  const peakY = chartBottom - peakNorm * chartHeight;
 
   ctx.beginPath();
-  ctx.arc(peakX, peakY, 4, 0, Math.PI * 2);
+  ctx.arc(peakX, peakY, 6, 0, Math.PI * 2);
   ctx.fillStyle = TEAL;
   ctx.fill();
+  // Glow ring around peak
+  ctx.beginPath();
+  ctx.arc(peakX, peakY, 10, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(20, 184, 166, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
   // Peak frequency label
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.font = '11px monospace';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.font = 'bold 12px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  ctx.fillText(`${peakFreq.toFixed(2)} Hz`, peakX, peakY - 8);
+  ctx.fillText(`${peakFreq.toFixed(2)} Hz`, peakX, peakY - 12);
 
   ctx.restore();
 }
@@ -471,14 +511,22 @@ function drawBreathingCircle() {
 
   ctx.clearRect(0, 0, w, h);
 
-  // Use AudioContext.currentTime for drift-free sync with audio cues
+  // Derive circle position directly from the audio scheduler's state.
+  // AppState.nextCueTime/Phase = the most recently scheduled cue = what's CURRENTLY PLAYING.
   const audioTime = getAudioTime();
-  if (audioTime === 0) return;
+  const cueTime = AppState.nextCueTime;
+  if (audioTime === 0 || cueTime === 0) return;
 
-  // Continuous sine wave: one full cycle = 1/pacingFreq seconds
-  // phase 0..0.5 = inhale (circle grows), 0.5..1.0 = exhale (circle shrinks)
-  const fullPeriod = 1 / AppState.pacingFreq;
-  const phase = ((audioTime % fullPeriod) / fullPeriod); // 0.0 to 1.0
+  const halfPeriod = 1 / (AppState.pacingFreq * 2);
+  const currentPhase = AppState.nextCuePhase;  // This IS the current phase
+
+  // Progress since this phase's cue fired (0→1)
+  const halfProgress = Math.max(0, Math.min(1, (audioTime - cueTime) / halfPeriod));
+
+  // Map to full-cycle phase: inhale = 0→0.5, exhale = 0.5→1.0
+  const phase = currentPhase === 'inhale'
+    ? halfProgress * 0.5
+    : 0.5 + halfProgress * 0.5;
 
   // Cosine gives smooth 1→0→1 shape, remap to 0→1→0 for radius
   // cos(0) = 1 (start small), cos(π) = -1 (fully expanded), cos(2π) = 1 (small again)
@@ -505,10 +553,10 @@ function drawBreathingCircle() {
   ctx.restore();
 
   // Phase label (Inhale/Exhale) with fade transition
-  const currentPhase = isInhale ? 'inhale' : 'exhale';
-  if (currentPhase !== _prevPhase) {
+  const labelPhase = isInhale ? 'inhale' : 'exhale';
+  if (labelPhase !== _prevPhase) {
     _labelOpacity = 0.3;
-    _prevPhase = currentPhase;
+    _prevPhase = labelPhase;
   }
   _labelOpacity = Math.min(1.0, _labelOpacity + 0.04);
 

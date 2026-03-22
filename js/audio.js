@@ -45,6 +45,7 @@ export function startPacer(pacingFreqHz) {
   const halfPeriod = 1 / (pacingFreqHz * 2);
   _nextCueTime = _ctx.currentTime + 0.1;
   _nextPhase = 'inhale';
+  AppState.pacerEpoch = _nextCueTime;
   _schedulerTick(halfPeriod);
 }
 
