@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-22T13:49:43.967Z"
+last_updated: "2026-03-22T14:08:00Z"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 Phase: 5 of 5 (Oura Recovery Dashboard)
 Plan: 2 of 2 in current phase (05-01 complete, 05-02 next)
 Status: In Progress
-Last activity: 2026-03-22 — Completed 05-01 fully (CORS smoke test resolved: PAT valid, CORS blocked, proxy required)
+Last activity: 2026-03-22 — 05-02 Tasks 1-2 complete (dashboard.js + main.js wiring). Awaiting Task 3 human-verify.
 
 Progress: [████████░░] 85%
 
@@ -97,6 +97,9 @@ Recent decisions affecting current work:
 - [Phase 05-oura-recovery-dashboard]: 05-01 CONFIRMED: Oura API CORS is blocked in browser — proxy.js on localhost:5001 is mandatory default path
 - [Phase 05-oura-recovery-dashboard]: 05-01 CONFIRMED: 29 days of overnight HRV data flows correctly through proxy — data layer end-to-end verified
 - [Phase 05-oura-recovery-dashboard]: 05-02 requirement: dashboard.js must call setProxyBase('http://localhost:5001') before any Oura API calls
+- [Phase 05-oura-recovery-dashboard]: 05-02: setProxyBase called at module load (not call site) — proxy always required
+- [Phase 05-oura-recovery-dashboard]: 05-02: Tooltip uses position:fixed so it stays in viewport on scrolled dashboard
+- [Phase 05-oura-recovery-dashboard]: 05-02: HRV Y-axis auto-ranges from data with 10% padding (no hardcoded range per Research anti-pattern)
 
 ### Pending Todos
 
@@ -111,5 +114,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Plan 05-01 fully complete. Next: 05-02 (dashboard.js Canvas chart).
-Resume file: .planning/phases/05-oura-recovery-dashboard/05-02-PLAN.md
+Stopped at: 05-02 Tasks 1-2 complete. Waiting at checkpoint:human-verify (Task 3) — visual verification of dashboard.
+Resume: After user approves or reports issues, continue 05-02 Task 3.

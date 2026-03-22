@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Signal Processing + Visualization** - Artifact rejection, spectral analysis, coherence scoring, and Canvas rendering (completed 2026-03-22)
 - [x] **Phase 3: Breathing Pacer** - Visual expanding-circle animation and three audio styles with drift-free lookahead scheduler (completed 2026-03-22)
 - [x] **Phase 4: Session Modes** - Discovery protocol (5 blocks) and Practice mode (20-min guided sessions), integrating all prior phases (completed 2026-03-22)
-- [ ] **Phase 5: Oura + Recovery Dashboard** - OAuth2 PKCE Oura auth, overnight HRV pull, and dual-axis recovery trend chart
+- [x] **Phase 5: Oura + Recovery Dashboard** - OAuth2 PKCE Oura auth, overnight HRV pull, and dual-axis recovery trend chart (completed 2026-03-22)
 
 ## Phase Details
 
@@ -105,4 +105,4 @@ Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
 | 2. Signal Processing + Visualization | 2/2 | Complete    | 2026-03-22 |
 | 3. Breathing Pacer | 2/2 | Complete    | 2026-03-22 |
 | 4. Session Modes | 2/2 | Complete   | 2026-03-22 |
-| 5. Oura + Recovery Dashboard | 1/2 | In Progress (05-01 done, 05-02 next) |  |
+| 5. Oura + Recovery Dashboard | 2/2 | Complete   | 2026-03-22 |

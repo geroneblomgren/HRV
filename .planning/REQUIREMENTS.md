@@ -63,9 +63,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Recovery Dashboard
 
-- [ ] **DASH-01**: Dashboard displays session coherence trend (mean coherence per session) over days/weeks
-- [ ] **DASH-02**: Dashboard overlays Oura overnight HRV trend on the same time axis
-- [ ] **DASH-03**: Dashboard renders as a Canvas chart with dual Y-axes (coherence 0-100, HRV in ms)
+- [x] **DASH-01**: Dashboard displays session coherence trend (mean coherence per session) over days/weeks
+- [x] **DASH-02**: Dashboard overlays Oura overnight HRV trend on the same time axis
+- [x] **DASH-03**: Dashboard renders as a Canvas chart with dual Y-axes (coherence 0-100, HRV in ms)
 
 ### Storage
 
@@ -138,9 +138,9 @@ Requirements for initial release. Each maps to roadmap phases.
 | OURA-01 | Phase 5 | Complete |
 | OURA-02 | Phase 5 | Complete |
 | OURA-03 | Phase 5 | Complete |
-| DASH-01 | Phase 5 | Pending |
-| DASH-02 | Phase 5 | Pending |
-| DASH-03 | Phase 5 | Pending |
+| DASH-01 | Phase 5 | Complete |
+| DASH-02 | Phase 5 | Complete |
+| DASH-03 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 39 total (note: header previously stated 30; actual count is 39 across 9 categories)
