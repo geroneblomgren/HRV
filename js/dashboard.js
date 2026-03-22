@@ -93,7 +93,7 @@ export async function initDashboard() {
     await _renderDashboard();
   } catch (err) {
     console.error('[dashboard] Error loading data:', err);
-    _showError('oura-connect-error', 'Failed to load Oura data. Is proxy.js running on port 5001?');
+    _showError('oura-connect-error', 'Failed to load Oura data. Make sure the app was started with ResonanceHRV.bat.');
     show('dashboard-connect');
     hide('dashboard-loading');
   }
