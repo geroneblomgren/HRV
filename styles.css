@@ -96,8 +96,8 @@ body {
 }
 
 .nav-tab.active {
-  color: var(--accent-blue);
-  border-bottom-color: var(--accent-blue);
+  color: var(--accent-action);
+  border-bottom-color: var(--accent-action);
 }
 
 /* ---- Connection area ---- */
@@ -115,7 +115,7 @@ body {
 }
 
 .connect-button {
-  background: var(--accent-blue);
+  background: var(--accent-action);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -128,7 +128,7 @@ body {
 }
 
 .connect-button:hover {
-  background: #448aff;
+  background: #fb923c;
 }
 
 .connect-button:active {
@@ -265,7 +265,7 @@ body {
 }
 
 #hr-value {
-  color: var(--accent-blue);
+  color: var(--accent-teal);
   font-size: 1.5rem;
 }
 
