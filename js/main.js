@@ -5,6 +5,8 @@ import { initiateConnection, tryQuickConnect } from './ble.js';
 import { setStyle, setVolume } from './audio.js';
 import { startDiscovery, stopDiscovery, onDisconnect as discoveryDisconnect, _wireStartBtn, loadLastDiscoveryResults } from './discovery.js';
 import { initPracticeUI, onDisconnect as practiceDisconnect } from './practice.js';
+import { initDashboard } from './dashboard.js';
+import { handleCallback } from './oura.js';
 
 // ---- DOM references ----
 const hrValue = document.getElementById('hr-value');
@@ -150,6 +152,10 @@ navTabs.forEach(tab => {
     tabPanels.forEach(panel => {
       panel.classList.toggle('active', panel.id === `tab-${target}`);
     });
+
+    if (target === 'dashboard') {
+      initDashboard();
+    }
   });
 });
 
@@ -209,6 +215,17 @@ document.getElementById('volume-slider').addEventListener('input', e => {
 
 async function init() {
   try {
+    // Check for OAuth2 callback (Oura PKCE redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('code')) {
+      try {
+        await handleCallback();
+        // Callback handled, continue normal init
+      } catch (err) {
+        console.error('OAuth2 callback failed:', err);
+      }
+    }
+
     await initStorage();
 
     // Load saved settings into AppState
