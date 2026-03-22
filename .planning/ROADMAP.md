@@ -78,7 +78,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Discovery mode: 5-block state machine, per-block RSA/LF capture, inter-block countdown, comparison bar chart, frequency selection and save
-- [ ] 04-02-PLAN.md — Practice mode: load saved frequency, duration picker, timed session with live coherence, chime at timer end, session summary, IndexedDB persistence
+- [x] 04-02-PLAN.md — Practice mode: load saved frequency, duration picker, timed session with live coherence, chime at timer end, session summary, IndexedDB persistence
 
 ### Phase 5: Oura + Recovery Dashboard
 **Goal**: The app pulls the user's overnight HRV data from Oura and displays a recovery dashboard showing how session coherence and overnight HRV are trending together over weeks.
@@ -88,11 +88,11 @@ Plans:
   1. User completes OAuth2 PKCE Oura authorization flow from within the app; token is stored and reused on subsequent loads without re-auth
   2. App fetches and caches 30 days of overnight HRV (rMSSD) data from Oura API v2 on each app load; cached data is used when offline
   3. Recovery dashboard displays a Canvas chart with session coherence trend and Oura overnight HRV trend on the same time axis with dual Y-axes
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: OuraClient — OAuth2 PKCE flow, token storage in IndexedDB, /daily_readiness and sleep HRV fetch, IndexedDB cache with freshness check
-- [ ] 05-02: Recovery Dashboard — Canvas dual-axis chart (coherence 0-100 left, HRV ms right), data merge from session store + Oura cache, navigation to dashboard view
+- [ ] 05-01-PLAN.md — OuraClient: PAT-first auth, OAuth2 PKCE fallback, /sleep HRV fetch, IndexedDB cache with 6h freshness, CORS smoke test
+- [ ] 05-02-PLAN.md — Recovery Dashboard: 4 metric cards, Canvas dual-axis chart (HRV teal line + coherence purple dots), time range selector, hover tooltips, main.js wiring
 
 ## Progress
 
