@@ -321,6 +321,9 @@ export function computeRSAAmplitude(hrSamples) {
  * Called once from main.js.
  */
 export function initDSP() {
+  if (typeof FFT === 'undefined') {
+    throw new Error('FFT library not loaded. Check that fft.js CDN script loaded before main.js.');
+  }
   _fft = new FFT(FFT_SIZE);
 }
 

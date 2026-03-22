@@ -102,7 +102,9 @@
     </div>
   </div>
 
+  <script>var module = { exports: {} };</script>
   <script src="https://cdn.jsdelivr.net/npm/fft.js@4.0.4/lib/fft.js"></script>
+  <script>window.FFT = module.exports; delete window.module;</script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
