@@ -47,6 +47,30 @@
           <div class="pacer-gauge">
             <canvas id="gauge-canvas"></canvas>
           </div>
+          <!-- Rate label and progress overlay on top of pacer -->
+          <div id="discovery-rate-label" class="discovery-rate-label" style="display:none;"></div>
+          <div id="discovery-progress" class="discovery-progress" style="display:none;">
+            <span class="discovery-dot upcoming"></span>
+            <span class="discovery-dot upcoming"></span>
+            <span class="discovery-dot upcoming"></span>
+            <span class="discovery-dot upcoming"></span>
+            <span class="discovery-dot upcoming"></span>
+          </div>
+          <!-- 3-2-1 countdown overlay -->
+          <div id="discovery-countdown" class="discovery-overlay" style="display:none;">
+            <div class="discovery-overlay-inner">
+              <div class="discovery-countdown-label">Starting in</div>
+              <div id="discovery-countdown-number" class="discovery-countdown-number">3</div>
+            </div>
+          </div>
+          <!-- Inter-block pause overlay -->
+          <div id="discovery-pause-overlay" class="discovery-overlay" style="display:none;">
+            <div class="discovery-overlay-inner">
+              <div class="discovery-pause-title">Block <span id="pause-block-num">1</span>/5 Complete</div>
+              <div id="pause-next-rate" class="discovery-pause-next"></div>
+              <div id="pause-countdown-number" class="discovery-countdown-number">4</div>
+            </div>
+          </div>
         </div>
         <!-- Controls below pacer -->
         <div class="pacer-controls">
@@ -68,10 +92,22 @@
           </div>
         </div>
       </div>
+
+      <!-- Comparison section (shown after all blocks complete) -->
+      <div id="discovery-comparison" class="discovery-comparison" style="display:none;">
+        <h2 class="discovery-comparison-title">Your Results</h2>
+        <p class="discovery-comparison-sub">Click a bar to select a different frequency</p>
+        <canvas id="comparison-chart-canvas" class="comparison-chart-canvas"></canvas>
+        <div class="discovery-comparison-actions">
+          <button id="discovery-confirm-btn" class="connect-button discovery-confirm-btn">Confirm &amp; Save Frequency</button>
+        </div>
+      </div>
+
       <div class="placeholder-content" id="discovery-placeholder">
         <h2>Discovery Mode</h2>
         <p>Identify your personal resonance frequency by breathing at different rates.</p>
-        <p class="hint">Connect your HRM to begin.</p>
+        <p class="hint">Connect your HRM, then click Start.</p>
+        <button id="discovery-start-btn" class="connect-button discovery-start-btn" style="margin-top:20px;" disabled>Start Discovery Protocol</button>
       </div>
     </section>
     <section id="tab-practice" class="tab-panel">

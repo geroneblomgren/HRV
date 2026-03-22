@@ -161,6 +161,16 @@ function _scheduleSwellCue(time, phase, halfPeriod) {
   osc.stop(time + halfPeriod + 0.05);
 }
 
+/**
+ * Play a single bowl strike immediately. Used by Discovery (inter-block)
+ * and Practice (session end) to signal transitions.
+ * No-op if AudioContext not initialized.
+ */
+export function playChime() {
+  if (!_ctx) return;
+  _scheduleBowlCue(_ctx.currentTime + 0.05, 'inhale', 1.5);
+}
+
 // ---- Style 3: Bowl (strike + decay) ----
 
 function _scheduleBowlCue(time, phase, halfPeriod) {

@@ -2,9 +2,8 @@
 import { AppState, subscribe } from './state.js';
 import { initStorage, getSetting } from './storage.js';
 import { initiateConnection, tryQuickConnect } from './ble.js';
-import { initDSP, tick } from './dsp.js';
-import { startRendering, stopRendering } from './renderer.js';
-import { initAudio, startPacer, stopPacer, setStyle, setVolume } from './audio.js';
+import { setStyle, setVolume } from './audio.js';
+import { startDiscovery, stopDiscovery, onDisconnect as discoveryDisconnect, _wireStartBtn } from './discovery.js';
 
 // ---- DOM references ----
 const hrValue = document.getElementById('hr-value');
@@ -21,77 +20,6 @@ const bannerText = document.getElementById('banner-text');
 const connectionArea = document.getElementById('connection-area');
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabPanels = document.querySelectorAll('.tab-panel');
-
-// ---- Session management (DSP + renderer) ----
-let _dspInterval = null;
-let _sessionStart = null;
-
-function startSession() {
-  _sessionStart = Date.now();
-
-  // Show session viz, hide placeholder FIRST (before any code that might throw)
-  const viz = document.querySelector('#tab-discovery .session-viz');
-  if (viz) viz.classList.add('active');
-  const placeholder = document.getElementById('discovery-placeholder');
-  if (placeholder) placeholder.style.display = 'none';
-
-  try {
-    initDSP();
-  } catch (err) {
-    console.error('DSP init failed (FFT library may not have loaded):', err);
-  }
-
-  // Get canvas elements
-  const waveformCanvas = document.getElementById('waveform-canvas');
-  const spectrumCanvas = document.getElementById('spectrum-canvas');
-  const gaugeCanvas = document.getElementById('gauge-canvas');
-  const pacerCanvas = document.getElementById('pacer-canvas');
-
-  // Start rendering (pacer canvas + 0 duration = elapsed timer mode)
-  startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas, _sessionStart, 0);
-
-  // Start audio pacer (must be in user gesture chain for autoplay policy)
-  initAudio();
-  startPacer(AppState.pacingFreq);
-  AppState.sessionStartTime = _sessionStart;
-
-  // Start DSP tick at 1-second interval (setInterval, NOT rAF — DSP runs even when tab hidden)
-  _dspInterval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - _sessionStart) / 1000);
-    try {
-      tick(elapsed);
-    } catch (err) {
-      console.error('DSP tick error:', err);
-    }
-  }, 1000);
-}
-
-function stopSession() {
-  if (_dspInterval) {
-    clearInterval(_dspInterval);
-    _dspInterval = null;
-  }
-  stopPacer();
-  stopRendering();
-  AppState.sessionStartTime = null;
-  const viz = document.querySelector('#tab-discovery .session-viz');
-  if (viz) viz.classList.remove('active');
-  const placeholder = document.getElementById('discovery-placeholder');
-  if (placeholder) {
-    // Show appropriate message based on connection state
-    if (AppState.connected) {
-      placeholder.innerHTML = `
-        <h2>Session Ended</h2>
-        <p>Your HRM is still connected.</p>
-        <button id="restart-session-btn" class="connect-button" style="margin-top: 16px;">Start New Session</button>
-      `;
-      placeholder.style.display = '';
-      document.getElementById('restart-session-btn').addEventListener('click', startSession);
-    } else {
-      placeholder.style.display = '';
-    }
-  }
-}
 
 // ---- Uptime timer ----
 let uptimeInterval = null;
@@ -192,10 +120,11 @@ subscribe('connected', value => {
   if (value) {
     AppState.connectionUptime = 0;
     startUptimeTimer();
-    startSession();   // Auto-start viz on connect (temporary Phase 2 behavior)
+    // No auto-start — user must click "Start Discovery Protocol" explicitly
   } else {
     stopUptimeTimer();
-    stopSession();    // Stop viz on disconnect
+    // Notify active session controllers
+    discoveryDisconnect();
   }
 });
 
@@ -271,11 +200,8 @@ document.getElementById('volume-slider').addEventListener('input', e => {
   setVolume(e.target.value / 100);
 });
 
-document.getElementById('end-session-btn').addEventListener('click', () => {
-  if (AppState.connected) {
-    stopSession();
-  }
-});
+// End session button wired per controller (discovery.js / practice.js handle their own flows)
+// discovery-start-btn wired after DOM ready in init()
 
 // ---- App initialization ----
 
@@ -299,6 +225,21 @@ async function init() {
       navigator.serviceWorker.register('/sw.js')
         .then(reg => console.log('SW registered:', reg.scope))
         .catch(err => console.warn('SW registration failed:', err.message));
+    }
+
+    // Wire discovery start button
+    const discoveryStartBtn = document.getElementById('discovery-start-btn');
+    if (discoveryStartBtn) {
+      discoveryStartBtn.addEventListener('click', () => startDiscovery());
+      _wireStartBtn(discoveryStartBtn);
+    }
+
+    // Wire end-session button for discovery
+    const endSessionBtn = document.getElementById('end-session-btn');
+    if (endSessionBtn) {
+      endSessionBtn.addEventListener('click', () => {
+        if (AppState.sessionPhase === 'discovery') stopDiscovery();
+      });
     }
 
     console.log('ResonanceHRV initialized');

@@ -447,3 +447,164 @@ body {
 .end-session-btn:hover {
   background: rgba(255, 23, 68, 0.1);
 }
+
+/* ---- Discovery Mode UI ---- */
+
+.discovery-rate-label {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent-teal);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.discovery-progress {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.discovery-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-teal);
+  display: inline-block;
+  transition: background-color 0.3s, opacity 0.3s;
+}
+
+.discovery-dot.complete {
+  background: var(--accent-teal);
+  border-color: var(--accent-teal);
+}
+
+.discovery-dot.active {
+  background: transparent;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 6px var(--accent-teal);
+}
+
+.discovery-dot.upcoming {
+  background: transparent;
+  border-color: #444;
+  opacity: 0.5;
+}
+
+/* Overlays (countdown + inter-block pause) */
+
+.discovery-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.discovery-overlay-inner {
+  text-align: center;
+  padding: 24px 32px;
+}
+
+.discovery-countdown-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.discovery-countdown-number {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--accent-teal);
+  line-height: 1;
+}
+
+.discovery-pause-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.discovery-pause-next {
+  font-size: 0.95rem;
+  color: var(--accent-teal);
+  margin-bottom: 16px;
+}
+
+/* Comparison section */
+
+.discovery-comparison {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  gap: 12px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.discovery-comparison-title {
+  font-size: 1.3rem;
+  color: var(--text-primary);
+}
+
+.discovery-comparison-sub {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.comparison-chart-canvas {
+  width: 100%;
+  max-width: 500px;
+  height: 220px;
+  cursor: pointer;
+  border-radius: 6px;
+  background: var(--bg-panel);
+}
+
+.discovery-comparison-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.discovery-confirm-btn {
+  background: var(--accent-teal);
+  padding: 12px 36px;
+  font-size: 1rem;
+}
+
+.discovery-confirm-btn:hover {
+  background: #0d9488;
+}
+
+.discovery-start-btn {
+  background: var(--accent-teal);
+}
+
+.discovery-start-btn:hover:not(:disabled) {
+  background: #0d9488;
+}
+
+.discovery-start-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
