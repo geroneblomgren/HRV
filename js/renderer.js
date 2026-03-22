@@ -105,9 +105,14 @@ function drawWaveform() {
     ctx.fillText(String(bpm), 4, y);
   }
 
-  // Get HR data
-  const hrData = getHRArray(WAVEFORM_WINDOW_SECONDS);
-  if (hrData.length === 0) return;
+  // Get HR data and apply 3-point moving average for visual smoothness
+  const rawHR = getHRArray(WAVEFORM_WINDOW_SECONDS);
+  if (rawHR.length === 0) return;
+  const hrData = rawHR.map((val, i, arr) => {
+    if (i === 0) return (val + arr[1]) / 2 || val;
+    if (i === arr.length - 1) return (arr[i - 1] + val) / 2;
+    return (arr[i - 1] + val + arr[i + 1]) / 3;
+  });
 
   // Create vertical gradient for fill
   const gradient = ctx.createLinearGradient(0, 0, 0, h);
@@ -167,11 +172,25 @@ function drawSpectrum() {
 
   ctx.clearRect(0, 0, w, h);
 
+  // Chart title
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('Heart Rhythm Frequency', 8, 6);
+
   // LF band background shading (always visible)
   const lfLeftX = (LF_LOW / MAX_FREQ_HZ) * w;
   const lfRightX = (LF_HIGH / MAX_FREQ_HZ) * w;
   ctx.fillStyle = 'rgba(20, 184, 166, 0.07)';
   ctx.fillRect(lfLeftX, 0, lfRightX - lfLeftX, h);
+
+  // LF band label
+  ctx.fillStyle = 'rgba(20, 184, 166, 0.3)';
+  ctx.font = '9px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('Resonance Zone', (lfLeftX + lfRightX) / 2, 22);
 
   // X-axis labels
   const xLabels = [0.04, 0.10, 0.15, 0.25];

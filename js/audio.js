@@ -143,15 +143,16 @@ function _scheduleSwellCue(time, phase, halfPeriod) {
   const gain = _ctx.createGain();
 
   osc.type = 'sine';
-  osc.frequency.setValueAtTime(180, time);
+  osc.frequency.setValueAtTime(240, time);  // warmer, more audible than 180
 
-  const peak = phase === 'inhale' ? 0.7 : 0.4;
+  const peak = phase === 'inhale' ? 0.8 : 0.5;
   const mid = halfPeriod / 2;
 
   // Gain: swell up to peak at midpoint, fade back down
-  gain.gain.setValueAtTime(0.01, time);
+  // Use higher floor (0.05) so it's always audible
+  gain.gain.setValueAtTime(0.05, time);
   gain.gain.linearRampToValueAtTime(peak, time + mid);
-  gain.gain.linearRampToValueAtTime(0.01, time + halfPeriod);
+  gain.gain.linearRampToValueAtTime(0.05, time + halfPeriod);
 
   osc.connect(gain);
   gain.connect(_masterGain);

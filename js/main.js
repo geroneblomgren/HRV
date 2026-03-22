@@ -77,7 +77,20 @@ function stopSession() {
   const viz = document.querySelector('#tab-discovery .session-viz');
   if (viz) viz.classList.remove('active');
   const placeholder = document.getElementById('discovery-placeholder');
-  if (placeholder) placeholder.style.display = '';
+  if (placeholder) {
+    // Show appropriate message based on connection state
+    if (AppState.connected) {
+      placeholder.innerHTML = `
+        <h2>Session Ended</h2>
+        <p>Your HRM is still connected.</p>
+        <button id="restart-session-btn" class="connect-button" style="margin-top: 16px;">Start New Session</button>
+      `;
+      placeholder.style.display = '';
+      document.getElementById('restart-session-btn').addEventListener('click', startSession);
+    } else {
+      placeholder.style.display = '';
+    }
+  }
 }
 
 // ---- Uptime timer ----
