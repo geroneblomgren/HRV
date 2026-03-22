@@ -12,7 +12,7 @@ ResonanceHRV is built in five phases that follow the strict data dependency chai
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - BLE connection + RR streaming + IndexedDB storage wired through AppState
+- [x] **Phase 1: Foundation** - BLE connection + RR streaming + IndexedDB storage wired through AppState (completed 2026-03-22)
 - [ ] **Phase 2: Signal Processing + Visualization** - Artifact rejection, spectral analysis, coherence scoring, and Canvas rendering
 - [ ] **Phase 3: Breathing Pacer** - Visual expanding-circle animation and three audio styles with drift-free lookahead scheduler
 - [ ] **Phase 4: Session Modes** - Discovery protocol (5 blocks) and Practice mode (20-min guided sessions), integrating all prior phases
@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. After pairing, RR intervals appear in the app state in real-time (verifiable via console/debug overlay) with multiple RR values per notification parsed correctly
   3. When BLE drops, the app automatically attempts reconnect with visible status change; connection resumes without page reload
   4. Session records and resonance frequency are written to IndexedDB and survive a browser refresh
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 01-01: AppState (Proxy-based reactive store + pub/sub bus) and StorageService (idb wrapper, session/frequency/Oura stores)
@@ -101,7 +101,7 @@ Phases 1 → 2 → 3 (can overlap with 2) → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 1/2 | In progress | - |
+| 1. Foundation | 1/2 | Complete    | 2026-03-22 |
 | 2. Signal Processing + Visualization | 0/2 | Not started | - |
 | 3. Breathing Pacer | 0/2 | Not started | - |
 | 4. Session Modes | 0/2 | Not started | - |
