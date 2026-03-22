@@ -7,7 +7,7 @@ import { AppState } from './state.js';
 // ---- Module state (no AudioContext created at module level) ----
 let _ctx = null;
 let _masterGain = null;
-let _currentStyle = 'pitch';   // 'pitch' | 'swell' | 'bowl'
+let _currentStyle = 'bowl';    // 'pitch' | 'swell' | 'bowl'
 let _nextCueTime = 0;
 let _nextPhase = 'inhale';
 let _schedulerTimer = null;
