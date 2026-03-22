@@ -33,10 +33,13 @@ key-files:
 
 key-decisions:
   - "PAT-first auth: try user's key as Bearer token against /v2/usercollection/personal_info; only launch PKCE if 401"
+  - "PAT CONFIRMED: W6BL4MVQCFFULLJP3TZIDGDMYBWVUUVO is a valid PAT — OAuth2 PKCE flow is NOT needed"
+  - "CORS BLOCKED: Direct browser fetch to api.ouraring.com is blocked; proxy.js on localhost:5001 is REQUIRED"
+  - "Proxy is mandatory default path: dashboard.js (05-02) must call setProxyBase('http://localhost:5001') before any API calls"
   - "setProxyBase() makes CORS proxy transparent — all fetch calls use _apiBase, callers switch proxy with one call"
   - "Token stored in IndexedDB via setSetting('ouraToken') — not localStorage (security per Research)"
   - "long_sleep type filter prevents nap HRV from distorting overnight averages; fallback to longest duration if no long_sleep"
-  - "proxy.js created upfront as required artifact even though CORS behavior is unconfirmed until smoke test"
+  - "29 days of overnight HRV data confirmed fetched through proxy — data layer is functional end-to-end"
 
 patterns-established:
   - "Pattern: proxy-transparent _apiBase variable — default to production URL, setProxyBase() switches to localhost proxy"
@@ -58,7 +61,7 @@ completed: 2026-03-22
 - **Duration:** ~15 min
 - **Started:** 2026-03-22T13:46:36Z
 - **Completed:** 2026-03-22T14:01:00Z
-- **Tasks:** 1 of 2 complete (Task 2 is checkpoint:human-verify — awaiting user smoke test)
+- **Tasks:** 2 of 2 complete (Task 2 checkpoint resolved — CORS/PAT verified by user live test)
 - **Files modified:** 2
 
 ## Accomplishments
@@ -74,8 +77,9 @@ completed: 2026-03-22
 Each task was committed atomically:
 
 1. **Task 1: Create js/oura.js — auth, fetch, cache** - `47ae3c0` (feat)
+2. **Task 2: CORS smoke test and auth verification** - checkpoint resolved via live user test (no code commit — verification only)
 
-**Plan metadata:** (pending final docs commit)
+**Plan metadata:** `c613747` (docs: complete OuraClient plan)
 
 ## Files Created/Modified
 
@@ -84,10 +88,13 @@ Each task was committed atomically:
 
 ## Decisions Made
 
-- Token stored in IndexedDB (via setSetting) not localStorage — security requirement from research
-- `_apiBase` module variable + `setProxyBase()` makes proxy use transparent to all callers
-- `proxy.js` created upfront as a plan artifact even though CORS is unconfirmed — needed for smoke test instructions
-- `handleCallback()` reads `code`/`state` from `window.location.search` and calls `history.replaceState` to clean URL
+- **PAT confirmed** — user's key (W6BL4MVQCFFULLJP3TZIDGDMYBWVUUVO) is a valid Personal Access Token. OAuth2 PKCE flow is not needed for this user.
+- **CORS blocked** — direct browser fetch to api.ouraring.com is blocked. The proxy on localhost:5001 is the required and only path.
+- **Proxy is mandatory default** — Plan 02 (dashboard.js) must call `setProxyBase('http://localhost:5001')` before any Oura API calls. No toggle needed.
+- **Data confirmed** — 29 days of overnight HRV data successfully fetched through the proxy. The data layer works end-to-end.
+- Token stored in IndexedDB (via setSetting) not localStorage — security requirement from research.
+- `_apiBase` module variable + `setProxyBase()` makes proxy use transparent to all callers.
+- `handleCallback()` reads `code`/`state` from `window.location.search` and calls `history.replaceState` to clean URL.
 
 ## Deviations from Plan
 
@@ -104,9 +111,10 @@ None for this plan — Task 2 (CORS smoke test) handles the verification. No ext
 ## Next Phase Readiness
 
 - `js/oura.js` exports are ready for `js/dashboard.js` to consume in Plan 02
-- CORS strategy will be resolved by Task 2 smoke test (direct fetch vs proxy)
-- If CORS is blocked: user runs `node proxy.js` and calls `setProxyBase('http://localhost:5001')` before getHrvData
-- Plan 02 can be built regardless of which auth path (PAT vs OAuth2) the smoke test confirms
+- CORS strategy confirmed: proxy is required. Plan 02 must call `setProxyBase('http://localhost:5001')` at startup.
+- PAT confirmed: no OAuth2 PKCE UI flow needed. `tryPatAuth` handles it with the stored key.
+- 29 days of HRV data flows correctly through proxy — data layer is production-ready for the dashboard Canvas chart.
+- Blocker from STATE.md resolved: "Oura API CORS for direct browser fetch from localhost" — answer is CORS-blocked, proxy is the path.
 
 ---
 *Phase: 05-oura-recovery-dashboard*

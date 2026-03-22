@@ -91,7 +91,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — OuraClient: PAT-first auth, OAuth2 PKCE fallback, /sleep HRV fetch, IndexedDB cache with 6h freshness, CORS smoke test
+- [x] 05-01-PLAN.md — OuraClient: PAT confirmed, CORS blocked (proxy required), /sleep HRV fetch, IndexedDB cache with 6h freshness, 29 days of data verified end-to-end
 - [ ] 05-02-PLAN.md — Recovery Dashboard: 4 metric cards, Canvas dual-axis chart (HRV teal line + coherence purple dots), time range selector, hover tooltips, main.js wiring
 
 ## Progress
@@ -105,4 +105,4 @@ Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
 | 2. Signal Processing + Visualization | 2/2 | Complete    | 2026-03-22 |
 | 3. Breathing Pacer | 2/2 | Complete    | 2026-03-22 |
 | 4. Session Modes | 2/2 | Complete   | 2026-03-22 |
-| 5. Oura + Recovery Dashboard | 1/2 | In Progress|  |
+| 5. Oura + Recovery Dashboard | 1/2 | In Progress (05-01 done, 05-02 next) |  |

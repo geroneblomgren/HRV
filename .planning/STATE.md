@@ -8,7 +8,7 @@ progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 5 of 5 (Oura Recovery Dashboard)
-Plan: 1 of 2 in current phase
+Plan: 2 of 2 in current phase (05-01 complete, 05-02 next)
 Status: In Progress
-Last activity: 2026-03-22 — Completed 05-01 (OuraClient: PAT-first auth, PKCE fallback, HRV fetch, IndexedDB cache)
+Last activity: 2026-03-22 — Completed 05-01 fully (CORS smoke test resolved: PAT valid, CORS blocked, proxy required)
 
 Progress: [████████░░] 85%
 
@@ -93,6 +93,10 @@ Recent decisions affecting current work:
 - [Phase 05-oura-recovery-dashboard]: 05-01: PAT-first auth — try user key as Bearer token against /v2/usercollection/personal_info; PKCE only if 401
 - [Phase 05-oura-recovery-dashboard]: 05-01: setProxyBase() makes CORS proxy transparent — _apiBase variable switches all fetches from direct to proxy with one call
 - [Phase 05-oura-recovery-dashboard]: 05-01: long_sleep type filter prevents nap HRV from distorting overnight averages; fallback to longest total_sleep_duration
+- [Phase 05-oura-recovery-dashboard]: 05-01 CONFIRMED: PAT (W6BL4MVQCFFULLJP3TZIDGDMYBWVUUVO) is a valid Personal Access Token — OAuth2 PKCE not needed
+- [Phase 05-oura-recovery-dashboard]: 05-01 CONFIRMED: Oura API CORS is blocked in browser — proxy.js on localhost:5001 is mandatory default path
+- [Phase 05-oura-recovery-dashboard]: 05-01 CONFIRMED: 29 days of overnight HRV data flows correctly through proxy — data layer end-to-end verified
+- [Phase 05-oura-recovery-dashboard]: 05-02 requirement: dashboard.js must call setProxyBase('http://localhost:5001') before any Oura API calls
 
 ### Pending Todos
 
@@ -101,11 +105,11 @@ None yet.
 ### Blockers/Concerns
 
 - ~~**Phase 2**: Lomb-Scargle browser JS port availability is LOW confidence.~~ RESOLVED: FFT + cubic spline implemented in 02-01.
-- **Phase 5**: Oura API CORS for direct browser fetch from localhost is not explicitly documented. Run a browser fetch smoke test before building dashboard UI. Fallback: minimal Node.js localhost proxy.
+- ~~**Phase 5**: Oura API CORS for direct browser fetch from localhost is not explicitly documented.~~ RESOLVED: CORS is blocked. proxy.js on localhost:5001 is the required path. PAT auth confirmed working.
 - ~~**Phase 1**: Garmin HRM 600 open BLE mode (no bonding)~~ RESOLVED: Confirmed with hardware in 01-02.
 
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Checkpoint 05-01 Task 2 (CORS smoke test + PAT verification) — awaiting user to run live Oura API test.
-Resume file: .planning/phases/05-oura-recovery-dashboard/05-01-SUMMARY.md
+Stopped at: Plan 05-01 fully complete. Next: 05-02 (dashboard.js Canvas chart).
+Resume file: .planning/phases/05-oura-recovery-dashboard/05-02-PLAN.md
