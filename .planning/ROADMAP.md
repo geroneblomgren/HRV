@@ -44,7 +44,7 @@ Plans:
   2. The app displays "Calibrating" for the first 90-120 seconds of a session, then transitions to showing a live coherence score (0-100) that updates every 1-2 seconds
   3. A scrolling HR waveform on Canvas renders at 60fps showing heart rate oscillation; a power spectrum chart shows the LF band highlighted
   4. RSA amplitude (peak-to-trough HR variation) is computed per breathing-rate block for use in Discovery mode comparison
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — DSPEngine: FFT + cubic spline resampling, coherence scoring (HeartMath formula), RSA amplitude, calibration gate
@@ -102,7 +102,7 @@ Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete    | 2026-03-22 |
-| 2. Signal Processing + Visualization | 2/2 | Complete | 2026-03-22 |
+| 2. Signal Processing + Visualization | 2/2 | Complete    | 2026-03-22 |
 | 3. Breathing Pacer | 0/2 | Not started | - |
 | 4. Session Modes | 0/2 | Not started | - |
 | 5. Oura + Recovery Dashboard | 0/2 | Not started | - |
