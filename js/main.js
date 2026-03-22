@@ -4,6 +4,7 @@ import { initStorage, getSetting } from './storage.js';
 import { initiateConnection, tryQuickConnect } from './ble.js';
 import { initDSP, tick } from './dsp.js';
 import { startRendering, stopRendering } from './renderer.js';
+import { initAudio, startPacer, stopPacer, setStyle, setVolume } from './audio.js';
 
 // ---- DOM references ----
 const hrValue = document.getElementById('hr-value');
@@ -48,6 +49,10 @@ function startSession() {
   // Start rendering
   startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, _sessionStart);
 
+  // Start audio pacer (must be in user gesture chain for autoplay policy)
+  initAudio();
+  startPacer(AppState.pacingFreq);
+
   // Start DSP tick at 1-second interval (setInterval, NOT rAF — DSP runs even when tab hidden)
   _dspInterval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - _sessionStart) / 1000);
@@ -64,6 +69,7 @@ function stopSession() {
     clearInterval(_dspInterval);
     _dspInterval = null;
   }
+  stopPacer();
   stopRendering();
   const viz = document.querySelector('#tab-discovery .session-viz');
   if (viz) viz.classList.remove('active');
