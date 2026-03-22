@@ -415,8 +415,8 @@ body {
 }
 
 .style-btn.active {
-  border-color: var(--accent-teal);
-  color: var(--accent-teal);
+  border-color: var(--accent-action);
+  color: var(--accent-action);
 }
 
 .volume-control {
@@ -591,21 +591,21 @@ body {
 }
 
 .discovery-confirm-btn {
-  background: var(--accent-teal);
+  background: var(--accent-action);
   padding: 12px 36px;
   font-size: 1rem;
 }
 
 .discovery-confirm-btn:hover {
-  background: #0d9488;
+  background: #ea580c;
 }
 
 .discovery-start-btn {
-  background: var(--accent-teal);
+  background: var(--accent-action);
 }
 
 .discovery-start-btn:hover:not(:disabled) {
-  background: #0d9488;
+  background: #ea580c;
 }
 
 .discovery-start-btn:disabled {
@@ -648,18 +648,18 @@ body {
 }
 
 .duration-btn.active {
-  background: var(--accent-teal);
-  border-color: var(--accent-teal);
+  background: var(--accent-action);
+  border-color: var(--accent-action);
   color: #fff;
 }
 
 .practice-start-btn {
-  background: var(--accent-teal);
+  background: var(--accent-action);
   margin-top: 0;
 }
 
 .practice-start-btn:hover:not(:disabled) {
-  background: #0d9488;
+  background: #ea580c;
 }
 
 .practice-start-btn:disabled {
@@ -735,13 +735,13 @@ body {
 }
 
 .practice-done-btn {
-  background: var(--accent-teal);
+  background: var(--accent-action);
   padding: 12px 48px;
   font-size: 1rem;
 }
 
 .practice-done-btn:hover {
-  background: #0d9488;
+  background: #ea580c;
 }
 
 /* ---- Recovery Dashboard ---- */
@@ -825,9 +825,9 @@ body {
 }
 
 .range-btn.active {
-  background: var(--accent-teal);
+  background: var(--accent-action);
   color: var(--bg-primary);
-  border-color: var(--accent-teal);
+  border-color: var(--accent-action);
 }
 
 .chart-container {
