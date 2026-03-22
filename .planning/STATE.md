@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-22T04:47:42.275Z"
+last_updated: "2026-03-22T12:01:40Z"
 progress:
-  total_phases: 3
+  total_phases: 5
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Real-time HRV biofeedback during breathing sessions — seeing your heart rate oscillate in sync with your breath and knowing you're training at your exact resonance frequency.
-**Current focus:** Phase 3 complete. Ready for Phase 4 (Session Modes).
+**Current focus:** Phase 4 Plan 1 complete. Discovery mode built. Ready for 04-02 (Practice mode).
 
 ## Current Position
 
 Phase: 4 of 5 (Session Modes)
-Plan: 1 of 2 in current phase
-Status: Ready to start
-Last activity: 2026-03-22 — Completed 03-02 (Visual Pacer with breathing circle, audio controls, session layout)
+Plan: 2 of 2 in current phase
+Status: In progress
+Last activity: 2026-03-22 — Completed 04-01 (Discovery mode: 5-block protocol, RSA comparison chart, frequency save)
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
@@ -43,10 +43,11 @@ Progress: [██████░░░░] 60%
 | 1. Foundation | 2/2 | 19 min | 10 min |
 | 2. Signal Processing | 2/2 | 51 min | 26 min |
 | 3. Breathing Pacer | 2/2 | 47 min | 24 min |
+| 4. Session Modes | 1/2 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (6 min), 02-02 (45 min), 03-01 (2 min), 03-02 (45 min)
-- Trend: Visual/interactive plans take longer due to iteration on animation and audio
+- Last 5 plans: 02-02 (45 min), 03-01 (2 min), 03-02 (45 min), 04-01 (3 min)
+- Trend: Well-planned single-task plans execute very fast
 
 *Updated after each plan completion*
 
@@ -81,6 +82,10 @@ Recent decisions affecting current work:
 - 03-02: Cosine-driven circle animation instead of smoothstep — smoother continuous motion
 - 03-02: Bowl as default audio style — most pleasant for extended sessions
 - 03-02: Waveform at 0.3 opacity behind circle hero element for subtle context
+- 04-01: Session controller pattern — each mode owns its DOM, timers, rendering, DSP (discovery.js model)
+- 04-01: DSP tick runs continuously across all Discovery blocks; RSA snapshot scoped to block elapsed only
+- 04-01: On BLE reconnect mid-block, restart full block (not resume) for clean 2-minute data capture
+- 04-01: playChime() wraps _scheduleBowlCue at ctx.currentTime+0.05 for immediate one-shot bowl strike
 
 ### Pending Todos
 
@@ -95,5 +100,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 03-02-PLAN.md (Visual Pacer with breathing circle, audio controls, session layout). Phase 3 complete. Ready for Phase 4 (Session Modes).
-Resume file: .planning/phases/03-breathing-pacer/03-02-SUMMARY.md
+Stopped at: Completed 04-01-PLAN.md (Discovery mode: 5-block resonance frequency protocol, RSA comparison chart, frequency save to IndexedDB).
+Resume file: .planning/phases/04-session-modes/04-01-SUMMARY.md

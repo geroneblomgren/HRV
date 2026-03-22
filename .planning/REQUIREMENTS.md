@@ -35,11 +35,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Discovery Mode
 
-- [ ] **DISC-01**: Discovery mode guides user through 5 breathing rate blocks: 6.5, 6.0, 5.5, 5.0, 4.5 breaths/min, 2 minutes each
-- [ ] **DISC-02**: Real-time HR waveform visible during each block showing RSA oscillation
-- [ ] **DISC-03**: Power spectrum chart visible during each block showing LF peak position and amplitude
-- [ ] **DISC-04**: After all blocks, app displays comparison of RSA amplitude and LF peak power across all 5 frequencies
-- [ ] **DISC-05**: User confirms resonance frequency selection and app saves it to IndexedDB for Practice mode
+- [x] **DISC-01**: Discovery mode guides user through 5 breathing rate blocks: 6.5, 6.0, 5.5, 5.0, 4.5 breaths/min, 2 minutes each
+- [x] **DISC-02**: Real-time HR waveform visible during each block showing RSA oscillation
+- [x] **DISC-03**: Power spectrum chart visible during each block showing LF peak position and amplitude
+- [x] **DISC-04**: After all blocks, app displays comparison of RSA amplitude and LF peak power across all 5 frequencies
+- [x] **DISC-05**: User confirms resonance frequency selection and app saves it to IndexedDB for Practice mode
 
 ### Practice Mode
 
@@ -125,11 +125,11 @@ Requirements for initial release. Each maps to roadmap phases.
 | PAC-05 | Phase 3 | Complete |
 | PAC-06 | Phase 3 | Complete |
 | PAC-07 | Phase 3 | Complete |
-| DISC-01 | Phase 4 | Pending |
-| DISC-02 | Phase 4 | Pending |
-| DISC-03 | Phase 4 | Pending |
-| DISC-04 | Phase 4 | Pending |
-| DISC-05 | Phase 4 | Pending |
+| DISC-01 | Phase 4 | Complete |
+| DISC-02 | Phase 4 | Complete |
+| DISC-03 | Phase 4 | Complete |
+| DISC-04 | Phase 4 | Complete |
+| DISC-05 | Phase 4 | Complete |
 | PRAC-01 | Phase 4 | Pending |
 | PRAC-02 | Phase 4 | Pending |
 | PRAC-03 | Phase 4 | Pending |
