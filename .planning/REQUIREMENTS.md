@@ -51,9 +51,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Visualization
 
-- [ ] **VIZ-01**: Real-time scrolling HR waveform rendered on Canvas 2D using requestAnimationFrame at 60fps
-- [ ] **VIZ-02**: Power spectrum chart rendered on Canvas showing frequency (Hz) vs power, with LF band highlighted
-- [ ] **VIZ-03**: Coherence score displayed as a large readable number/gauge that updates smoothly
+- [x] **VIZ-01**: Real-time scrolling HR waveform rendered on Canvas 2D using requestAnimationFrame at 60fps
+- [x] **VIZ-02**: Power spectrum chart rendered on Canvas showing frequency (Hz) vs power, with LF band highlighted
+- [x] **VIZ-03**: Coherence score displayed as a large readable number/gauge that updates smoothly
 
 ### Oura Integration
 
@@ -115,9 +115,9 @@ Requirements for initial release. Each maps to roadmap phases.
 | DSP-03 | Phase 2 | Complete |
 | DSP-04 | Phase 2 | Complete |
 | DSP-05 | Phase 2 | Complete |
-| VIZ-01 | Phase 2 | Pending |
-| VIZ-02 | Phase 2 | Pending |
-| VIZ-03 | Phase 2 | Pending |
+| VIZ-01 | Phase 2 | Complete |
+| VIZ-02 | Phase 2 | Complete |
+| VIZ-03 | Phase 2 | Complete |
 | PAC-01 | Phase 3 | Pending |
 | PAC-02 | Phase 3 | Pending |
 | PAC-03 | Phase 3 | Pending |

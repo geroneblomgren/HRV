@@ -13,7 +13,7 @@ ResonanceHRV is built in five phases that follow the strict data dependency chai
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - BLE connection + RR streaming + IndexedDB storage wired through AppState (completed 2026-03-22)
-- [ ] **Phase 2: Signal Processing + Visualization** - Artifact rejection, spectral analysis, coherence scoring, and Canvas rendering
+- [x] **Phase 2: Signal Processing + Visualization** - Artifact rejection, spectral analysis, coherence scoring, and Canvas rendering (completed 2026-03-22)
 - [ ] **Phase 3: Breathing Pacer** - Visual expanding-circle animation and three audio styles with drift-free lookahead scheduler
 - [ ] **Phase 4: Session Modes** - Discovery protocol (5 blocks) and Practice mode (20-min guided sessions), integrating all prior phases
 - [ ] **Phase 5: Oura + Recovery Dashboard** - OAuth2 PKCE Oura auth, overnight HRV pull, and dual-axis recovery trend chart
@@ -48,7 +48,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — DSPEngine: FFT + cubic spline resampling, coherence scoring (HeartMath formula), RSA amplitude, calibration gate
-- [ ] 02-02-PLAN.md — Canvas renderers (waveform, spectrum, coherence gauge), HTML/CSS canvas layout, main.js wiring
+- [x] 02-02-PLAN.md — Canvas renderers (waveform, spectrum, coherence gauge), HTML/CSS canvas layout, main.js wiring
 
 ### Phase 3: Breathing Pacer
 **Goal**: The app can guide a breathing session with precise, drift-free audio and visual cues at any configurable breathing rate, with all three audio styles switchable mid-session.
@@ -102,7 +102,7 @@ Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete    | 2026-03-22 |
-| 2. Signal Processing + Visualization | 1/2 | In progress | - |
+| 2. Signal Processing + Visualization | 2/2 | Complete | 2026-03-22 |
 | 3. Breathing Pacer | 0/2 | Not started | - |
 | 4. Session Modes | 0/2 | Not started | - |
 | 5. Oura + Recovery Dashboard | 0/2 | Not started | - |

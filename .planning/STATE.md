@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-22T01:36:00Z"
+last_updated: "2026-03-22T03:00:00Z"
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -18,34 +18,34 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Real-time HRV biofeedback during breathing sessions — seeing your heart rate oscillate in sync with your breath and knowing you're training at your exact resonance frequency.
-**Current focus:** Phase 2 in progress. DSPEngine complete, Canvas renderers next.
+**Current focus:** Phase 2 complete. Ready for Phase 3 (Breathing Pacer).
 
 ## Current Position
 
-Phase: 2 of 5 (Signal Processing + Visualization)
-Plan: 1 of 2 in current phase (DSPEngine complete)
+Phase: 3 of 5 (Breathing Pacer)
+Plan: 0 of 2 in current phase (not started)
 Status: In progress
-Last activity: 2026-03-22 — Completed 02-01 (DSPEngine: FFT pipeline + coherence scoring)
+Last activity: 2026-03-22 — Completed 02-02 (Canvas renderers: waveform, spectrum, coherence gauge)
 
-Progress: [███░░░░░░░] 30%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 8 min
-- Total execution time: 0.42 hours
+- Total plans completed: 4
+- Average duration: 17 min
+- Total execution time: 1.12 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Foundation | 2/2 | 19 min | 10 min |
-| 2. Signal Processing | 1/2 | 6 min | 6 min |
+| 2. Signal Processing | 2/2 | 51 min | 26 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4 min), 01-02 (15 min), 02-01 (6 min)
-- Trend: improving
+- Last 5 plans: 01-01 (4 min), 01-02 (15 min), 02-01 (6 min), 02-02 (45 min)
+- Trend: 02-02 longer due to iterative layout/rendering fixes
 
 *Updated after each plan completion*
 
@@ -69,6 +69,11 @@ Recent decisions affecting current work:
 - 01-02: Immediate first reconnect (0ms) then exponential backoff -- minimizes perceived disconnect
 - 01-02: Artifact interpolation with last clean value rather than deletion for smooth waveform
 - 01-02: Garmin HRM 600 confirmed open BLE mode without bonding (hardware-verified)
+- 02-02: Shared single rAF loop for all three Canvas renderers (waveform, spectrum, coherence gauge)
+- 02-02: Fixed Y-axis 40-120 BPM on waveform (no auto-scaling per user decision)
+- 02-02: Coherence zone thresholds: low <31, building 31-65, high 66+ (per HeartMath research)
+- 02-02: Session auto-starts on BLE connect (temporary; Phase 4 replaces with proper session management)
+- 02-02: fft.js CDN CommonJS module adapted for browser environment
 
 ### Pending Todos
 
@@ -83,5 +88,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 02-01-PLAN.md (DSPEngine: FFT pipeline + coherence scoring). Ready for 02-02 (Canvas renderers).
-Resume file: .planning/phases/02-signal-processing-visualization/02-01-SUMMARY.md
+Stopped at: Completed 02-02-PLAN.md (Canvas renderers: waveform, spectrum, coherence gauge). Phase 2 complete. Ready for Phase 3 (Breathing Pacer).
+Resume file: .planning/phases/02-signal-processing-visualization/02-02-SUMMARY.md
