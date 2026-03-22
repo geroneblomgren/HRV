@@ -104,33 +104,41 @@ function drawWaveform() {
   gradient.addColorStop(0, TEAL_FILL_TOP);
   gradient.addColorStop(1, TEAL_FILL_BOTTOM);
 
-  // Build filled area path
+  // Build points array
   const stepX = w / Math.max(hrData.length - 1, 1);
-
-  ctx.beginPath();
+  const points = [];
   for (let i = 0; i < hrData.length; i++) {
     const x = i * stepX;
     const clamped = Math.max(HR_MIN, Math.min(HR_MAX, hrData[i]));
     const y = h - ((clamped - HR_MIN) / (HR_MAX - HR_MIN)) * h;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+    points.push({ x, y });
   }
-  // Close to baseline for fill
-  ctx.lineTo((hrData.length - 1) * stepX, h);
+
+  if (points.length < 2) return;
+
+  // Helper: draw smooth Bezier curve through points
+  function drawSmoothCurve(pts) {
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1];
+      const curr = pts[i];
+      const cpX = (prev.x + curr.x) / 2;
+      ctx.bezierCurveTo(cpX, prev.y, cpX, curr.y, curr.x, curr.y);
+    }
+  }
+
+  // Filled area
+  ctx.beginPath();
+  drawSmoothCurve(points);
+  ctx.lineTo(points[points.length - 1].x, h);
   ctx.lineTo(0, h);
   ctx.closePath();
   ctx.fillStyle = gradient;
   ctx.fill();
 
-  // Redraw line on top
+  // Smooth line on top
   ctx.beginPath();
-  for (let i = 0; i < hrData.length; i++) {
-    const x = i * stepX;
-    const clamped = Math.max(HR_MIN, Math.min(HR_MAX, hrData[i]));
-    const y = h - ((clamped - HR_MIN) / (HR_MAX - HR_MIN)) * h;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
+  drawSmoothCurve(points);
   ctx.strokeStyle = TEAL;
   ctx.lineWidth = 2;
   ctx.stroke();

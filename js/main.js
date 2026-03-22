@@ -17,6 +17,7 @@ const connectError = document.getElementById('connect-error');
 const reconnectBtn = document.getElementById('reconnect-btn');
 const banner = document.getElementById('connection-banner');
 const bannerText = document.getElementById('banner-text');
+const connectionArea = document.getElementById('connection-area');
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabPanels = document.querySelectorAll('.tab-panel');
 
@@ -137,13 +138,14 @@ subscribe('connectionStatus', status => {
       break;
   }
 
-  // Update connect button
+  // Update connect button and connection area
   connectBtn.className = 'connect-button';
   if (status === 'connected') {
     connectBtn.classList.add('connected');
     connectBtn.classList.add('hidden');
     connectStatus.textContent = 'Connected';
     connectError.classList.add('hidden');
+    connectionArea.classList.add('minimized');
   } else if (status === 'connecting' || status === 'reconnecting') {
     connectBtn.classList.add('connecting');
     connectBtn.classList.add('hidden');
@@ -151,6 +153,7 @@ subscribe('connectionStatus', status => {
   } else {
     connectBtn.classList.remove('hidden');
     connectStatus.textContent = 'Not connected';
+    connectionArea.classList.remove('minimized');
   }
 });
 

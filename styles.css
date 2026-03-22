@@ -29,6 +29,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  padding-bottom: 80px; /* space for fixed live data panel */
 }
 
 /* ---- Connection status banner ---- */
@@ -98,6 +99,16 @@ body {
   flex-direction: column;
   align-items: center;
   padding: 48px 24px 32px;
+  transition: padding 0.3s, max-height 0.3s;
+}
+
+.connection-area.minimized {
+  padding: 8px 24px 4px;
+}
+
+.connection-area.minimized .connect-status {
+  margin-top: 4px;
+  font-size: 0.75rem;
 }
 
 .connect-button {
@@ -182,7 +193,7 @@ body {
 
 .tab-content {
   flex: 1;
-  padding: 24px;
+  padding: 8px 12px;
 }
 
 .tab-panel {
@@ -224,8 +235,13 @@ body {
   grid-template-columns: repeat(4, 1fr);
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  padding: 12px 16px;
+  padding: 8px 16px;
   gap: 8px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
 }
 
 .data-cell {
@@ -262,9 +278,9 @@ body {
   display: none;
   flex-direction: column;
   gap: 8px;
-  padding: 8px;
-  height: calc(100vh - 200px);
-  min-height: 400px;
+  padding: 0;
+  height: calc(100vh - 230px);
+  min-height: 350px;
 }
 
 .session-viz.active {
@@ -278,14 +294,13 @@ body {
 }
 
 .viz-row-main {
-  flex: 2;
+  flex: 3;
   min-height: 0;
 }
 
 .viz-row-spectrum {
-  flex: 1;
+  flex: 2;
   min-height: 0;
-  max-height: 200px;
 }
 
 .viz-card {
