@@ -323,3 +323,127 @@ body {
 .viz-card canvas {
   display: block;
 }
+
+/* ---- Breathing Pacer Layout ---- */
+
+.session-pacer {
+  position: relative;
+  flex: 3;
+  min-height: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-panel);
+}
+
+.pacer-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.3;
+}
+
+.pacer-bg canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pacer-circle {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+}
+
+.pacer-circle canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pacer-gauge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 3;
+  width: 120px;
+  height: 120px;
+}
+
+.pacer-gauge canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Pacer Controls ---- */
+
+.pacer-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px;
+  flex-shrink: 0;
+}
+
+.style-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.style-btn {
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.style-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.style-btn.active {
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+.volume-control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.volume-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.volume-slider {
+  accent-color: var(--accent-teal);
+  width: 80px;
+}
+
+.end-session-btn {
+  background: transparent;
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.end-session-btn:hover {
+  background: rgba(255, 23, 68, 0.1);
+}

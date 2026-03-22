@@ -4,6 +4,7 @@
 
 import { AppState } from './state.js';
 import { getHRArray } from './dsp.js';
+import { getAudioTime } from './audio.js';
 
 // ---- Constants ----
 const HR_MIN = 40;
@@ -28,10 +29,14 @@ let _rAF = null;
 let _waveformCanvas = null, _waveformCtx = null;
 let _spectrumCanvas = null, _spectrumCtx = null;
 let _gaugeCanvas = null, _gaugeCtx = null;
+let _pacerCanvas = null, _pacerCtx = null;
 let _displayedScore = 0;
 let _pulsePhase = 0;
 let _sessionStartTime = null;
 let _calibrationFadeAlpha = 0;
+let _prevPhase = 'inhale';
+let _labelOpacity = 1.0;
+let _sessionDuration = 0;
 
 // ---- Helpers ----
 
@@ -395,10 +400,96 @@ function drawCoherenceGauge() {
   ctx.restore();
 }
 
+// ---- Breathing Circle Renderer ----
+
+function drawBreathingCircle() {
+  if (!_pacerCtx) return;
+
+  const canvas = _pacerCanvas;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const ctx = _pacerCtx;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Use AudioContext.currentTime for drift-free sync with audio cues
+  const audioTime = getAudioTime();
+  if (audioTime === 0) return; // audio not started yet
+
+  const halfPeriod = 1 / (AppState.pacingFreq * 2);
+  const currentPhaseStart = AppState.nextCueTime - halfPeriod;
+  const elapsed = audioTime - currentPhaseStart;
+  const t = Math.max(0, Math.min(1, elapsed / halfPeriod));
+
+  // Smoothstep easing — more deliberate at endpoints than pure sine
+  const eased = t * t * (3 - 2 * t);
+
+  // nextCuePhase is the NEXT phase, so if next is exhale, we're currently inhaling
+  const isInhale = AppState.nextCuePhase === 'exhale';
+  const dim = Math.min(w, h);
+  const minR = dim * 0.15;
+  const maxR = dim * 0.35;
+  const radius = isInhale
+    ? minR + (maxR - minR) * eased   // expanding
+    : maxR - (maxR - minR) * eased;  // contracting
+
+  const cx = w / 2;
+  const cy = h / 2;
+
+  // Glowing teal ring
+  ctx.save();
+  ctx.shadowColor = '#14b8a6';
+  ctx.shadowBlur = 20 + eased * 15;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = '#14b8a6';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+
+  // Phase label (Inhale/Exhale) with fade transition
+  const currentPhase = isInhale ? 'inhale' : 'exhale';
+  if (currentPhase !== _prevPhase) {
+    _labelOpacity = 0;
+    _prevPhase = currentPhase;
+  }
+  _labelOpacity = Math.min(1.0, _labelOpacity + 0.06);
+
+  ctx.fillStyle = `rgba(232, 232, 232, ${_labelOpacity})`;
+  ctx.font = `${Math.round(dim * 0.05)}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(isInhale ? 'Inhale' : 'Exhale', cx, cy - dim * 0.03);
+
+  // Countdown / elapsed timer inside circle
+  let displaySeconds;
+  if (_sessionDuration > 0 && AppState.sessionStartTime) {
+    // Countdown mode
+    const remaining = _sessionDuration - (Date.now() - AppState.sessionStartTime) / 1000;
+    displaySeconds = Math.max(0, Math.ceil(remaining));
+  } else if (AppState.sessionStartTime) {
+    // Elapsed mode (discovery blocks)
+    displaySeconds = Math.floor((Date.now() - AppState.sessionStartTime) / 1000);
+  } else {
+    displaySeconds = 0;
+  }
+  const mins = Math.floor(displaySeconds / 60);
+  const secs = displaySeconds % 60;
+  const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+  ctx.fillStyle = 'rgba(232, 232, 232, 0.7)';
+  ctx.font = `${Math.round(dim * 0.04)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(timeStr, cx, cy + dim * 0.04);
+}
+
 // ---- Render Loop ----
 
 function renderLoop() {
   _rAF = requestAnimationFrame(renderLoop);
+  drawBreathingCircle();
   drawWaveform();
   drawSpectrum();
   drawCoherenceGauge();
@@ -411,17 +502,23 @@ function renderLoop() {
  * @param {HTMLCanvasElement} waveformCanvas
  * @param {HTMLCanvasElement} spectrumCanvas
  * @param {HTMLCanvasElement} gaugeCanvas
+ * @param {HTMLCanvasElement} pacerCanvas
  * @param {number} sessionStartTime - Date.now() when session started
+ * @param {number} [sessionDuration=0] - Total session duration in seconds (0 = show elapsed)
  */
-export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, sessionStartTime) {
+export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas, sessionStartTime, sessionDuration = 0) {
   _waveformCanvas = waveformCanvas;
   _spectrumCanvas = spectrumCanvas;
   _gaugeCanvas = gaugeCanvas;
+  _pacerCanvas = pacerCanvas;
   _sessionStartTime = sessionStartTime;
+  _sessionDuration = sessionDuration;
 
   _displayedScore = 0;
   _pulsePhase = 0;
   _calibrationFadeAlpha = 0;
+  _prevPhase = 'inhale';
+  _labelOpacity = 1.0;
 
   // Delay canvas setup by one frame so the browser can compute the
   // flex layout after session-viz transitions from display:none to flex.
@@ -436,6 +533,7 @@ function _setupAllCanvases() {
   _waveformCtx = setupCanvas(_waveformCanvas);
   _spectrumCtx = setupCanvas(_spectrumCanvas);
   _gaugeCtx = setupCanvas(_gaugeCanvas);
+  if (_pacerCanvas) _pacerCtx = setupCanvas(_pacerCanvas);
 }
 
 // Re-setup canvases on window resize
@@ -462,5 +560,8 @@ export function stopRendering() {
   }
   if (_gaugeCtx && _gaugeCanvas) {
     _gaugeCtx.clearRect(0, 0, _gaugeCanvas.width / dpr, _gaugeCanvas.height / dpr);
+  }
+  if (_pacerCtx && _pacerCanvas) {
+    _pacerCtx.clearRect(0, 0, _pacerCanvas.width / dpr, _pacerCanvas.height / dpr);
   }
 }

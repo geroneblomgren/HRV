@@ -45,13 +45,15 @@ function startSession() {
   const waveformCanvas = document.getElementById('waveform-canvas');
   const spectrumCanvas = document.getElementById('spectrum-canvas');
   const gaugeCanvas = document.getElementById('gauge-canvas');
+  const pacerCanvas = document.getElementById('pacer-canvas');
 
-  // Start rendering
-  startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, _sessionStart);
+  // Start rendering (pacer canvas + 0 duration = elapsed timer mode)
+  startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas, _sessionStart, 0);
 
   // Start audio pacer (must be in user gesture chain for autoplay policy)
   initAudio();
   startPacer(AppState.pacingFreq);
+  AppState.sessionStartTime = _sessionStart;
 
   // Start DSP tick at 1-second interval (setInterval, NOT rAF — DSP runs even when tab hidden)
   _dspInterval = setInterval(() => {
@@ -71,6 +73,7 @@ function stopSession() {
   }
   stopPacer();
   stopRendering();
+  AppState.sessionStartTime = null;
   const viz = document.querySelector('#tab-discovery .session-viz');
   if (viz) viz.classList.remove('active');
   const placeholder = document.getElementById('discovery-placeholder');
@@ -238,6 +241,26 @@ reconnectBtn.addEventListener('click', async () => {
     console.error('Reconnect error:', err);
     connectError.textContent = 'Make sure your HRM 600 is on and within range. Try again.';
     connectError.classList.remove('hidden');
+  }
+});
+
+// ---- Pacer control event listeners ----
+
+document.querySelectorAll('.style-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setStyle(btn.dataset.style);
+  });
+});
+
+document.getElementById('volume-slider').addEventListener('input', e => {
+  setVolume(e.target.value / 100);
+});
+
+document.getElementById('end-session-btn').addEventListener('click', () => {
+  if (AppState.connected) {
+    stopSession();
   }
 });
 

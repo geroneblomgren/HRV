@@ -36,14 +36,32 @@
   <main id="tab-content" class="tab-content">
     <section id="tab-discovery" class="tab-panel active">
       <div class="session-viz">
-        <div class="viz-row viz-row-main">
-          <div class="viz-card viz-waveform">
+        <!-- Pacer hero area: circle canvas overlaying waveform -->
+        <div class="session-pacer">
+          <div class="pacer-bg">
             <canvas id="waveform-canvas"></canvas>
           </div>
-          <div class="viz-card viz-gauge">
+          <div class="pacer-circle">
+            <canvas id="pacer-canvas"></canvas>
+          </div>
+          <div class="pacer-gauge">
             <canvas id="gauge-canvas"></canvas>
           </div>
         </div>
+        <!-- Controls below pacer -->
+        <div class="pacer-controls">
+          <div class="style-buttons">
+            <button class="style-btn active" data-style="pitch">Pitch</button>
+            <button class="style-btn" data-style="swell">Swell</button>
+            <button class="style-btn" data-style="bowl">Bowl</button>
+          </div>
+          <div class="volume-control">
+            <label class="volume-label" for="volume-slider">Vol</label>
+            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="50">
+          </div>
+          <button id="end-session-btn" class="end-session-btn">End Session</button>
+        </div>
+        <!-- Spectrum row below -->
         <div class="viz-row viz-row-spectrum">
           <div class="viz-card viz-spectrum">
             <canvas id="spectrum-canvas"></canvas>
