@@ -33,22 +33,22 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01: AppState (Proxy-based reactive store + pub/sub bus) and StorageService (idb wrapper, session/frequency/Oura stores)
-- [ ] 01-02: BLEService — GATT connection, 0x2A37 parsing (all RR values per notification), connection status UI, reconnect with Promise.race timeout and exponential backoff
+- [x] 01-02: BLEService — GATT connection, 0x2A37 parsing (all RR values per notification), connection status UI, reconnect with Promise.race timeout and exponential backoff
 
 ### Phase 2: Signal Processing + Visualization
 **Goal**: Raw RR intervals are cleaned, spectrally analyzed, and rendered — coherence score updates live and the HR waveform scrolls in real-time — so that every data-dependent UI element has a working foundation.
 **Depends on**: Phase 1
 **Requirements**: DSP-01, DSP-02, DSP-03, DSP-04, DSP-05, VIZ-01, VIZ-02, VIZ-03
 **Success Criteria** (what must be TRUE):
-  1. Beats outside 300ms–2000ms or deviating >20% from the 5-beat running median are silently dropped and the waveform remains smooth
-  2. The app displays "Calibrating" for the first 90–120 seconds of a session, then transitions to showing a live coherence score (0–100) that updates every 1–2 seconds
+  1. Beats outside 300ms-2000ms or deviating >20% from the 5-beat running median are silently dropped and the waveform remains smooth
+  2. The app displays "Calibrating" for the first 90-120 seconds of a session, then transitions to showing a live coherence score (0-100) that updates every 1-2 seconds
   3. A scrolling HR waveform on Canvas renders at 60fps showing heart rate oscillation; a power spectrum chart shows the LF band highlighted
   4. RSA amplitude (peak-to-trough HR variation) is computed per breathing-rate block for use in Discovery mode comparison
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 02-01: DSPEngine — two-tier artifact rejection, circular RR buffer, Lomb-Scargle PSD (or FFT + cubic spline), coherence score (LF power ratio, rolling 120s window), RSA amplitude
-- [ ] 02-02: WaveformRenderer and SpectrumRenderer — Canvas 2D requestAnimationFrame loop, scrolling HR chart, power spectrum chart with LF band highlight, coherence gauge
+- [ ] 02-01-PLAN.md — DSPEngine: FFT + cubic spline resampling, coherence scoring (HeartMath formula), RSA amplitude, calibration gate
+- [ ] 02-02-PLAN.md — Canvas renderers (waveform, spectrum, coherence gauge), HTML/CSS canvas layout, main.js wiring
 
 ### Phase 3: Breathing Pacer
 **Goal**: The app can guide a breathing session with precise, drift-free audio and visual cues at any configurable breathing rate, with all three audio styles switchable mid-session.
@@ -92,17 +92,17 @@ Plans:
 
 Plans:
 - [ ] 05-01: OuraClient — OAuth2 PKCE flow, token storage in IndexedDB, /daily_readiness and sleep HRV fetch, IndexedDB cache with freshness check
-- [ ] 05-02: Recovery Dashboard — Canvas dual-axis chart (coherence 0–100 left, HRV ms right), data merge from session store + Oura cache, navigation to dashboard view
+- [ ] 05-02: Recovery Dashboard — Canvas dual-axis chart (coherence 0-100 left, HRV ms right), data merge from session store + Oura cache, navigation to dashboard view
 
 ## Progress
 
 **Execution Order:**
-Phases 1 → 2 → 3 (can overlap with 2) → 4 → 5
+Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 1/2 | Complete    | 2026-03-22 |
-| 2. Signal Processing + Visualization | 0/2 | Not started | - |
+| 1. Foundation | 2/2 | Complete    | 2026-03-22 |
+| 2. Signal Processing + Visualization | 0/2 | Planning complete | - |
 | 3. Breathing Pacer | 0/2 | Not started | - |
 | 4. Session Modes | 0/2 | Not started | - |
 | 5. Oura + Recovery Dashboard | 0/2 | Not started | - |
