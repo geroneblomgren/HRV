@@ -74,11 +74,11 @@ Plans:
   2. After Discovery completes, a comparison display shows RSA amplitude and LF peak power across all 5 frequencies; user selects and saves their resonance frequency
   3. User can start Practice mode, which loads the saved resonance frequency and runs a 20-minute guided session with live coherence score and scrolling HR waveform
   4. At Practice session end, a summary screen shows duration, mean coherence, peak coherence, and time in high coherence
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 04-01: Discovery mode — 5-block state machine, per-block DSP data capture, post-discovery comparison display, resonance frequency selection and save
-- [ ] 04-02: Practice mode — load saved frequency, 20-min session with live coherence display, session summary on completion, session record written to IndexedDB
+- [ ] 04-01-PLAN.md — Discovery mode: 5-block state machine, per-block RSA/LF capture, inter-block countdown, comparison bar chart, frequency selection and save
+- [ ] 04-02-PLAN.md — Practice mode: load saved frequency, duration picker, timed session with live coherence, chime at timer end, session summary, IndexedDB persistence
 
 ### Phase 5: Oura + Recovery Dashboard
 **Goal**: The app pulls the user's overnight HRV data from Oura and displays a recovery dashboard showing how session coherence and overnight HRV are trending together over weeks.
