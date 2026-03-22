@@ -6,9 +6,10 @@ import { querySessions } from './storage.js';
 import { AppState } from './state.js';
 
 // ---------------------------------------------------------------------------
-// Always route through the local CORS proxy (confirmed required in 05-01)
+// Route through same-origin proxy (no CORS issues, no separate proxy process)
+// /api/oura/* is proxied to api.ouraring.com by server.js
 // ---------------------------------------------------------------------------
-setProxyBase('http://localhost:5001');
+setProxyBase('/api/oura');
 
 // ---------------------------------------------------------------------------
 // Module state
@@ -170,6 +171,7 @@ function _hideError(id) {
 // ---------------------------------------------------------------------------
 
 async function _renderDashboard() {
+  hide('dashboard-connect');
   hide('dashboard-loading');
   show('dashboard-content');
 
