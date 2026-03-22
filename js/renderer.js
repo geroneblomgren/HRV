@@ -28,6 +28,16 @@ const ZONE_LABELS = { low: 'Low', building: 'Building', high: 'Locked In' };
 let _rAF = null;
 let _waveformCanvas = null, _waveformCtx = null;
 let _spectrumCanvas = null, _spectrumCtx = null;
+
+// Waveform smoothing: maintain a high-res buffer updated via interpolation
+const WAVEFORM_BUFFER_SIZE = 300; // 5 points per second * 60 seconds
+let _waveformBuffer = new Float32Array(WAVEFORM_BUFFER_SIZE);
+let _waveformHead = 0;
+let _waveformFilled = 0;
+let _lastHR = 0;
+let _targetHR = 0;
+let _smoothHR = 0;
+let _lastWaveformTime = 0;
 let _gaugeCanvas = null, _gaugeCtx = null;
 let _pacerCanvas = null, _pacerCtx = null;
 let _displayedScore = 0;
@@ -72,8 +82,39 @@ function setupCanvas(canvas) {
 
 // ---- Waveform Renderer ----
 
+// Update the high-res waveform buffer by interpolating toward current HR
+function _updateWaveformBuffer() {
+  const now = performance.now();
+  const dt = now - _lastWaveformTime;
+  _lastWaveformTime = now;
+
+  // Update target from AppState (changes once per heartbeat)
+  const currentHR = AppState.currentHR;
+  if (currentHR > 0 && currentHR !== _targetHR) {
+    _targetHR = currentHR;
+  }
+  if (_targetHR === 0) return;
+
+  // Initialize smooth value on first valid reading
+  if (_smoothHR === 0) _smoothHR = _targetHR;
+
+  // Exponential interpolation toward target — smooth over ~200ms
+  const alpha = 1 - Math.exp(-dt / 200);
+  _smoothHR += (_targetHR - _smoothHR) * alpha;
+
+  // Write to circular buffer at ~5 samples/sec (every ~200ms)
+  // But we're called at 60fps, so write every ~3 frames
+  if (dt < 150) return; // throttle writes
+
+  _waveformBuffer[_waveformHead] = _smoothHR;
+  _waveformHead = (_waveformHead + 1) % WAVEFORM_BUFFER_SIZE;
+  if (_waveformFilled < WAVEFORM_BUFFER_SIZE) _waveformFilled++;
+}
+
 function drawWaveform() {
   if (!_waveformCtx) return;
+
+  _updateWaveformBuffer();
 
   const canvas = _waveformCanvas;
   const dpr = window.devicePixelRatio || 1;
@@ -105,26 +146,22 @@ function drawWaveform() {
     ctx.fillText(String(bpm), 4, y);
   }
 
-  // Get HR data and apply 3-point moving average for visual smoothness
-  const rawHR = getHRArray(WAVEFORM_WINDOW_SECONDS);
-  if (rawHR.length === 0) return;
-  const hrData = rawHR.map((val, i, arr) => {
-    if (i === 0) return (val + arr[1]) / 2 || val;
-    if (i === arr.length - 1) return (arr[i - 1] + val) / 2;
-    return (arr[i - 1] + val + arr[i + 1]) / 3;
-  });
+  if (_waveformFilled < 2) return;
 
   // Create vertical gradient for fill
   const gradient = ctx.createLinearGradient(0, 0, 0, h);
   gradient.addColorStop(0, TEAL_FILL_TOP);
   gradient.addColorStop(1, TEAL_FILL_BOTTOM);
 
-  // Build points array
-  const stepX = w / Math.max(hrData.length - 1, 1);
+  // Build points from the smooth circular buffer
+  const n = _waveformFilled;
+  const stepX = w / Math.max(n - 1, 1);
   const points = [];
-  for (let i = 0; i < hrData.length; i++) {
+  for (let i = 0; i < n; i++) {
+    const bufIdx = (_waveformHead - n + i + WAVEFORM_BUFFER_SIZE) % WAVEFORM_BUFFER_SIZE;
+    const hr = _waveformBuffer[bufIdx];
     const x = i * stepX;
-    const clamped = Math.max(HR_MIN, Math.min(HR_MAX, hrData[i]));
+    const clamped = Math.max(HR_MIN, Math.min(HR_MAX, hr));
     const y = h - ((clamped - HR_MIN) / (HR_MAX - HR_MIN)) * h;
     points.push({ x, y });
   }
@@ -444,8 +481,9 @@ function drawBreathingCircle() {
   // Smoothstep easing — more deliberate at endpoints than pure sine
   const eased = t * t * (3 - 2 * t);
 
-  // nextCuePhase is the NEXT phase, so if next is exhale, we're currently inhaling
-  const isInhale = AppState.nextCuePhase === 'exhale';
+  // nextCuePhase is the phase of the most recently scheduled cue.
+  // Since the scheduler writes it before flipping, it reflects the current playing phase.
+  const isInhale = AppState.nextCuePhase === 'inhale';
   const dim = Math.min(w, h);
   const minR = dim * 0.15;
   const maxR = dim * 0.35;
@@ -538,6 +576,15 @@ export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pace
   _calibrationFadeAlpha = 0;
   _prevPhase = 'inhale';
   _labelOpacity = 1.0;
+
+  // Reset waveform interpolation buffer
+  _waveformBuffer.fill(0);
+  _waveformHead = 0;
+  _waveformFilled = 0;
+  _lastHR = 0;
+  _targetHR = 0;
+  _smoothHR = 0;
+  _lastWaveformTime = performance.now();
 
   // Delay canvas setup by one frame so the browser can compute the
   // flex layout after session-viz transitions from display:none to flex.
