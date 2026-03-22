@@ -111,20 +111,71 @@
       </div>
     </section>
     <section id="tab-practice" class="tab-panel">
-      <div class="session-viz session-viz-practice" style="display:none;">
-        <div class="viz-row viz-row-main">
-          <div class="viz-card viz-waveform">
+      <!-- Session viz: shown while session is active -->
+      <div class="session-viz" id="practice-session-viz" style="display:none; flex-direction:column;">
+        <!-- Pacer hero area -->
+        <div class="session-pacer">
+          <div class="pacer-bg">
             <canvas id="practice-waveform-canvas"></canvas>
           </div>
-          <div class="viz-card viz-gauge">
+          <div class="pacer-circle">
+            <canvas id="practice-pacer-canvas"></canvas>
+          </div>
+          <div class="pacer-gauge" id="practice-pacer-gauge">
             <canvas id="practice-gauge-canvas"></canvas>
           </div>
         </div>
+        <!-- Controls below pacer -->
+        <div class="pacer-controls">
+          <div class="style-buttons" id="practice-style-buttons">
+            <button class="style-btn" data-style="pitch">Pitch</button>
+            <button class="style-btn" data-style="swell">Swell</button>
+            <button class="style-btn active" data-style="bowl">Bowl</button>
+          </div>
+          <div class="volume-control">
+            <label class="volume-label" for="practice-volume-slider">Vol</label>
+            <input type="range" id="practice-volume-slider" class="volume-slider" min="0" max="100" value="50">
+          </div>
+          <button id="practice-end-btn" class="end-session-btn">End Session</button>
+        </div>
       </div>
+
+      <!-- Summary: shown after session ends -->
+      <div class="practice-summary" id="practice-summary" style="display:none;">
+        <h2 class="practice-summary-title">Session Complete</h2>
+        <div class="summary-grid">
+          <div class="summary-metric">
+            <span class="metric-value" id="summary-duration">0:00</span>
+            <span class="metric-label">Duration</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-value" id="summary-mean">0</span>
+            <span class="metric-label">Mean Coherence</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-value" id="summary-peak">0</span>
+            <span class="metric-label">Peak Coherence</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-value" id="summary-locked-in">0:00</span>
+            <span class="metric-label">Time Locked In</span>
+          </div>
+        </div>
+        <button id="practice-done-btn" class="connect-button practice-done-btn">Done</button>
+      </div>
+
+      <!-- Placeholder: shown when idle -->
       <div class="placeholder-content" id="practice-placeholder">
         <h2>Practice Mode</h2>
-        <p>Guided breathing sessions at your resonance frequency.</p>
-        <p class="hint">Complete Discovery first to set your frequency.</p>
+        <p id="practice-freq-display" class="practice-freq-display">No frequency set — complete Discovery first.</p>
+        <div class="duration-picker" id="practice-duration-picker">
+          <button class="duration-btn" data-minutes="10">10 min</button>
+          <button class="duration-btn" data-minutes="15">15 min</button>
+          <button class="duration-btn active" data-minutes="20">20 min</button>
+          <button class="duration-btn" data-minutes="30">30 min</button>
+        </div>
+        <button id="practice-start-btn" class="connect-button practice-start-btn" disabled>Start Session</button>
+        <p id="practice-hint" class="hint">Connect your HRM to begin.</p>
       </div>
     </section>
     <section id="tab-dashboard" class="tab-panel">

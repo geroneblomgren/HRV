@@ -608,3 +608,134 @@ body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ---- Practice Mode UI ---- */
+
+.practice-freq-display {
+  font-size: 1.1rem;
+  color: var(--accent-teal);
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.duration-picker {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.duration-btn {
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.duration-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.duration-btn.active {
+  background: var(--accent-teal);
+  border-color: var(--accent-teal);
+  color: #fff;
+}
+
+.practice-start-btn {
+  background: var(--accent-teal);
+  margin-top: 0;
+}
+
+.practice-start-btn:hover:not(:disabled) {
+  background: #0d9488;
+}
+
+.practice-start-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Subtle gauge opacity for practice mode */
+#practice-pacer-gauge {
+  opacity: 0.45;
+}
+
+/* Pulse animation on End Session button after chime */
+@keyframes chime-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(255, 23, 68, 0); }
+}
+
+.end-session-btn.chime-pulse {
+  animation: chime-pulse 1.5s ease-in-out infinite;
+}
+
+/* ---- Practice Summary ---- */
+
+.practice-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  gap: 24px;
+  height: 100%;
+}
+
+.practice-summary-title {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.summary-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-panel);
+  border-radius: 8px;
+  padding: 16px 12px;
+  gap: 6px;
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-teal);
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.practice-done-btn {
+  background: var(--accent-teal);
+  padding: 12px 48px;
+  font-size: 1rem;
+}
+
+.practice-done-btn:hover {
+  background: #0d9488;
+}

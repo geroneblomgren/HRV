@@ -4,6 +4,7 @@ import { initStorage, getSetting } from './storage.js';
 import { initiateConnection, tryQuickConnect } from './ble.js';
 import { setStyle, setVolume } from './audio.js';
 import { startDiscovery, stopDiscovery, onDisconnect as discoveryDisconnect, _wireStartBtn } from './discovery.js';
+import { initPracticeUI, onDisconnect as practiceDisconnect } from './practice.js';
 
 // ---- DOM references ----
 const hrValue = document.getElementById('hr-value');
@@ -125,6 +126,7 @@ subscribe('connected', value => {
     stopUptimeTimer();
     // Notify active session controllers
     discoveryDisconnect();
+    practiceDisconnect();
   }
 });
 
@@ -241,6 +243,9 @@ async function init() {
         if (AppState.sessionPhase === 'discovery') stopDiscovery();
       });
     }
+
+    // Wire practice UI
+    initPracticeUI();
 
     console.log('ResonanceHRV initialized');
   } catch (err) {

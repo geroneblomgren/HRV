@@ -597,8 +597,8 @@ export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pace
 
 function _setupAllCanvases() {
   _waveformCtx = setupCanvas(_waveformCanvas);
-  _spectrumCtx = setupCanvas(_spectrumCanvas);
-  _gaugeCtx = setupCanvas(_gaugeCanvas);
+  _spectrumCtx = _spectrumCanvas ? setupCanvas(_spectrumCanvas) : null;
+  _gaugeCtx = _gaugeCanvas ? setupCanvas(_gaugeCanvas) : null;
   if (_pacerCanvas) _pacerCtx = setupCanvas(_pacerCanvas);
 }
 
