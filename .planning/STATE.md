@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-22T02:29:23.076Z"
+last_updated: "2026-03-22T04:05:16Z"
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 5
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Real-time HRV biofeedback during breathing sessions — seeing your heart rate oscillate in sync with your breath and knowing you're training at your exact resonance frequency.
-**Current focus:** Phase 2 complete. Ready for Phase 3 (Breathing Pacer).
+**Current focus:** Phase 3 in progress. Plan 03-01 complete (AudioEngine). Plan 03-02 next (Visual Pacer).
 
 ## Current Position
 
 Phase: 3 of 5 (Breathing Pacer)
-Plan: 0 of 2 in current phase (not started)
+Plan: 1 of 2 in current phase
 Status: In progress
-Last activity: 2026-03-22 — Completed 02-02 (Canvas renderers: waveform, spectrum, coherence gauge)
+Last activity: 2026-03-22 — Completed 03-01 (AudioEngine with lookahead scheduler and tone synthesizers)
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 17 min
-- Total execution time: 1.12 hours
+- Total plans completed: 5
+- Average duration: 14 min
+- Total execution time: 1.15 hours
 
 **By Phase:**
 
@@ -42,10 +42,11 @@ Progress: [████░░░░░░] 40%
 |-------|-------|-------|----------|
 | 1. Foundation | 2/2 | 19 min | 10 min |
 | 2. Signal Processing | 2/2 | 51 min | 26 min |
+| 3. Breathing Pacer | 1/2 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4 min), 01-02 (15 min), 02-01 (6 min), 02-02 (45 min)
-- Trend: 02-02 longer due to iterative layout/rendering fixes
+- Last 5 plans: 01-02 (15 min), 02-01 (6 min), 02-02 (45 min), 03-01 (2 min)
+- Trend: 03-01 fast execution (straightforward audio module creation)
 
 *Updated after each plan completion*
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - 02-02: Coherence zone thresholds: low <31, building 31-65, high 66+ (per HeartMath research)
 - 02-02: Session auto-starts on BLE connect (temporary; Phase 4 replaces with proper session management)
 - 02-02: fft.js CDN CommonJS module adapted for browser environment
+- 03-01: Lookahead scheduler pattern: 25ms setTimeout + 100ms schedule-ahead for drift-free audio timing
+- 03-01: One-shot oscillators per cue (Web Audio best practice); Bowl style allows 5s overlap for resonance
+- 03-01: All audio scheduling on AudioContext.currentTime, never Date.now()
 
 ### Pending Todos
 
@@ -88,5 +92,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 02-02-PLAN.md (Canvas renderers: waveform, spectrum, coherence gauge). Phase 2 complete. Ready for Phase 3 (Breathing Pacer).
-Resume file: .planning/phases/02-signal-processing-visualization/02-02-SUMMARY.md
+Stopped at: Completed 03-01-PLAN.md (AudioEngine with lookahead scheduler and tone synthesizers). Ready for 03-02 (Visual Pacer).
+Resume file: .planning/phases/03-breathing-pacer/03-01-SUMMARY.md
