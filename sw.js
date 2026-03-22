@@ -1,7 +1,7 @@
 // sw.js — Cache-first service worker for ResonanceHRV app shell
 // Caches static assets on install; serves from cache first, falls back to network.
 
-const CACHE_NAME = 'resonancehrv-v8';
+const CACHE_NAME = 'resonancehrv-v9';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -13,6 +13,7 @@ const SHELL_ASSETS = [
   '/js/ble.js',
   '/js/dsp.js',
   '/js/renderer.js',
+  '/js/audio.js',
 ];
 
 self.addEventListener('install', event => {
