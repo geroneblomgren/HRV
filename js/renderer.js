@@ -83,10 +83,10 @@ function setupCanvas(canvas) {
 // ---- Waveform Renderer ----
 
 // Update the high-res waveform buffer by interpolating toward current HR
+let _lastWriteTime = 0;
+
 function _updateWaveformBuffer() {
   const now = performance.now();
-  const dt = now - _lastWaveformTime;
-  _lastWaveformTime = now;
 
   // Update target from AppState (changes once per heartbeat)
   const currentHR = AppState.currentHR;
@@ -98,13 +98,15 @@ function _updateWaveformBuffer() {
   // Initialize smooth value on first valid reading
   if (_smoothHR === 0) _smoothHR = _targetHR;
 
-  // Exponential interpolation toward target — smooth over ~200ms
-  const alpha = 1 - Math.exp(-dt / 200);
+  // Exponential interpolation toward target every frame
+  const frameDt = now - _lastWaveformTime;
+  _lastWaveformTime = now;
+  const alpha = 1 - Math.exp(-frameDt / 200);
   _smoothHR += (_targetHR - _smoothHR) * alpha;
 
   // Write to circular buffer at ~5 samples/sec (every ~200ms)
-  // But we're called at 60fps, so write every ~3 frames
-  if (dt < 150) return; // throttle writes
+  if (now - _lastWriteTime < 200) return;
+  _lastWriteTime = now;
 
   _waveformBuffer[_waveformHead] = _smoothHR;
   _waveformHead = (_waveformHead + 1) % WAVEFORM_BUFFER_SIZE;
@@ -471,25 +473,22 @@ function drawBreathingCircle() {
 
   // Use AudioContext.currentTime for drift-free sync with audio cues
   const audioTime = getAudioTime();
-  if (audioTime === 0) return; // audio not started yet
+  if (audioTime === 0) return;
 
-  const halfPeriod = 1 / (AppState.pacingFreq * 2);
-  const currentPhaseStart = AppState.nextCueTime - halfPeriod;
-  const elapsed = audioTime - currentPhaseStart;
-  const t = Math.max(0, Math.min(1, elapsed / halfPeriod));
+  // Continuous sine wave: one full cycle = 1/pacingFreq seconds
+  // phase 0..0.5 = inhale (circle grows), 0.5..1.0 = exhale (circle shrinks)
+  const fullPeriod = 1 / AppState.pacingFreq;
+  const phase = ((audioTime % fullPeriod) / fullPeriod); // 0.0 to 1.0
 
-  // Smoothstep easing — more deliberate at endpoints than pure sine
-  const eased = t * t * (3 - 2 * t);
+  // Cosine gives smooth 1→0→1 shape, remap to 0→1→0 for radius
+  // cos(0) = 1 (start small), cos(π) = -1 (fully expanded), cos(2π) = 1 (small again)
+  const expansion = (1 - Math.cos(phase * Math.PI * 2)) / 2; // 0→1→0 smooth
 
-  // nextCuePhase is the phase of the most recently scheduled cue.
-  // Since the scheduler writes it before flipping, it reflects the current playing phase.
-  const isInhale = AppState.nextCuePhase === 'inhale';
+  const isInhale = phase < 0.5;
   const dim = Math.min(w, h);
-  const minR = dim * 0.15;
-  const maxR = dim * 0.35;
-  const radius = isInhale
-    ? minR + (maxR - minR) * eased   // expanding
-    : maxR - (maxR - minR) * eased;  // contracting
+  const minR = dim * 0.12;
+  const maxR = dim * 0.38;
+  const radius = minR + (maxR - minR) * expansion;
 
   const cx = w / 2;
   const cy = h / 2;
@@ -497,7 +496,7 @@ function drawBreathingCircle() {
   // Glowing teal ring
   ctx.save();
   ctx.shadowColor = '#14b8a6';
-  ctx.shadowBlur = 20 + eased * 15;
+  ctx.shadowBlur = 15 + expansion * 20;
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.strokeStyle = '#14b8a6';
@@ -508,10 +507,10 @@ function drawBreathingCircle() {
   // Phase label (Inhale/Exhale) with fade transition
   const currentPhase = isInhale ? 'inhale' : 'exhale';
   if (currentPhase !== _prevPhase) {
-    _labelOpacity = 0;
+    _labelOpacity = 0.3;
     _prevPhase = currentPhase;
   }
-  _labelOpacity = Math.min(1.0, _labelOpacity + 0.06);
+  _labelOpacity = Math.min(1.0, _labelOpacity + 0.04);
 
   ctx.fillStyle = `rgba(232, 232, 232, ${_labelOpacity})`;
   ctx.font = `${Math.round(dim * 0.05)}px system-ui, sans-serif`;
@@ -585,6 +584,7 @@ export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pace
   _targetHR = 0;
   _smoothHR = 0;
   _lastWaveformTime = performance.now();
+  _lastWriteTime = 0;
 
   // Delay canvas setup by one frame so the browser can compute the
   // flex layout after session-viz transitions from display:none to flex.
