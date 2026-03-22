@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-22T04:05:16Z"
+status: in_progress
+last_updated: "2026-03-22T05:00:00Z"
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_phases: 5
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core value:** Real-time HRV biofeedback during breathing sessions — seeing your heart rate oscillate in sync with your breath and knowing you're training at your exact resonance frequency.
-**Current focus:** Phase 3 in progress. Plan 03-01 complete (AudioEngine). Plan 03-02 next (Visual Pacer).
+**Current focus:** Phase 3 complete. Ready for Phase 4 (Session Modes).
 
 ## Current Position
 
-Phase: 3 of 5 (Breathing Pacer)
+Phase: 4 of 5 (Session Modes)
 Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-03-22 — Completed 03-01 (AudioEngine with lookahead scheduler and tone synthesizers)
+Status: Ready to start
+Last activity: 2026-03-22 — Completed 03-02 (Visual Pacer with breathing circle, audio controls, session layout)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 14 min
-- Total execution time: 1.15 hours
+- Total plans completed: 6
+- Average duration: 19 min
+- Total execution time: 1.9 hours
 
 **By Phase:**
 
@@ -42,11 +42,11 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 1. Foundation | 2/2 | 19 min | 10 min |
 | 2. Signal Processing | 2/2 | 51 min | 26 min |
-| 3. Breathing Pacer | 1/2 | 2 min | 2 min |
+| 3. Breathing Pacer | 2/2 | 47 min | 24 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (15 min), 02-01 (6 min), 02-02 (45 min), 03-01 (2 min)
-- Trend: 03-01 fast execution (straightforward audio module creation)
+- Last 5 plans: 02-01 (6 min), 02-02 (45 min), 03-01 (2 min), 03-02 (45 min)
+- Trend: Visual/interactive plans take longer due to iteration on animation and audio
 
 *Updated after each plan completion*
 
@@ -78,6 +78,9 @@ Recent decisions affecting current work:
 - 03-01: Lookahead scheduler pattern: 25ms setTimeout + 100ms schedule-ahead for drift-free audio timing
 - 03-01: One-shot oscillators per cue (Web Audio best practice); Bowl style allows 5s overlap for resonance
 - 03-01: All audio scheduling on AudioContext.currentTime, never Date.now()
+- 03-02: Cosine-driven circle animation instead of smoothstep — smoother continuous motion
+- 03-02: Bowl as default audio style — most pleasant for extended sessions
+- 03-02: Waveform at 0.3 opacity behind circle hero element for subtle context
 
 ### Pending Todos
 
@@ -92,5 +95,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-22
-Stopped at: Completed 03-01-PLAN.md (AudioEngine with lookahead scheduler and tone synthesizers). Ready for 03-02 (Visual Pacer).
-Resume file: .planning/phases/03-breathing-pacer/03-01-SUMMARY.md
+Stopped at: Completed 03-02-PLAN.md (Visual Pacer with breathing circle, audio controls, session layout). Phase 3 complete. Ready for Phase 4 (Session Modes).
+Resume file: .planning/phases/03-breathing-pacer/03-02-SUMMARY.md

@@ -25,13 +25,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Breathing Pacer
 
-- [ ] **PAC-01**: Visual pacer displays expanding/contracting circle animation timed to inhale/exhale at configurable breathing rate
+- [x] **PAC-01**: Visual pacer displays expanding/contracting circle animation timed to inhale/exhale at configurable breathing rate
 - [x] **PAC-02**: Audio pacer style 1: sine wave (~300-400 Hz) with pitch rising on inhale, falling on exhale, smooth gain envelopes
 - [x] **PAC-03**: Audio pacer style 2: constant pitch with volume swelling on inhale, fading on exhale
 - [x] **PAC-04**: Audio pacer style 3: soft chime tones at inhale/exhale transition points
 - [x] **PAC-05**: User can switch between audio styles without restarting the session
 - [x] **PAC-06**: Audio uses Web Audio API lookahead scheduler pattern (25ms setTimeout + 100ms pre-scheduling) for drift-free timing over 20-min sessions
-- [ ] **PAC-07**: Session timer displays time remaining (countdown) for practice sessions and per-block countdown for discovery sessions
+- [x] **PAC-07**: Session timer displays time remaining (countdown) for practice sessions and per-block countdown for discovery sessions
 
 ### Discovery Mode
 
@@ -118,13 +118,13 @@ Requirements for initial release. Each maps to roadmap phases.
 | VIZ-01 | Phase 2 | Complete |
 | VIZ-02 | Phase 2 | Complete |
 | VIZ-03 | Phase 2 | Complete |
-| PAC-01 | Phase 3 | Pending |
+| PAC-01 | Phase 3 | Complete |
 | PAC-02 | Phase 3 | Complete |
 | PAC-03 | Phase 3 | Complete |
 | PAC-04 | Phase 3 | Complete |
 | PAC-05 | Phase 3 | Complete |
 | PAC-06 | Phase 3 | Complete |
-| PAC-07 | Phase 3 | Pending |
+| PAC-07 | Phase 3 | Complete |
 | DISC-01 | Phase 4 | Pending |
 | DISC-02 | Phase 4 | Pending |
 | DISC-03 | Phase 4 | Pending |

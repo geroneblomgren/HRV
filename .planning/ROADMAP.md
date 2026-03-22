@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - BLE connection + RR streaming + IndexedDB storage wired through AppState (completed 2026-03-22)
 - [x] **Phase 2: Signal Processing + Visualization** - Artifact rejection, spectral analysis, coherence scoring, and Canvas rendering (completed 2026-03-22)
-- [ ] **Phase 3: Breathing Pacer** - Visual expanding-circle animation and three audio styles with drift-free lookahead scheduler
+- [x] **Phase 3: Breathing Pacer** - Visual expanding-circle animation and three audio styles with drift-free lookahead scheduler (completed 2026-03-22)
 - [ ] **Phase 4: Session Modes** - Discovery protocol (5 blocks) and Practice mode (20-min guided sessions), integrating all prior phases
 - [ ] **Phase 5: Oura + Recovery Dashboard** - OAuth2 PKCE Oura auth, overnight HRV pull, and dual-axis recovery trend chart
 
@@ -59,11 +59,11 @@ Plans:
   2. All three audio styles (rising/falling pitch, volume swell, soft chimes) produce audible cues timed to inhale/exhale transitions; user can switch between them without restarting
   3. A session countdown timer is visible and accurate (no drift vs. wall clock) for both per-block and full-session use
   4. AudioContext starts only after a user gesture; no "AudioContext not allowed" errors on load
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 03-01: AudioEngine — lookahead scheduler (25ms setTimeout + 100ms pre-schedule on AudioContext.currentTime), three tone style synthesizers, mid-session style switching, AudioContext lifecycle management
-- [ ] 03-02: VisualPacer — expanding/contracting circle animation synchronized to AudioEngine's nextCueTime, session timer display (countdown + per-block)
+- [x] 03-01: AudioEngine — lookahead scheduler (25ms setTimeout + 100ms pre-schedule on AudioContext.currentTime), three tone style synthesizers, mid-session style switching, AudioContext lifecycle management
+- [x] 03-02: VisualPacer — expanding/contracting circle animation synchronized to AudioEngine's nextCueTime, session timer display (countdown + per-block)
 
 ### Phase 4: Session Modes
 **Goal**: The user can run a complete Discovery protocol to identify their resonance frequency and then run guided Practice sessions at that frequency — the core clinical value proposition of the app.
@@ -103,6 +103,6 @@ Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete    | 2026-03-22 |
 | 2. Signal Processing + Visualization | 2/2 | Complete    | 2026-03-22 |
-| 3. Breathing Pacer | 1/2 | In Progress | - |
+| 3. Breathing Pacer | 2/2 | Complete | 2026-03-22 |
 | 4. Session Modes | 0/2 | Not started | - |
 | 5. Oura + Recovery Dashboard | 0/2 | Not started | - |
