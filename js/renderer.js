@@ -406,16 +406,29 @@ export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, sess
   _gaugeCanvas = gaugeCanvas;
   _sessionStartTime = sessionStartTime;
 
-  _waveformCtx = setupCanvas(_waveformCanvas);
-  _spectrumCtx = setupCanvas(_spectrumCanvas);
-  _gaugeCtx = setupCanvas(_gaugeCanvas);
-
   _displayedScore = 0;
   _pulsePhase = 0;
   _calibrationFadeAlpha = 0;
 
-  _rAF = requestAnimationFrame(renderLoop);
+  // Delay canvas setup by one frame so the browser can compute the
+  // flex layout after session-viz transitions from display:none to flex.
+  // Without this, getBoundingClientRect() returns 0x0.
+  requestAnimationFrame(() => {
+    _setupAllCanvases();
+    _rAF = requestAnimationFrame(renderLoop);
+  });
 }
+
+function _setupAllCanvases() {
+  _waveformCtx = setupCanvas(_waveformCanvas);
+  _spectrumCtx = setupCanvas(_spectrumCanvas);
+  _gaugeCtx = setupCanvas(_gaugeCanvas);
+}
+
+// Re-setup canvases on window resize
+window.addEventListener('resize', () => {
+  if (_rAF) _setupAllCanvases();
+});
 
 /**
  * Stop the rendering loop and clear all canvases.

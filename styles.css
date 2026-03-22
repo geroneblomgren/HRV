@@ -263,7 +263,8 @@ body {
   flex-direction: column;
   gap: 8px;
   padding: 8px;
-  height: calc(100vh - 160px);
+  height: calc(100vh - 200px);
+  min-height: 400px;
 }
 
 .session-viz.active {
@@ -273,14 +274,18 @@ body {
 .viz-row {
   display: flex;
   gap: 8px;
+  min-height: 0; /* allow flex children to shrink below content size */
 }
 
 .viz-row-main {
   flex: 2;
+  min-height: 0;
 }
 
 .viz-row-spectrum {
   flex: 1;
+  min-height: 0;
+  max-height: 200px;
 }
 
 .viz-card {
@@ -288,6 +293,7 @@ body {
   border-radius: 8px;
   overflow: hidden;
   position: relative;
+  min-height: 0; /* critical for flex canvas sizing */
 }
 
 .viz-waveform {
