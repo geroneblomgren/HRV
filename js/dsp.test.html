@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DSPEngine Tests</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #eee; padding: 1rem; }
+    .pass { color: #22c55e; }
+    .fail { color: #ef4444; }
+    #results { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>DSPEngine Unit Tests</h1>
+  <div id="results"></div>
+
+  <!-- fft.js loaded as global before ES module -->
+  <script src="https://cdn.jsdelivr.net/npm/fft.js@4.0.4/lib/fft.js"></script>
+
+  <script type="module">
+    // Import DSPEngine — test harness loads as ES module
+    import { AppState } from './state.js';
+    import { initDSP, tick, computeRSAAmplitude, getHRArray } from './dsp.js';
+
+    // Expose internals for testing via a test export or direct module access
+    // We re-import the module internals through a test-only mechanism
+    import {
+      cubicSplineInterpolate,
+      buildEvenlySpacedTachogram,
+      computeCoherenceScore,
+      integrateBand,
+      hzToBin,
+      binToHz,
+      SAMPLE_RATE_HZ,
+      FFT_SIZE
+    } from './dsp.js';
+
+    const results = document.getElementById('results');
+    let passed = 0;
+    let failed = 0;
+
+    function assert(condition, message) {
+      if (condition) {
+        results.innerHTML += `<span class="pass">PASS</span> ${message}\n`;
+        passed++;
+      } else {
+        results.innerHTML += `<span class="fail">FAIL</span> ${message}\n`;
+        failed++;
+      }
+    }
+
+    function approxEqual(a, b, tolerance = 0.01) {
+      return Math.abs(a - b) < tolerance;
+    }
+
+    // ---- Reset AppState between tests ----
+    function resetAppState() {
+      AppState.rrBuffer = new Float32Array(512);
+      AppState.rrHead = 0;
+      AppState.rrCount = 0;
+      AppState.coherenceScore = 0;
+      AppState.lfPower = 0;
+      AppState.spectralBuffer = null;
+      AppState.calibrating = true;
+    }
+
+    // ---- Test 1: cubicSplineInterpolate returns correct values for known sine wave ----
+    function test1() {
+      // Sample a sine wave at irregular intervals
+      const xs = [0, 0.3, 0.7, 1.0, 1.5, 2.0, 2.3, 2.8, 3.0];
+      const ys = xs.map(x => Math.sin(x));
+
+      // Interpolate at a known point
+      const interpolated = cubicSplineInterpolate(xs, ys, 1.2);
+      const expected = Math.sin(1.2); // 0.9320...
+      assert(
+        approxEqual(interpolated, expected, 0.05),
+        `Test 1: cubicSplineInterpolate(sin, 1.2) = ${interpolated.toFixed(4)}, expected ~${expected.toFixed(4)}`
+      );
+    }
+
+    // ---- Test 2: buildEvenlySpacedTachogram returns null when rrCount < 10 ----
+    function test2() {
+      resetAppState();
+      // Put 5 values in
+      for (let i = 0; i < 5; i++) {
+        AppState.rrBuffer[i] = 800;
+      }
+      AppState.rrHead = 5;
+      AppState.rrCount = 5;
+
+      const result = buildEvenlySpacedTachogram(AppState.rrBuffer, AppState.rrHead, AppState.rrCount);
+      assert(result === null, `Test 2: buildEvenlySpacedTachogram returns null when rrCount=5 (< 10)`);
+    }
+
+    // ---- Test 3: buildEvenlySpacedTachogram returns Float32Array of FFT_SIZE with zero-padding ----
+    function test3() {
+      resetAppState();
+      // Put 20 RR values (~800ms each = ~16 seconds of data)
+      for (let i = 0; i < 20; i++) {
+        AppState.rrBuffer[i] = 800 + (i % 3) * 10; // slight variation
+      }
+      AppState.rrHead = 20;
+      AppState.rrCount = 20;
+
+      const result = buildEvenlySpacedTachogram(AppState.rrBuffer, AppState.rrHead, AppState.rrCount);
+      assert(result !== null, `Test 3a: buildEvenlySpacedTachogram returns non-null for 20 RR values`);
+      assert(result instanceof Float32Array, `Test 3b: result is Float32Array`);
+      assert(result.length === FFT_SIZE, `Test 3c: result length is ${FFT_SIZE} (got ${result ? result.length : 'N/A'})`);
+      // Check zero-padding: last elements should be 0
+      assert(result[FFT_SIZE - 1] === 0, `Test 3d: last element is 0 (zero-padded)`);
+    }
+
+    // ---- Test 4: computeCoherenceScore returns 0 when totalPower is 0 ----
+    function test4() {
+      initDSP();
+      const zeroPsd = new Float32Array(FFT_SIZE / 2);
+      const score = computeCoherenceScore(zeroPsd);
+      assert(score === 0, `Test 4: computeCoherenceScore with zero PSD = ${score}, expected 0`);
+    }
+
+    // ---- Test 5: computeCoherenceScore returns 0-100 for synthetic PSD with peak at 0.1 Hz ----
+    function test5() {
+      initDSP();
+      const psd = new Float32Array(FFT_SIZE / 2);
+      // Put a strong peak at 0.1 Hz
+      const peakBin = hzToBin(0.1);
+      psd[peakBin] = 1000;
+      // Add some background noise
+      for (let i = hzToBin(0.04); i <= hzToBin(0.26); i++) {
+        if (i !== peakBin) psd[i] = 1;
+      }
+
+      const score = computeCoherenceScore(psd);
+      assert(score >= 0 && score <= 100, `Test 5a: coherenceScore ${score} is in 0-100 range`);
+      assert(score > 50, `Test 5b: coherenceScore ${score} is > 50 for strong single peak`);
+    }
+
+    // ---- Test 6: computeRSAAmplitude([70, 80, 65, 75]) returns 15.0 ----
+    function test6() {
+      const amp = computeRSAAmplitude([70, 80, 65, 75]);
+      assert(amp === 15.0, `Test 6: computeRSAAmplitude([70,80,65,75]) = ${amp}, expected 15.0`);
+    }
+
+    // ---- Test 7: computeRSAAmplitude([]) returns 0 ----
+    function test7() {
+      const amp = computeRSAAmplitude([]);
+      assert(amp === 0, `Test 7: computeRSAAmplitude([]) = ${amp}, expected 0`);
+    }
+
+    // ---- Test 8: getHRArray returns BPM values from RR buffer ----
+    function test8() {
+      resetAppState();
+      // Write 10 RR values of 750ms = 80 BPM
+      for (let i = 0; i < 10; i++) {
+        AppState.rrBuffer[i] = 750;
+      }
+      AppState.rrHead = 10;
+      AppState.rrCount = 10;
+
+      const hrs = getHRArray(60);
+      assert(Array.isArray(hrs), `Test 8a: getHRArray returns an Array`);
+      assert(hrs.length === 10, `Test 8b: getHRArray returns 10 values (got ${hrs.length})`);
+      assert(hrs[0] === 80, `Test 8c: first HR value = ${hrs[0]}, expected 80 (60000/750)`);
+    }
+
+    // ---- Test 9: tick() sets calibrating=true when sessionElapsedSeconds < 120 ----
+    function test9() {
+      resetAppState();
+      initDSP();
+      tick(60);
+      assert(AppState.calibrating === true, `Test 9: tick(60) sets calibrating=true (got ${AppState.calibrating})`);
+    }
+
+    // ---- Test 10: tick() sets calibrating=false and populates spectralBuffer when >= 120s ----
+    function test10() {
+      resetAppState();
+      initDSP();
+
+      // Fill buffer with realistic RR data (~800ms intervals with some variation)
+      const count = 200;
+      for (let i = 0; i < count; i++) {
+        // Simulate HR oscillation: 800ms +/- 50ms sinusoidal (like RSA)
+        const rr = 800 + 50 * Math.sin(2 * Math.PI * 0.1 * i);
+        AppState.rrBuffer[i % 512] = rr;
+      }
+      AppState.rrHead = count % 512;
+      AppState.rrCount = count;
+
+      tick(130);
+      assert(AppState.calibrating === false, `Test 10a: tick(130) sets calibrating=false (got ${AppState.calibrating})`);
+      assert(AppState.spectralBuffer !== null, `Test 10b: spectralBuffer is populated after tick(130)`);
+      assert(AppState.spectralBuffer instanceof Float32Array, `Test 10c: spectralBuffer is Float32Array`);
+      assert(AppState.coherenceScore >= 0, `Test 10d: coherenceScore = ${AppState.coherenceScore} >= 0`);
+    }
+
+    // ---- Run all tests ----
+    try {
+      test1();
+      test2();
+      test3();
+      test4();
+      test5();
+      test6();
+      test7();
+      test8();
+      test9();
+      test10();
+    } catch (err) {
+      results.innerHTML += `<span class="fail">ERROR</span> ${err.message}\n${err.stack}\n`;
+      failed++;
+    }
+
+    results.innerHTML += `\n--- Results: ${passed} passed, ${failed} failed ---\n`;
+  </script>
+</body>
+</html>
