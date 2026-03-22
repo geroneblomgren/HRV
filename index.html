@@ -179,11 +179,63 @@
       </div>
     </section>
     <section id="tab-dashboard" class="tab-panel">
-      <div class="placeholder-content">
-        <h2>Dashboard</h2>
-        <p>Session history and recovery trends.</p>
-        <p class="hint">Sessions will appear here after your first practice.</p>
+
+      <!-- Shown when Oura is not yet connected -->
+      <div id="dashboard-connect" class="dashboard-connect">
+        <h2>Connect Oura Ring</h2>
+        <p class="hint">Enter your Oura Personal Access Token to view overnight HRV trends.</p>
+        <input type="text" id="oura-key-input" class="oura-key-input" placeholder="Paste your Oura PAT here…" autocomplete="off" spellcheck="false">
+        <button id="oura-connect-btn" class="connect-button">Connect Oura</button>
+        <p id="oura-connect-error" class="connect-error hidden"></p>
+        <p class="hint" style="margin-top:1rem;font-size:0.75rem;">Get your token at <a href="https://cloud.ouraring.com/personal-access-tokens" target="_blank" style="color:var(--accent-teal);">cloud.ouraring.com/personal-access-tokens</a></p>
       </div>
+
+      <!-- Shown while data is loading -->
+      <div id="dashboard-loading" class="dashboard-loading hidden">
+        <p class="hint">Loading Oura data…</p>
+      </div>
+
+      <!-- Shown after successful auth + data load -->
+      <div id="dashboard-content" class="hidden">
+
+        <!-- 4 metric cards -->
+        <div id="dashboard-metrics" class="summary-grid dashboard-metrics-grid">
+          <div class="summary-metric">
+            <span class="metric-value" id="dash-hrv-now">--<span class="trend-arrow" id="dash-hrv-arrow"></span></span>
+            <span class="metric-label">Tonight HRV (ms)</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-value" id="dash-streak">--</span>
+            <span class="metric-label">Practice Streak</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-value" id="dash-coh-7d">--</span>
+            <span class="metric-label">Avg Coherence 7d</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-value" id="dash-hrv-trend">--</span>
+            <span class="metric-label">HRV Trend</span>
+          </div>
+        </div>
+
+        <!-- Time range buttons -->
+        <div class="range-buttons">
+          <button class="range-btn" data-range="7">7d</button>
+          <button class="range-btn" data-range="14">14d</button>
+          <button class="range-btn active" data-range="30">30d</button>
+          <button class="range-btn" data-range="90">90d</button>
+        </div>
+
+        <!-- Chart canvas -->
+        <div class="chart-container" id="dashboard-chart-wrap">
+          <canvas id="dashboard-chart"></canvas>
+        </div>
+
+      </div>
+
+      <!-- Hover tooltip (absolutely positioned, hidden by default) -->
+      <div id="dashboard-tooltip"></div>
+
     </section>
   </main>
 
