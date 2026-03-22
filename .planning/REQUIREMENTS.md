@@ -9,11 +9,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### BLE Connection
 
-- [ ] **BLE-01**: App connects to Garmin HRM 600 via Web Bluetooth using Heart Rate Service (0x180D)
-- [ ] **BLE-02**: App streams RR intervals in real-time from characteristic 0x2A37, handling multiple RR values per notification
-- [ ] **BLE-03**: Connection status indicator shows connecting/connected/disconnected states
-- [ ] **BLE-04**: App auto-reconnects when BLE connection drops, with Promise.race() timeout to prevent hung promises
-- [ ] **BLE-05**: App rejects artifact RR intervals (< 300ms, > 2000ms, > 20% deviation from 5-beat running median)
+- [x] **BLE-01**: App connects to Garmin HRM 600 via Web Bluetooth using Heart Rate Service (0x180D)
+- [x] **BLE-02**: App streams RR intervals in real-time from characteristic 0x2A37, handling multiple RR values per notification
+- [x] **BLE-03**: Connection status indicator shows connecting/connected/disconnected states
+- [x] **BLE-04**: App auto-reconnects when BLE connection drops, with Promise.race() timeout to prevent hung promises
+- [x] **BLE-05**: App rejects artifact RR intervals (< 300ms, > 2000ms, > 20% deviation from 5-beat running median)
 
 ### Signal Processing
 
@@ -102,11 +102,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BLE-01 | Phase 1 | Pending |
-| BLE-02 | Phase 1 | Pending |
-| BLE-03 | Phase 1 | Pending |
-| BLE-04 | Phase 1 | Pending |
-| BLE-05 | Phase 1 | Pending |
+| BLE-01 | Phase 1 | Complete |
+| BLE-02 | Phase 1 | Complete |
+| BLE-03 | Phase 1 | Complete |
+| BLE-04 | Phase 1 | Complete |
+| BLE-05 | Phase 1 | Complete |
 | STOR-01 | Phase 1 | Complete |
 | STOR-02 | Phase 1 | Complete |
 | STOR-03 | Phase 1 | Complete |
