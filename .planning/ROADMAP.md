@@ -47,7 +47,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — DSPEngine: FFT + cubic spline resampling, coherence scoring (HeartMath formula), RSA amplitude, calibration gate
+- [x] 02-01-PLAN.md — DSPEngine: FFT + cubic spline resampling, coherence scoring (HeartMath formula), RSA amplitude, calibration gate
 - [ ] 02-02-PLAN.md — Canvas renderers (waveform, spectrum, coherence gauge), HTML/CSS canvas layout, main.js wiring
 
 ### Phase 3: Breathing Pacer
@@ -102,7 +102,7 @@ Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/2 | Complete    | 2026-03-22 |
-| 2. Signal Processing + Visualization | 0/2 | Planning complete | - |
+| 2. Signal Processing + Visualization | 1/2 | In progress | - |
 | 3. Breathing Pacer | 0/2 | Not started | - |
 | 4. Session Modes | 0/2 | Not started | - |
 | 5. Oura + Recovery Dashboard | 0/2 | Not started | - |

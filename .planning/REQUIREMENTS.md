@@ -17,11 +17,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Signal Processing
 
-- [ ] **DSP-01**: App computes instantaneous heart rate from clean RR intervals for waveform display
-- [ ] **DSP-02**: App performs spectral analysis on RR-interval data to identify LF power peak (0.04-0.15 Hz band)
-- [ ] **DSP-03**: App computes coherence score as LF peak power / total spectral power (0.04-0.26 Hz), rolling 64s window, updated every 1-2s
-- [ ] **DSP-04**: App displays "calibrating" state for first 90-120s while accumulating sufficient data for stable spectral analysis
-- [ ] **DSP-05**: App computes RSA amplitude (peak-to-trough HR variation) per frequency block during Discovery mode
+- [x] **DSP-01**: App computes instantaneous heart rate from clean RR intervals for waveform display
+- [x] **DSP-02**: App performs spectral analysis on RR-interval data to identify LF power peak (0.04-0.15 Hz band)
+- [x] **DSP-03**: App computes coherence score as LF peak power / total spectral power (0.04-0.26 Hz), rolling 64s window, updated every 1-2s
+- [x] **DSP-04**: App displays "calibrating" state for first 90-120s while accumulating sufficient data for stable spectral analysis
+- [x] **DSP-05**: App computes RSA amplitude (peak-to-trough HR variation) per frequency block during Discovery mode
 
 ### Breathing Pacer
 
@@ -110,11 +110,11 @@ Requirements for initial release. Each maps to roadmap phases.
 | STOR-01 | Phase 1 | Complete |
 | STOR-02 | Phase 1 | Complete |
 | STOR-03 | Phase 1 | Complete |
-| DSP-01 | Phase 2 | Pending |
-| DSP-02 | Phase 2 | Pending |
-| DSP-03 | Phase 2 | Pending |
-| DSP-04 | Phase 2 | Pending |
-| DSP-05 | Phase 2 | Pending |
+| DSP-01 | Phase 2 | Complete |
+| DSP-02 | Phase 2 | Complete |
+| DSP-03 | Phase 2 | Complete |
+| DSP-04 | Phase 2 | Complete |
+| DSP-05 | Phase 2 | Complete |
 | VIZ-01 | Phase 2 | Pending |
 | VIZ-02 | Phase 2 | Pending |
 | VIZ-03 | Phase 2 | Pending |
