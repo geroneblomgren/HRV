@@ -35,14 +35,39 @@
   <!-- Tab content areas -->
   <main id="tab-content" class="tab-content">
     <section id="tab-discovery" class="tab-panel active">
-      <div class="placeholder-content">
+      <div class="session-viz">
+        <div class="viz-row viz-row-main">
+          <div class="viz-card viz-waveform">
+            <canvas id="waveform-canvas"></canvas>
+          </div>
+          <div class="viz-card viz-gauge">
+            <canvas id="gauge-canvas"></canvas>
+          </div>
+        </div>
+        <div class="viz-row viz-row-spectrum">
+          <div class="viz-card viz-spectrum">
+            <canvas id="spectrum-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="placeholder-content" id="discovery-placeholder">
         <h2>Discovery Mode</h2>
         <p>Identify your personal resonance frequency by breathing at different rates.</p>
         <p class="hint">Connect your HRM to begin.</p>
       </div>
     </section>
     <section id="tab-practice" class="tab-panel">
-      <div class="placeholder-content">
+      <div class="session-viz session-viz-practice" style="display:none;">
+        <div class="viz-row viz-row-main">
+          <div class="viz-card viz-waveform">
+            <canvas id="practice-waveform-canvas"></canvas>
+          </div>
+          <div class="viz-card viz-gauge">
+            <canvas id="practice-gauge-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="placeholder-content" id="practice-placeholder">
         <h2>Practice Mode</h2>
         <p>Guided breathing sessions at your resonance frequency.</p>
         <p class="hint">Complete Discovery first to set your frequency.</p>
@@ -77,6 +102,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/fft.js@4.0.4/lib/fft.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

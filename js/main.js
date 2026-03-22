@@ -2,6 +2,8 @@
 import { AppState, subscribe } from './state.js';
 import { initStorage, getSetting } from './storage.js';
 import { initiateConnection, tryQuickConnect } from './ble.js';
+import { initDSP, tick } from './dsp.js';
+import { startRendering, stopRendering } from './renderer.js';
 
 // ---- DOM references ----
 const hrValue = document.getElementById('hr-value');
@@ -17,6 +19,47 @@ const banner = document.getElementById('connection-banner');
 const bannerText = document.getElementById('banner-text');
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabPanels = document.querySelectorAll('.tab-panel');
+
+// ---- Session management (DSP + renderer) ----
+let _dspInterval = null;
+let _sessionStart = null;
+
+function startSession() {
+  _sessionStart = Date.now();
+  initDSP();
+
+  // Get canvas elements
+  const waveformCanvas = document.getElementById('waveform-canvas');
+  const spectrumCanvas = document.getElementById('spectrum-canvas');
+  const gaugeCanvas = document.getElementById('gauge-canvas');
+
+  // Start rendering
+  startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, _sessionStart);
+
+  // Start DSP tick at 1-second interval (setInterval, NOT rAF — DSP runs even when tab hidden)
+  _dspInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - _sessionStart) / 1000);
+    tick(elapsed);
+  }, 1000);
+
+  // Show session viz, hide placeholder
+  const viz = document.querySelector('#tab-discovery .session-viz');
+  if (viz) viz.classList.add('active');
+  const placeholder = document.getElementById('discovery-placeholder');
+  if (placeholder) placeholder.style.display = 'none';
+}
+
+function stopSession() {
+  if (_dspInterval) {
+    clearInterval(_dspInterval);
+    _dspInterval = null;
+  }
+  stopRendering();
+  const viz = document.querySelector('#tab-discovery .session-viz');
+  if (viz) viz.classList.remove('active');
+  const placeholder = document.getElementById('discovery-placeholder');
+  if (placeholder) placeholder.style.display = '';
+}
 
 // ---- Uptime timer ----
 let uptimeInterval = null;
@@ -114,8 +157,10 @@ subscribe('connected', value => {
   if (value) {
     AppState.connectionUptime = 0;
     startUptimeTimer();
+    startSession();   // Auto-start viz on connect (temporary Phase 2 behavior)
   } else {
     stopUptimeTimer();
+    stopSession();    // Stop viz on disconnect
   }
 });
 

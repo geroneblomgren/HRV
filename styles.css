@@ -10,6 +10,7 @@
   --accent-amber: #ffab00;
   --accent-red: #ff1744;
   --accent-blue: #2979ff;
+  --accent-teal: #14b8a6;
   --border: #2a2a2a;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --font-ui: system-ui, -apple-system, sans-serif;
@@ -253,4 +254,59 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-top: 4px;
+}
+
+/* ---- Session visualization canvases ---- */
+
+.session-viz {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  height: calc(100vh - 160px);
+}
+
+.session-viz.active {
+  display: flex;
+}
+
+.viz-row {
+  display: flex;
+  gap: 8px;
+}
+
+.viz-row-main {
+  flex: 2;
+}
+
+.viz-row-spectrum {
+  flex: 1;
+}
+
+.viz-card {
+  background: var(--bg-panel);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.viz-waveform {
+  flex: 2;
+}
+
+.viz-gauge {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viz-spectrum {
+  flex: 1;
+}
+
+.viz-card canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
