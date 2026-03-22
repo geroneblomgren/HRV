@@ -164,22 +164,30 @@ function _scheduleSwellCue(time, phase, halfPeriod) {
 // ---- Style 3: Bowl (strike + decay) ----
 
 function _scheduleBowlCue(time, phase, halfPeriod) {
-  const osc = _ctx.createOscillator();
+  // Use two slightly detuned oscillators for a richer, more bowl-like tone
+  const osc1 = _ctx.createOscillator();
+  const osc2 = _ctx.createOscillator();
   const gain = _ctx.createGain();
 
-  osc.type = 'sine';
-  // Different pitches for inhale/exhale bowl strikes
-  const freq = phase === 'inhale' ? 220 : 174;
-  osc.frequency.setValueAtTime(freq, time);
+  osc1.type = 'sine';
+  osc2.type = 'sine';
 
-  // Fast strike attack (30ms) then long exponential decay (timeConstant=0.8s)
+  // Different pitches for inhale/exhale — both clearly audible
+  const freq = phase === 'inhale' ? 280 : 220;
+  osc1.frequency.setValueAtTime(freq, time);
+  osc2.frequency.setValueAtTime(freq * 1.005, time); // slight detune for warmth
+
+  // Fast strike attack (30ms) then exponential decay (timeConstant=1.0s)
   gain.gain.setValueAtTime(0, time);
-  gain.gain.linearRampToValueAtTime(0.8, time + 0.03);
-  gain.gain.setTargetAtTime(0.001, time + 0.03, 0.8);
+  gain.gain.linearRampToValueAtTime(0.7, time + 0.03);
+  gain.gain.setTargetAtTime(0.001, time + 0.03, 1.0);
 
-  osc.connect(gain);
+  osc1.connect(gain);
+  osc2.connect(gain);
   gain.connect(_masterGain);
 
-  osc.start(time);
-  osc.stop(time + 5); // let decay ring out; overlapping bowl cues are acceptable
+  osc1.start(time);
+  osc2.start(time);
+  osc1.stop(time + 5);
+  osc2.stop(time + 5);
 }
