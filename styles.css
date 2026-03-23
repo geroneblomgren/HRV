@@ -613,6 +613,56 @@ body {
   cursor: not-allowed;
 }
 
+/* ---- Pace Picker ---- */
+
+.pace-picker {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #333;
+}
+
+.pace-picker-label {
+  color: #999;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.pace-picker-options {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.pace-option {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid #444;
+  background: transparent;
+  color: #ccc;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pace-option:hover {
+  border-color: var(--accent-action);
+  color: #fff;
+}
+
+.pace-option.selected {
+  border-color: var(--accent-action);
+  background: var(--accent-action);
+  color: #fff;
+}
+
+.pace-picker-unit {
+  color: #666;
+  font-size: 0.75rem;
+  margin-top: 6px;
+}
+
 /* ---- Practice Mode UI ---- */
 
 .practice-freq-display {

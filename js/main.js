@@ -3,7 +3,7 @@ import { AppState, subscribe } from './state.js';
 import { initStorage, getSetting } from './storage.js';
 import { initiateConnection, tryQuickConnect } from './ble.js';
 import { setStyle, setVolume } from './audio.js';
-import { startDiscovery, stopDiscovery, onDisconnect as discoveryDisconnect, _wireStartBtn, loadLastDiscoveryResults } from './discovery.js';
+import { startDiscovery, stopDiscovery, onDisconnect as discoveryDisconnect, _wireStartBtn, loadLastDiscoveryResults, initPacePicker } from './discovery.js';
 import { initPracticeUI, onDisconnect as practiceDisconnect } from './practice.js';
 import { initDashboard } from './dashboard.js';
 import { handleCallback } from './oura.js';
@@ -268,6 +268,9 @@ async function init() {
     if (AppState.savedResonanceFreq) {
       await loadLastDiscoveryResults();
     }
+
+    // Wire pace picker (manual frequency selection)
+    initPacePicker();
 
     console.log('ResonanceHRV initialized');
   } catch (err) {

@@ -303,7 +303,7 @@ export function getHRArray(windowSeconds = 60) {
 // ---- RSA Amplitude ----
 
 /**
- * Compute RSA amplitude as peak-to-trough HR variation.
+ * Legacy peak-to-trough RSA (kept for backward compat, not used by discovery).
  * @param {number[]} hrSamples - array of HR values in BPM
  * @returns {number} RSA amplitude (rounded to 1 decimal)
  */
@@ -312,6 +312,102 @@ export function computeRSAAmplitude(hrSamples) {
   const max = Math.max(...hrSamples);
   const min = Math.min(...hrSamples);
   return Math.round((max - min) * 10) / 10;
+}
+
+/**
+ * Compute spectral RSA amplitude at a specific breathing frequency.
+ * Measures how much HR oscillates at the pacing rate, ignoring noise at
+ * other frequencies. Much more reliable than peak-to-trough for comparing
+ * between breathing rates.
+ *
+ * Steps:
+ *  1. Extract last windowSeconds of RR data from circular buffer
+ *  2. Build evenly-sampled tachogram via cubic spline
+ *  3. Remove linear trend (prevents slow drift from inflating LF power)
+ *  4. Apply Hann window
+ *  5. FFT → PSD
+ *  6. Integrate power in ±0.02 Hz band around pacingFreqHz
+ *  7. Convert to amplitude (BPM peak-to-peak equivalent)
+ *
+ * @param {number} windowSeconds - how many seconds of recent data to analyze
+ * @param {number} pacingFreqHz - breathing frequency in Hz (e.g. 5.0/60)
+ * @returns {number} spectral RSA amplitude in BPM (rounded to 1 decimal), or 0 on failure
+ */
+export function computeSpectralRSA(windowSeconds, pacingFreqHz) {
+  const count = Math.min(AppState.rrCount, 512);
+  if (count < 30) return 0;
+
+  const rrBuf = AppState.rrBuffer;
+  const head = AppState.rrHead;
+
+  // Walk backward from buffer head to collect RR intervals within windowSeconds
+  const rrValues = [];
+  let accMs = 0;
+  for (let i = 0; i < count; i++) {
+    const idx = (head - 1 - i + 512) % 512;
+    const rr = rrBuf[idx];
+    accMs += rr;
+    if (accMs > windowSeconds * 1000) break;
+    rrValues.unshift(rr);
+  }
+
+  if (rrValues.length < 30) return 0;
+
+  // Build time axis (seconds) and instantaneous HR (BPM)
+  const n = rrValues.length;
+  const times = new Float64Array(n);
+  const hr = new Float64Array(n);
+  let t = 0;
+  for (let i = 0; i < n; i++) {
+    times[i] = t;
+    hr[i] = 60000 / rrValues[i];
+    t += rrValues[i] / 1000;
+  }
+
+  // Resample to even spacing via cubic spline
+  const duration = times[n - 1];
+  const nSamples = Math.min(FFT_SIZE, Math.floor(duration * SAMPLE_RATE_HZ));
+  if (nSamples < 64) return 0;
+
+  const tachogram = new Float32Array(FFT_SIZE); // zero-padded
+  for (let i = 0; i < nSamples; i++) {
+    tachogram[i] = cubicSplineInterpolate(times, hr, i / SAMPLE_RATE_HZ);
+  }
+
+  // Remove linear trend (least-squares fit y = a + b*x over real samples)
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  for (let i = 0; i < nSamples; i++) {
+    sumX += i;
+    sumY += tachogram[i];
+    sumXY += i * tachogram[i];
+    sumXX += i * i;
+  }
+  const b = (nSamples * sumXY - sumX * sumY) / (nSamples * sumXX - sumX * sumX);
+  const a = (sumY - b * sumX) / nSamples;
+  for (let i = 0; i < nSamples; i++) {
+    tachogram[i] -= (a + b * i);
+  }
+
+  // Apply Hann window
+  for (let i = 0; i < FFT_SIZE; i++) {
+    tachogram[i] *= 0.5 * (1 - Math.cos(2 * Math.PI * i / FFT_SIZE));
+  }
+
+  // FFT → PSD
+  const psd = computePSD(tachogram);
+
+  // Integrate power in ±0.02 Hz band around pacing frequency
+  const RSA_HALF_BAND = 0.02;
+  const power = integrateBand(psd, pacingFreqHz - RSA_HALF_BAND, pacingFreqHz + RSA_HALF_BAND);
+
+  // Convert to peak-to-peak BPM amplitude:
+  //   For a sinusoid of amplitude A, Hann-windowed PSD power ≈ (A * N * 0.5)^2 / 2
+  //   where 0.5 is Hann coherent gain. So A ≈ 2*sqrt(2*power) / (N * 0.5)
+  //   Peak-to-peak = 2A
+  const rmsAmplitude = Math.sqrt(2 * power) / (nSamples * 0.5);
+  const peakToPeak = 2 * rmsAmplitude;
+
+  return Math.round(peakToPeak * 10) / 10;
 }
 
 // ---- Initialization ----

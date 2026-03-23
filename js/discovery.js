@@ -4,7 +4,7 @@
 
 import { AppState, subscribe, unsubscribe } from './state.js';
 import { initAudio, startPacer, stopPacer, playChime } from './audio.js';
-import { initDSP, tick, getHRArray, computeRSAAmplitude } from './dsp.js';
+import { initDSP, tick, computeSpectralRSA } from './dsp.js';
 import { startRendering, stopRendering } from './renderer.js';
 import { saveSession, setSetting, querySessions } from './storage.js';
 
@@ -19,6 +19,8 @@ export const DISCOVERY_BLOCKS = [
 ];
 
 export const BLOCK_DURATION_MS = 180000;   // 3 minutes per block
+const SETTLE_SECONDS = 60;                 // ignore first 60s (ANS entrainment)
+const ANALYSIS_SECONDS = 120;              // analyze last 120s of each block
 const INTER_BLOCK_PAUSE_MS = 4000;         // 4 seconds between blocks
 const COUNTDOWN_SECONDS = 3;               // 3-2-1 before first block
 
@@ -73,6 +75,91 @@ export async function loadLastDiscoveryResults() {
   } catch (err) {
     console.error('Failed to load discovery results:', err);
   }
+}
+
+/**
+ * Manually set a known resonance frequency without running the full protocol.
+ * @param {number} bpm - Breathing rate in breaths per minute (e.g., 5.0)
+ */
+export async function setKnownPace(bpm) {
+  const hz = bpm / 60;
+  try {
+    await setSetting('resonanceFreq', hz);
+    AppState.savedResonanceFreq = hz;
+  } catch (err) {
+    console.error('Failed to save known pace:', err);
+  }
+
+  // Update placeholder to reflect the saved pace
+  _showKnownPacePlaceholder(bpm);
+}
+
+function _showKnownPacePlaceholder(selectedBpm) {
+  const placeholder = _getEl('discovery-placeholder');
+  if (!placeholder) return;
+
+  placeholder.innerHTML = `
+    <h2>Pace Set</h2>
+    <p>Resonance frequency set: <strong style="color:var(--accent-action)">${selectedBpm} breaths/min</strong></p>
+    <p class="hint">Navigate to Practice tab to begin a session.</p>
+    <button id="discovery-start-btn" class="connect-button discovery-start-btn" style="margin-top:12px;" disabled>Run Full Discovery Protocol</button>
+    <div class="pace-picker" id="pace-picker">
+      <p class="pace-picker-label">Or change your pace:</p>
+      <div class="pace-picker-options" id="pace-picker-options">
+        <button class="pace-option${selectedBpm === 6.5 ? ' selected' : ''}" data-bpm="6.5">6.5</button>
+        <button class="pace-option${selectedBpm === 6.0 ? ' selected' : ''}" data-bpm="6.0">6.0</button>
+        <button class="pace-option${selectedBpm === 5.5 ? ' selected' : ''}" data-bpm="5.5">5.5</button>
+        <button class="pace-option${selectedBpm === 5.0 ? ' selected' : ''}" data-bpm="5.0">5.0</button>
+        <button class="pace-option${selectedBpm === 4.5 ? ' selected' : ''}" data-bpm="4.5">4.5</button>
+      </div>
+      <p class="pace-picker-unit">breaths/min</p>
+    </div>
+  `;
+  placeholder.style.display = '';
+
+  // Re-wire start button
+  const newStartBtn = _getEl('discovery-start-btn');
+  if (newStartBtn) {
+    newStartBtn.addEventListener('click', () => startDiscovery());
+    _wireStartBtn(newStartBtn);
+  }
+
+  // Re-wire pace picker
+  initPacePicker();
+}
+
+/**
+ * Wire up click handlers on pace picker buttons.
+ * Call after DOM is ready or after placeholder innerHTML is replaced.
+ */
+export function initPacePicker() {
+  const container = _getEl('pace-picker-options');
+  if (!container) return;
+
+  // Highlight currently saved pace
+  const savedHz = AppState.savedResonanceFreq;
+  if (savedHz) {
+    const savedBpm = Math.round(savedHz * 60 * 10) / 10; // round to 1 decimal
+    container.querySelectorAll('.pace-option').forEach(btn => {
+      if (parseFloat(btn.dataset.bpm) === savedBpm) {
+        btn.classList.add('selected');
+      }
+    });
+  }
+
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pace-option');
+    if (!btn) return;
+
+    const bpm = parseFloat(btn.dataset.bpm);
+
+    // Update visual selection
+    container.querySelectorAll('.pace-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+
+    // Save immediately
+    setKnownPace(bpm);
+  });
 }
 
 /**
@@ -249,17 +336,19 @@ export function startBlock(index) {
 export function endBlock(index) {
   if (_phase !== 'block') return;
 
-  const elapsed = Math.min(120, (Date.now() - _blockStartTime) / 1000);
+  // Use spectral RSA: analyze last ANALYSIS_SECONDS of block data,
+  // measuring power specifically at the pacing frequency.
+  // The first SETTLE_SECONDS are implicitly excluded because the block
+  // ran for BLOCK_DURATION_MS (180s) but we only read the last 120s.
+  const block = DISCOVERY_BLOCKS[index];
   let rsaAmplitude = 0;
   try {
-    const hrSamples = getHRArray(elapsed);
-    rsaAmplitude = computeRSAAmplitude(hrSamples);
+    rsaAmplitude = computeSpectralRSA(ANALYSIS_SECONDS, block.hz);
   } catch (err) {
     console.error('RSA capture error:', err);
   }
 
   const lfPower = AppState.lfPower;
-  const block = DISCOVERY_BLOCKS[index];
 
   _blockResults.push({
     bpm: block.bpm,
@@ -501,12 +590,26 @@ function _showCompletePlaceholder(selectedBpm, results) {
   const placeholder = _getEl('discovery-placeholder');
   if (!placeholder) return;
 
+  const savedHz = AppState.savedResonanceFreq;
+  const savedBpm = savedHz ? Math.round(savedHz * 60 * 10) / 10 : null;
+
   placeholder.innerHTML = `
     <h2>Discovery Complete</h2>
-    <p>Resonance frequency set: <strong style="color:#14b8a6">${selectedBpm} breaths/min</strong></p>
+    <p>Resonance frequency set: <strong style="color:var(--accent-action)">${selectedBpm} breaths/min</strong></p>
     <p class="hint">Navigate to Practice tab to begin a session.</p>
     <button id="discovery-review-btn" class="connect-button" style="margin-top:12px;">Review Results</button>
     <button id="discovery-start-btn" class="connect-button discovery-start-btn" style="margin-top:8px;" disabled>Redo Discovery Protocol</button>
+    <div class="pace-picker" id="pace-picker">
+      <p class="pace-picker-label">Or set a different pace:</p>
+      <div class="pace-picker-options" id="pace-picker-options">
+        <button class="pace-option${savedBpm === 6.5 ? ' selected' : ''}" data-bpm="6.5">6.5</button>
+        <button class="pace-option${savedBpm === 6.0 ? ' selected' : ''}" data-bpm="6.0">6.0</button>
+        <button class="pace-option${savedBpm === 5.5 ? ' selected' : ''}" data-bpm="5.5">5.5</button>
+        <button class="pace-option${savedBpm === 5.0 ? ' selected' : ''}" data-bpm="5.0">5.0</button>
+        <button class="pace-option${savedBpm === 4.5 ? ' selected' : ''}" data-bpm="4.5">4.5</button>
+      </div>
+      <p class="pace-picker-unit">breaths/min</p>
+    </div>
   `;
   placeholder.style.display = '';
 
@@ -525,6 +628,9 @@ function _showCompletePlaceholder(selectedBpm, results) {
     newStartBtn.addEventListener('click', () => startDiscovery());
     _wireStartBtn(newStartBtn);
   }
+
+  // Wire pace picker
+  initPacePicker();
 }
 
 // ---- Internal: Progress dots ----
