@@ -35,6 +35,8 @@ let _dspInterval = null;
 let _sessionStart = 0;
 let _pausedForReconnect = false;
 let _selectedIndex = 0;
+let _activeBlocks = [];       // working copy of DISCOVERY_BLOCKS, may grow by 1 bonus block
+let _bonusChecked = false;    // true after we've evaluated whether a bonus block is needed
 
 // Named references for subscribe/unsubscribe
 let _connectedListener = null;
@@ -173,6 +175,8 @@ export function startDiscovery() {
   _blockResults = [];
   _blockIndex = 0;
   _pausedForReconnect = false;
+  _bonusChecked = false;
+  _activeBlocks = [...DISCOVERY_BLOCKS];
   _phase = 'countdown';
   _sessionStart = Date.now();
 
@@ -252,6 +256,14 @@ export function stopDiscovery() {
   _hide(_getEl('discovery-comparison'));
   _show(_getEl('discovery-placeholder'));
 
+  // Remove any bonus progress dot (restore to 5 dots)
+  const progressContainer = _getEl('discovery-progress');
+  if (progressContainer) {
+    while (progressContainer.children.length > DISCOVERY_BLOCKS.length) {
+      progressContainer.removeChild(progressContainer.lastChild);
+    }
+  }
+
   _pausedForReconnect = false;
 }
 
@@ -300,7 +312,7 @@ export function startBlock(index) {
   _phase = 'block';
   _pausedForReconnect = false;
 
-  const block = DISCOVERY_BLOCKS[index];
+  const block = _activeBlocks[index];
   _blockStartTime = Date.now();
 
   AppState.pacingFreq = block.hz;
@@ -340,7 +352,7 @@ export function endBlock(index) {
   // measuring power specifically at the pacing frequency.
   // The first SETTLE_SECONDS are implicitly excluded because the block
   // ran for BLOCK_DURATION_MS (180s) but we only read the last 120s.
-  const block = DISCOVERY_BLOCKS[index];
+  const block = _activeBlocks[index];
   let rsaAmplitude = 0;
   try {
     rsaAmplitude = computeSpectralRSA(ANALYSIS_SECONDS, block.hz);
@@ -361,13 +373,73 @@ export function endBlock(index) {
   stopPacer();
   playChime();
 
-  if (index < DISCOVERY_BLOCKS.length - 1) {
+  if (index < _activeBlocks.length - 1) {
     _showInterBlockPause(index);
+  } else if (!_bonusChecked) {
+    // Standard blocks done — check if best is at an extreme
+    _bonusChecked = true;
+    const bonusBlock = _checkForBonusBlock();
+    if (bonusBlock) {
+      _activeBlocks.push(bonusBlock);
+      _addProgressDot();
+      _showInterBlockPause(index);
+    } else {
+      if (_dspInterval) { clearInterval(_dspInterval); _dspInterval = null; }
+      _showComparison(_blockResults);
+    }
   } else {
-    // Last block — stop DSP, show comparison
+    // Bonus block finished — show comparison
     if (_dspInterval) { clearInterval(_dspInterval); _dspInterval = null; }
     _showComparison(_blockResults);
   }
+}
+
+// ---- Internal: Bonus block detection ----
+
+/**
+ * After the standard 5 blocks, check if the best RSA landed on an extreme
+ * (first or last block). If so, return a bonus block 0.5 BPM further out
+ * so we can confirm the edge isn't masking a better frequency beyond the range.
+ * @returns {{ bpm: number, hz: number } | null}
+ */
+function _checkForBonusBlock() {
+  if (_blockResults.length === 0) return null;
+
+  let bestIdx = 0;
+  let bestAmp = -Infinity;
+  for (let i = 0; i < _blockResults.length; i++) {
+    if (_blockResults[i].rsaAmplitude > bestAmp) {
+      bestAmp = _blockResults[i].rsaAmplitude;
+      bestIdx = i;
+    }
+  }
+
+  const firstIdx = 0;
+  const lastIdx = _blockResults.length - 1;
+
+  if (bestIdx === firstIdx) {
+    // Best was at the high-BPM extreme — test 0.5 BPM higher
+    const bonusBpm = _blockResults[firstIdx].bpm + 0.5;
+    return { bpm: bonusBpm, hz: bonusBpm / 60 };
+  }
+  if (bestIdx === lastIdx) {
+    // Best was at the low-BPM extreme — test 0.5 BPM lower
+    const bonusBpm = _blockResults[lastIdx].bpm - 0.5;
+    return { bpm: bonusBpm, hz: bonusBpm / 60 };
+  }
+
+  return null;
+}
+
+/**
+ * Append a 6th progress dot to the progress container for the bonus block.
+ */
+function _addProgressDot() {
+  const container = _getEl('discovery-progress');
+  if (!container) return;
+  const dot = document.createElement('span');
+  dot.className = 'discovery-dot upcoming';
+  container.appendChild(dot);
 }
 
 // ---- Internal: Inter-block pause ----
@@ -375,7 +447,7 @@ export function endBlock(index) {
 function _showInterBlockPause(completedIndex) {
   _phase = 'inter-block-pause';
 
-  const nextBlock = DISCOVERY_BLOCKS[completedIndex + 1];
+  const nextBlock = _activeBlocks[completedIndex + 1];
   const overlay = _getEl('discovery-pause-overlay');
   const blockNumEl = _getEl('pause-block-num');
   const nextRateEl = _getEl('pause-next-rate');
@@ -387,7 +459,7 @@ function _showInterBlockPause(completedIndex) {
     return;
   }
 
-  if (blockNumEl) blockNumEl.textContent = completedIndex + 1;
+  if (blockNumEl) blockNumEl.textContent = `${completedIndex + 1}/${_activeBlocks.length}`;
   if (nextRateEl) nextRateEl.textContent = `Next: ${nextBlock.bpm} breaths/min`;
   overlay.style.display = 'flex';
 
@@ -411,6 +483,10 @@ function _showInterBlockPause(completedIndex) {
 
 function _showComparison(results) {
   _phase = 'comparison';
+
+  // Sort by BPM descending so chart always reads high→low left-to-right
+  // (bonus blocks may have been appended out of order)
+  results.sort((a, b) => b.bpm - a.bpm);
 
   // Hide session viz, show comparison section
   const viz = document.querySelector('#tab-discovery .session-viz');
@@ -555,9 +631,9 @@ function _drawComparisonChart(canvas, results, selectedIndex) {
 // ---- Internal: Confirm selection ----
 
 async function _onConfirm(results) {
-  const selectedBlock = DISCOVERY_BLOCKS[_selectedIndex];
-  const selectedHz = selectedBlock.hz;
-  const selectedBpm = selectedBlock.bpm;
+  const selected = results[_selectedIndex];
+  const selectedHz = selected.hz;
+  const selectedBpm = selected.bpm;
 
   try {
     await setSetting('resonanceFreq', selectedHz);

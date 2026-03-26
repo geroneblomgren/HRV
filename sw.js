@@ -1,7 +1,7 @@
-// sw.js — Cache-first service worker for ResonanceHRV app shell
-// Caches static assets on install; serves from cache first, falls back to network.
+// sw.js — Network-first service worker for ResonanceHRV app shell
+// Serves fresh content when the server is reachable; falls back to cache when offline.
 
-const CACHE_NAME = 'resonancehrv-v15';
+const CACHE_NAME = 'resonancehrv-v16';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -14,6 +14,10 @@ const SHELL_ASSETS = [
   '/js/dsp.js',
   '/js/renderer.js',
   '/js/audio.js',
+  '/js/discovery.js',
+  '/js/practice.js',
+  '/js/dashboard.js',
+  '/js/oura.js',
 ];
 
 self.addEventListener('install', event => {
@@ -33,7 +37,20 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  // Only handle same-origin requests; let cross-origin (CDN) go straight to network
+  if (url.origin !== self.location.origin) return;
+
+  // Network-first: try server, fall back to cache, ensures fresh code on every load
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    fetch(event.request)
+      .then(response => {
+        // Cache a copy of the fresh response for offline fallback
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
