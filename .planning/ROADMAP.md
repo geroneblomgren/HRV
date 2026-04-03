@@ -134,11 +134,11 @@ Plans:
   3. A live scrolling EEG waveform renders on Canvas during sessions, showing real-time brain activity across at least 2 channels
   4. When PPG-derived data is used for HRV, the coherence display is visually marked to indicate lower confidence compared to chest strap data
   5. Session summary screen shows mean Neural Calm, peak Neural Calm, and time spent above a high-calm threshold when Muse-S was used
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: Muse-S standalone session mode — PPG-sourced IBI feeds coherence engine, source confidence indicator, session persistence with Muse-S provenance flag
-- [ ] 08-02: Neural Calm live display panel + scrolling EEG Canvas renderer; session summary Neural Calm metrics (mean, peak, time-in-high-calm)
+- [ ] 08-01-PLAN.md — PPG standalone sessions, Neural Calm live gauge, PPG confidence badge, session provenance + Neural Calm trace collection
+- [ ] 08-02-PLAN.md — Scrolling EEG waveform renderer, Neural Calm session summary metrics, human verification
 
 #### Phase 9: Neural Calm Dashboard
 **Goal**: Neural Calm session averages are persisted and displayed on the recovery dashboard alongside coherence and Oura HRV, so the user can see how their brain-state metric trends over days and weeks of practice.
