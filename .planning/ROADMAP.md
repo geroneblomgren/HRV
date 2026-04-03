@@ -101,11 +101,11 @@ Plans:
   2. When user connects a second device (simulated or real), both appear in an active devices panel with individual connection status indicators
   3. App correctly routes HR and RR data based on which device is connected; sessions using HRM 600 alone produce identical results to v1.0
   4. Session UI adapts based on connected device capabilities — coherence scoring is hidden when no RR-capable device is connected
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: DeviceAdapter interface + DeviceManager orchestrator; extract HRMAdapter from ble.js; multi-filter requestDevice() with auto-detect by GATT service
-- [ ] 06-02: Device picker UI, dual connection status panel, AppState fields for activeDevices + deviceCapabilities, capability-gated UI rules
+- [ ] 06-01-PLAN.md — DeviceAdapter interface, HRMAdapter extracted from ble.js, DeviceManager orchestrator, multi-device AppState fields
+- [ ] 06-02-PLAN.md — Dual device picker UI, per-device status chips, main.js rewired to DeviceManager, capability-gated UI, HR source label
 
 #### Phase 7: Muse-S Connection + Signal Processing
 **Goal**: The app connects to the Muse-S headband, receives live EEG and PPG data streams, and runs the full signal processing pipeline — PPG peak detection extracts RR intervals and the EEG alpha/beta FFT computes a Neural Calm score — all in real-time in the browser.
