@@ -404,3 +404,37 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ---- Dev utilities ----
+
+/**
+ * Toggle the hidden PPG debug panel visibility.
+ * Available at browser console: window.togglePPGDebug()
+ * Also triggered via triple-click on the Muse chip.
+ */
+window.togglePPGDebug = function() {
+  const panel = document.getElementById('ppg-debug-panel');
+  if (panel) {
+    panel.classList.toggle('hidden');
+    console.log('[PPG Debug]', panel.classList.contains('hidden') ? 'hidden' : 'visible');
+  }
+};
+
+// Triple-click on Muse chip toggles debug panel
+(function() {
+  let clickCount = 0, clickTimer = null;
+  const museChip = document.getElementById('muse-chip');
+  if (museChip) {
+    museChip.addEventListener('click', () => {
+      clickCount++;
+      if (clickCount >= 3) {
+        clickCount = 0;
+        clearTimeout(clickTimer);
+        window.togglePPGDebug();
+        return;
+      }
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => { clickCount = 0; }, 600);
+    });
+  }
+})();

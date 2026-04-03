@@ -22,6 +22,24 @@
     <button class="nav-tab" data-tab="dashboard">Dashboard</button>
   </nav>
 
+  <!-- PPG Debug Panel (hidden by default — toggle via window.togglePPGDebug() in console) -->
+  <div id="ppg-debug-panel" class="ppg-debug-panel hidden">
+    <h3 class="ppg-debug-title">PPG Debug</h3>
+    <div class="ppg-debug-channels">
+      <canvas id="ppg-debug-ch0" width="400" height="80"></canvas>
+      <label class="ppg-debug-label">Ch0 (IR)</label>
+      <canvas id="ppg-debug-ch1" width="400" height="80"></canvas>
+      <label class="ppg-debug-label">Ch1 (Green)</label>
+      <canvas id="ppg-debug-ch2" width="400" height="80"></canvas>
+      <label class="ppg-debug-label">Ch2 (Unknown)</label>
+    </div>
+    <div class="ppg-debug-stats">
+      <span id="ppg-debug-quality" class="ppg-debug-stat">Quality: --</span>
+      <span id="ppg-debug-hr" class="ppg-debug-stat">HR: -- bpm</span>
+      <span id="ppg-debug-channel" class="ppg-debug-stat">Ch: Green</span>
+    </div>
+  </div>
+
   <!-- Connection area -->
   <div id="connection-area" class="connection-area">
     <div class="device-chips">

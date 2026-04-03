@@ -1083,3 +1083,57 @@ body {
   color: var(--accent-amber);
   text-align: center;
 }
+
+/* ---- PPG Debug Panel ---- */
+
+.ppg-debug-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: rgba(13, 13, 13, 0.97);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.ppg-debug-title {
+  color: var(--accent-action);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.ppg-debug-channels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ppg-debug-channels canvas {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  height: 80px;
+  border: 1px solid #2a2a2a;
+  border-radius: 2px;
+}
+
+.ppg-debug-label {
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  margin-bottom: 2px;
+}
+
+.ppg-debug-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.ppg-debug-stat {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}

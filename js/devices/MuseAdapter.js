@@ -7,7 +7,7 @@
 
 import { AppState } from '../state.js';
 import { getSetting, setSetting } from '../storage.js';
-import { initEEGPipeline, stopEEGPipeline } from '../museSignalProcessing.js';
+import { initPPGPipeline, stopPPGPipeline, initEEGPipeline, stopEEGPipeline } from '../museSignalProcessing.js';
 
 // ---- Constants ----
 
@@ -100,7 +100,8 @@ export function disconnect() {
     _device.gatt.disconnect();
   }
 
-  // Stop EEG pipeline (Plan 03)
+  // Stop PPG and EEG pipelines on explicit disconnect
+  stopPPGPipeline();
   stopEEGPipeline();
 
   _resetAppState();
@@ -308,6 +309,9 @@ async function _connectGATT() {
     AppState.museStatus = 'streaming';
     AppState.museCapabilities = { hr: true, rr: true, eeg: true, ppg: true };
 
+    // Start PPG pipeline (Plan 02) — must be called after streaming begins
+    initPPGPipeline();
+
     // Start EEG pipeline (Plan 03)
     initEEGPipeline();
 
@@ -323,7 +327,8 @@ async function _connectGATT() {
  */
 function _onDisconnected() {
   _cleanupListeners();
-  // Stop EEG pipeline on unexpected disconnect (Plan 03)
+  // Stop PPG and EEG pipelines on unexpected disconnect
+  stopPPGPipeline();
   stopEEGPipeline();
   _resetAppState();
   // Note: do NOT resetBuffers on disconnect — preserve last data for debugging
