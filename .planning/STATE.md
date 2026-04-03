@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Muse-S Neurocardiac Integration
-status: ready_to_plan
+status: in_progress
 last_updated: "2026-04-03"
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 8
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 ## Current Position
 
 Phase: 6 of 9 (Device Architecture)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-04-03 — Completed 06-01 device adapter layer (DeviceAdapter, HRMAdapter, DeviceManager)
+Plan: 2 of 2 in current phase
+Status: In progress — awaiting human-verify checkpoint (Task 3: HRM 600 regression test)
+Last activity: 2026-04-03 — Completed 06-02 dual device UI wiring (main.js to DeviceManager, device chips, HR source label)
 
-Progress: [█░░░░░░░░░] 12% (v1.1) — 1 of 8 plans complete
+Progress: [██░░░░░░░░] 25% (v1.1) — 2 of 8 plans complete
 
 ## Performance Metrics
 
@@ -39,7 +39,7 @@ Progress: [█░░░░░░░░░] 12% (v1.1) — 1 of 8 plans complete
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 6. Device Architecture | 1/2 | 3 min | 3 min |
+| 6. Device Architecture | 2/2 | 5 min | 2.5 min |
 | 7. Muse-S Connection + Signal Processing | 0/3 | - | - |
 | 8. Session Integration | 0/2 | - | - |
 | 9. Neural Calm Dashboard | 0/1 | - | - |
@@ -63,6 +63,9 @@ Progress: [█░░░░░░░░░] 12% (v1.1) — 1 of 8 plans complete
 - 06-01: Storage key migration chained — chestStrapName primary, deviceName legacy fallback, writes both on picker selection
 - 06-01: DeviceManager derives backward-compat AppState.connected and connectionStatus — zero changes to main.js/DSP in plan 06-01
 - 06-01: Muse stub uses optionalServices:[0xfe8d] so Phase 7 can reuse pairing without re-prompting
+- 06-02: Per-device chip UI — two side-by-side chips replacing single connect button; each chip has status-dot + status-text + connect button
+- 06-02: Disconnect routing uses hrSourceLabel to determine which device pause should respond to (chest strap only pauses when Chest Strap is active HR source)
+- 06-02: --accent-action used for orange states (--accent-orange undefined in project CSS palette)
 
 ### Pending Todos
 
@@ -78,5 +81,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: Completed 06-01-PLAN.md — DeviceAdapter, HRMAdapter, DeviceManager created; state.js updated with multi-device fields
-Resume: `/gsd:execute-phase 6` to execute plan 06-02 (main.js wiring)
+Stopped at: 06-02-PLAN.md Task 3 checkpoint — dual device UI and main.js wiring complete; awaiting human-verify (HRM 600 regression test in browser)
+Resume: After verifying HRM 600 connection in Chrome, type "approved" to signal Task 3 complete, then `/gsd:execute-phase 7` for Muse-S connection + signal processing
