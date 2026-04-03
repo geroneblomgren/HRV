@@ -288,23 +288,29 @@ const SAMPLE_INTERVAL_MS = 1000 / PPG_FS;  // 15.625 ms per sample
 const REFRACTORY = 300;
 const REFRACTORY_SAMPLES = Math.ceil(REFRACTORY / SAMPLE_INTERVAL_MS); // 20 samples
 
-// Artifact rejection thresholds (matches HRMAdapter exactly)
+// Artifact rejection thresholds — relaxed vs HRMAdapter (0.20) because:
+// PPG at 64 Hz has ~15ms quantization jitter per IBI, and forehead PPG
+// has more natural timing variability than chest strap ECG.
 const RR_MIN_MS = 300;
 const RR_MAX_MS = 2000;
-const MAX_DEVIATION = 0.20;
+const MAX_DEVIATION = 0.35;
 const MEDIAN_WINDOW = 5;
 
-// Adaptive threshold decay per sample (at 64 Hz: ~32%/sec decay)
-const THRESHOLD_DECAY = 0.995;
-// On peak: blend new amplitude (60%) with current threshold (40%)
-const THRESHOLD_BLEND_PEAK = 0.60;
-const THRESHOLD_BLEND_OLD  = 0.40;
+// Adaptive threshold decay per sample (at 64 Hz: 0.997^64 ≈ 0.825 → ~18%/sec decay)
+// Balanced: fast enough to track amplitude changes, slow enough to bridge between beats
+const THRESHOLD_DECAY = 0.997;
+// On peak: blend new amplitude (50%) with current threshold (50%)
+const THRESHOLD_BLEND_PEAK = 0.50;
+const THRESHOLD_BLEND_OLD  = 0.50;
+// Minimum threshold floor — never drop below 15% of initial warmup threshold
+// Prevents noise-triggered false peaks when signal amplitude drops
+let _thresholdFloor = 0;
 
 // Initial threshold set to 75th percentile of absolute amplitude during warmup
 const WARMUP_PERCENTILE = 0.75;
 
 // Warmup: 2 seconds = 128 samples — filter runs but no peak detection
-const WARMUP_SAMPLES = 2 * PPG_FS; // 128
+const WARMUP_SAMPLES = 4 * PPG_FS; // 256 (4 seconds — ensures bandpass filter transient fully decays)
 
 // Signal quality: rolling 30-second window, updated every 5 seconds
 const QUALITY_WINDOW_MS = 30000;
@@ -409,6 +415,7 @@ export function initPPGPipeline() {
   _prevFiltered = 0;
   _prevDeriv = 0;
   _ppgThreshold = 0;
+  _thresholdFloor = 0;
   _refractoryRemaining = 0;
   _warmupBuffer = [];
 
@@ -483,27 +490,39 @@ function _handlePPGSamples(channelIndex, samples) {
  */
 function _processPPGSample(rawSample, timeMs) {
   // Stage 1: Bandpass filter (removes baseline wander + high-freq noise)
-  const filtered = _ppgFilter(rawSample);
+  // Negate the signal — Muse IR PPG shows troughs at heartbeats (inverted vs
+  // typical PPG where systolic peaks are positive). Negation makes peaks positive
+  // so the derivative-based peak detector works correctly.
+  const filtered = -_ppgFilter(rawSample);
   _ppgSampleCount++;
 
-  // Stage 2: Warmup — run filter but no peak detection for first 2 seconds (128 samples)
+  // Stage 2: Warmup — run filter for first 4 seconds (256 samples) to fully stabilize.
+  // Collect amplitude stats only from the last quarter (samples 193-256) when filter is settled.
   if (_ppgSampleCount <= WARMUP_SAMPLES) {
-    _warmupBuffer.push(Math.abs(filtered));
+    // Only collect from the last quarter — filter transient is fully gone by then
+    if (_ppgSampleCount > WARMUP_SAMPLES * 0.75) {
+      _warmupBuffer.push(Math.abs(filtered));
+    }
 
     if (_ppgSampleCount === WARMUP_SAMPLES) {
-      // Set initial threshold to 75th percentile of warmup absolute amplitudes
-      const sorted = [..._warmupBuffer].sort((a, b) => a - b);
-      const idx = Math.floor(sorted.length * WARMUP_PERCENTILE);
-      _ppgThreshold = sorted[idx] || 0;
-      console.log('[PPG] Warmup complete — initial threshold:', _ppgThreshold.toFixed(2));
+      if (_warmupBuffer.length > 0) {
+        const sorted = [..._warmupBuffer].sort((a, b) => a - b);
+        const idx = Math.floor(sorted.length * WARMUP_PERCENTILE);
+        _ppgThreshold = sorted[idx] || 100;
+      } else {
+        _ppgThreshold = 100;
+      }
+      _thresholdFloor = _ppgThreshold * 0.15;
+      console.log('[PPG] Warmup complete — initial threshold:', _ppgThreshold.toFixed(2),
+        'floor:', _thresholdFloor.toFixed(2), 'samples collected:', _warmupBuffer.length);
     }
     _prevFiltered = filtered;
     _prevDeriv = 0;
     return;
   }
 
-  // Decay adaptive threshold each sample
-  _ppgThreshold *= THRESHOLD_DECAY;
+  // Decay adaptive threshold each sample (with floor to prevent noise-triggered peaks)
+  _ppgThreshold = Math.max(_ppgThreshold * THRESHOLD_DECAY, _thresholdFloor);
 
   // Decrement refractory counter
   if (_refractoryRemaining > 0) {
@@ -606,7 +625,8 @@ function _rejectArtifact(ms) {
 
 /**
  * Compute and update AppState.ppgSignalQuality from the rolling 30-second window.
- * Thresholds: good < 10%, fair 10–30%, poor > 30% artifact rate.
+ * Thresholds calibrated for forehead PPG (inherently noisier than chest strap):
+ * good < 20%, fair 20–45%, poor > 45% artifact rate.
  *
  * @param {number} nowMs - current performance.now() timestamp
  */
@@ -617,7 +637,7 @@ function _updateSignalQuality(nowMs) {
   const artifacts = _qualityWindow.filter(e => e.artifact).length;
   const rate = artifacts / total;
 
-  AppState.ppgSignalQuality = rate < 0.10 ? 'good' : rate <= 0.30 ? 'fair' : 'poor';
+  AppState.ppgSignalQuality = rate < 0.20 ? 'good' : rate <= 0.45 ? 'fair' : 'poor';
   _lastQualityUpdate = nowMs;
 }
 
