@@ -117,12 +117,12 @@ Plans:
   3. App extracts beat-to-beat intervals from PPG via peak detection and artifact rejection; derived HR stays within ±5 bpm of chest strap reading during a side-by-side seated rest test
   4. Neural Calm score (alpha/beta power ratio from AF7/AF8) updates every 1-2 seconds and noticeably rises when the user closes their eyes and relaxes for 10 seconds
   5. EEG artifact rejection prevents eye blinks (100+ µV spikes on AF7/AF8) from corrupting the Neural Calm score — score remains stable during a deliberate blink sequence
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: MuseAdapter — BLE connect to 0xfe8d, p50 preset, subscribe to PPG (3 ch) + EEG (4 ch) characteristics, raw data parsing (16-bit event index + samples), AppState EEG/PPG circular buffers
-- [ ] 07-02: PPG pipeline — bandpass filter (0.5–5 Hz), systolic peak detection, IBI extraction, physiological artifact rejection; feed cleaned IBI into existing DSPEngine
-- [ ] 07-03: EEG pipeline — 2-second sliding FFT window on AF7/AF8, alpha (8–12 Hz) and beta (13–30 Hz) power extraction, threshold-based artifact rejection (>100 µV epoch discard), Neural Calm ratio computation
+- [ ] 07-01-PLAN.md — MuseAdapter BLE connection (service 0xfe8d, p50 preset, EEG/PPG data parsing), AppState Phase 7 fields, DeviceManager wiring
+- [ ] 07-02-PLAN.md — PPG pipeline: 4th-order Butterworth bandpass (0.5-3 Hz), peak detection, IBI extraction, artifact rejection, signal quality indicator, hidden debug view
+- [ ] 07-03-PLAN.md — EEG pipeline: sliding FFT on TP9/TP10, alpha/beta power, Neural Calm score (0-100), artifact rejection (100 µV), per-session baseline, eyes-open detection
 
 #### Phase 8: Session Integration
 **Goal**: A Muse-S user can run a complete practice or discovery session using PPG-derived HRV with the Neural Calm score and live EEG waveform visible alongside the existing coherence display — and the session summary captures all Muse-S metrics.
