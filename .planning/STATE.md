@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 
 ## Current Position
 
-Phase: 7 of 9 (Muse-S Connection + Signal Processing) — IN PROGRESS
-Plan: 2 of 3 — 07-02 complete; advance to 07-03
-Status: In progress — 07-02 executed and committed
-Last activity: 2026-04-03 — 07-02 complete: PPG signal processing pipeline (bandpass filter, peak detection, artifact rejection, RR buffer writes)
+Phase: 7 of 9 (Muse-S Connection + Signal Processing) — COMPLETE
+Plan: 3 of 3 — 07-03 complete; all phase 7 plans done
+Status: Phase 7 complete — advance to Phase 8 (Session Integration)
+Last activity: 2026-04-03 — 07-03 complete: EEG FFT pipeline with Neural Calm scoring, hardware-verified on Muse-S (HR ~85 bpm accurate, Neural Calm responsive, blink rejection stable)
 
-Progress: [█████░░░░░] 50% (v1.1) — 4 of 8 plans complete (phase 7 at 2/3)
+Progress: [██████░░░░] 62% (v1.1) — 5 of 8 plans complete (phase 7 complete: 3/3)
 
 ## Performance Metrics
 
@@ -69,7 +69,10 @@ Progress: [█████░░░░░] 50% (v1.1) — 4 of 8 plans complete 
 - [Phase 07-03]: Separate FFT(512) instance created in initEEGPipeline — isolated from dsp.js HRV FFT
 - [Phase 07-03]: Artifact rejection: reject entire epoch if EITHER TP9 or TP10 exceeds 100 µV peak-to-peak; carry forward last valid Neural Calm
 - [Phase 07]: Cascaded HP+LP Butterworth sections (not joint bandpass design): -3 dB exactly at 0.5 Hz and 3.0 Hz, matches scipy butter(2, [f1/32, f2/32], 'band')
-- [Phase 07]: Green channel (index 1) is default PPG channel; setPPGChannel() for runtime empirical switching
+- [Phase 07-03]: IR channel (Ch0) confirmed empirically as best Muse-S PPG channel for forehead placement; Green (Ch1) was noisier — default updated to IR
+- [Phase 07-03]: BLE characteristic UUIDs corrected post hardware verification — initial implementation used wrong base UUID; fixed in a5b43c7
+- [Phase 07-03]: AppState exposed on window.AppState for live console debugging during hardware sessions
+- [Phase 07-03]: Forehead PPG polarity inverted vs wrist PPG — peak detection flipped; longer warmup and different decay tuning required
 
 ### Decisions
 
@@ -95,5 +98,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: Completed 07-02-PLAN.md — PPG signal processing pipeline, debug panel, MuseAdapter wiring
-Resume: Run `/gsd:execute-phase 7` for Plan 07-03 (EEG Neural Calm pipeline)
+Stopped at: Completed 07-03-PLAN.md — EEG FFT pipeline, Neural Calm scoring, hardware verified on Muse-S
+Resume: Run `/gsd:execute-phase 8` for Phase 8 (Session Integration)

@@ -104,8 +104,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — DeviceAdapter interface, HRMAdapter extracted from ble.js, DeviceManager orchestrator, multi-device AppState fields
-- [ ] 06-02-PLAN.md — Dual device picker UI, per-device status chips, main.js rewired to DeviceManager, capability-gated UI, HR source label
+- [x] 06-01-PLAN.md — DeviceAdapter interface, HRMAdapter extracted from ble.js, DeviceManager orchestrator, multi-device AppState fields (completed 2026-04-03)
+- [x] 06-02-PLAN.md — Dual device picker UI, per-device status chips, main.js rewired to DeviceManager, capability-gated UI, HR source label (completed 2026-04-03)
 
 #### Phase 7: Muse-S Connection + Signal Processing
 **Goal**: The app connects to the Muse-S headband, receives live EEG and PPG data streams, and runs the full signal processing pipeline — PPG peak detection extracts RR intervals and the EEG alpha/beta FFT computes a Neural Calm score — all in real-time in the browser.
@@ -121,8 +121,8 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md — MuseAdapter BLE connection (service 0xfe8d, p50 preset, EEG/PPG data parsing), AppState Phase 7 fields, DeviceManager wiring (completed 2026-04-03)
-- [ ] 07-02-PLAN.md — PPG pipeline: 4th-order Butterworth bandpass (0.5-3 Hz), peak detection, IBI extraction, artifact rejection, signal quality indicator, hidden debug view
-- [ ] 07-03-PLAN.md — EEG pipeline: sliding FFT on TP9/TP10, alpha/beta power, Neural Calm score (0-100), artifact rejection (100 µV), per-session baseline, eyes-open detection
+- [x] 07-02-PLAN.md — PPG pipeline: 4th-order Butterworth bandpass (0.5-3 Hz), peak detection, IBI extraction, artifact rejection, signal quality indicator, hidden debug view (completed 2026-04-03)
+- [x] 07-03-PLAN.md — EEG pipeline: sliding FFT on TP9/TP10, alpha/beta power, Neural Calm score (0-100), artifact rejection (100 µV), per-session baseline, eyes-open detection (completed 2026-04-03)
 
 #### Phase 8: Session Integration
 **Goal**: A Muse-S user can run a complete practice or discovery session using PPG-derived HRV with the Neural Calm score and live EEG waveform visible alongside the existing coherence display — and the session summary captures all Muse-S metrics.

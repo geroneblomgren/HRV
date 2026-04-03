@@ -2,14 +2,14 @@
 phase: 07-muse-s-connection-signal-processing
 plan: "03"
 subsystem: eeg-signal-processing
-tags: [eeg, fft, neural-calm, artifact-rejection, biofeedback, muse-s]
+tags: [eeg, fft, neural-calm, artifact-rejection, biofeedback, muse-s, ppg, ble]
 dependency_graph:
-  requires: ["07-01"]
-  provides: ["EEG FFT pipeline", "Neural Calm score", "eyes-open detection"]
+  requires: ["07-01", "07-02"]
+  provides: ["EEG FFT pipeline", "Neural Calm score", "eyes-open detection", "IR PPG channel default", "hardware-verified BLE UUIDs"]
   affects: ["js/museSignalProcessing.js", "js/devices/MuseAdapter.js", "js/main.js", "index.html"]
 tech_stack:
   added: ["fft.js (global FFT, separate 512-sample instance for EEG)"]
-  patterns: ["Sliding-window FFT", "Hann windowing", "Band power integration", "Per-session baseline normalization", "Circular buffer epoch extraction"]
+  patterns: ["Sliding-window FFT", "Hann windowing", "Band power integration", "Per-session baseline normalization", "Circular buffer epoch extraction", "Forehead PPG polarity inversion handling"]
 key_files:
   created: ["js/museSignalProcessing.js"]
   modified: ["js/devices/MuseAdapter.js", "js/main.js", "index.html", "styles.css"]
@@ -20,10 +20,13 @@ decisions:
   - "Carry forward last valid Neural Calm during rejected epochs (not zero, not NaN)"
   - "Eyes-open warning auto-resets after 3 seconds via clearTimeout pattern"
   - "PPG quality cell hidden by default; shown only when hrSourceLabel === 'Muse PPG'"
+  - "IR channel (Ch0) confirmed empirically as best PPG channel for Muse-S forehead placement — set as default"
+  - "BLE characteristic UUIDs corrected post hardware verification — initial UUIDs were wrong"
+  - "AppState exposed on window for live console debugging during hardware sessions"
 metrics:
-  duration: "3 minutes"
+  duration: "~90 minutes (including hardware verification and post-verify fixes)"
   completed: "2026-04-03"
-  tasks_completed: 2
+  tasks_completed: 3
   tasks_total: 3
   files_created: 1
   files_modified: 4
@@ -34,7 +37,7 @@ requirements:
 
 # Phase 7 Plan 03: EEG FFT Pipeline and Neural Calm Scoring Summary
 
-**One-liner:** EEG FFT pipeline on TP9/TP10 with 100 µV artifact rejection, 20-second per-session baseline, and 0-100 Neural Calm score updating at 2 Hz.
+**EEG FFT pipeline on TP9/TP10 with 100 µV artifact rejection and 0-100 Neural Calm score, verified live on Muse-S hardware — HR accurate (~85 bpm), eyes-open indicator confirmed, blink rejection stable**
 
 ## What Was Built
 
@@ -66,20 +69,60 @@ Created the EEG signal processing module with the following components:
 
 **styles.css:** `.eyes-open-warning` (fixed position, amber border, blur backdrop), `.ppg-quality-dot` (green/amber/red colors for good/fair/poor), `.muse-eeg-status` for calibration label styling.
 
-### Task 3: Human Verification (PENDING)
+### Task 3: Human Verification — APPROVED
 
-Awaiting physical Muse-S headband verification of connection, PPG peak detection, Neural Calm responsiveness, artifact rejection, and eyes-open indicator behavior.
+Physical Muse-S headband verified with the following results:
+
+- Muse-S connects and streams EEG + PPG data simultaneously
+- IR channel (Ch0) confirmed as best PPG channel empirically
+- HR tracking accurate (~85 bpm resting)
+- PPG signal quality: fair (normal and expected for forehead placement)
+- Neural Calm score rises visibly when eyes close and relaxes for 10 seconds
+- Eyes-open indicator fires correctly when eyes open
+- Blink artifact rejection keeps Neural Calm stable during deliberate blinks
+
+**Post-verification fix commits required (see Deviations section):**
+- `a5b43c7` — fix(07): correct Muse BLE characteristic UUIDs and set IR as default PPG channel
+- `762005c` — fix(07): tune PPG peak detection for Muse-S forehead sensor
+- `db4556c` — fix(07): expose AppState on window for console debugging
 
 ## Deviations from Plan
 
-None — plan executed exactly as written.
+### Auto-fixed Issues
 
-The plan note said "AF7/AF8 for Neural Calm" in the STATE.md decisions section, but the plan itself correctly specifies TP9/TP10. Implementation uses TP9/TP10 as specified in the PLAN.md task action (the AF7/AF8 reference in STATE.md is an older decision that was superseded).
+**1. [Rule 1 - Bug] Corrected Muse BLE characteristic UUIDs and set IR default PPG channel**
+- **Found during:** Task 3 human-verify (BLE connection testing)
+- **Issue:** MuseAdapter used incorrect base UUID for Muse-S GATT characteristics — device appeared to connect but characteristic subscriptions failed, producing no data
+- **Fix:** Corrected all EEG and PPG characteristic UUIDs to match actual Muse-S firmware. Empirically confirmed IR channel (Ch0) as best PPG channel for forehead; updated default from Green (Ch1) to IR (Ch0)
+- **Files modified:** `js/devices/MuseAdapter.js`
+- **Verification:** Muse-S streams live EEG + PPG data after fix
+- **Committed in:** `a5b43c7`
+
+**2. [Rule 1 - Bug] Tuned PPG peak detection for Muse-S forehead sensor**
+- **Found during:** Task 3 human-verify (HR accuracy testing)
+- **Issue:** Forehead PPG signal is polarity-inverted vs wrist PPG and requires a longer warmup period before adaptive thresholds settle. Wrist-tuned parameters caused missed beats and noisy HR output.
+- **Fix:** Flipped detection polarity, extended warmup threshold, tuned adaptive decay constants for forehead sensor characteristics
+- **Files modified:** `js/museSignalProcessing.js`
+- **Verification:** HR tracking ~85 bpm resting; PPG quality shows "fair" (physically correct for forehead)
+- **Committed in:** `762005c`
+
+**3. [Rule 2 - Missing Critical] Exposed AppState on window for console debugging**
+- **Found during:** Task 3 human-verify (hardware debugging)
+- **Issue:** No way to inspect live AppState values (neuralCalm, ppgSignalQuality, eegCalibrating) from browser console during hardware testing — made BLE/signal debugging very slow
+- **Fix:** Added `window.AppState = AppState` so live values are readable from console
+- **Files modified:** `js/state.js` or entry module
+- **Verification:** `window.AppState.neuralCalm` readable in console during active streaming
+- **Committed in:** `db4556c`
+
+---
+
+**Total deviations:** 3 auto-fixed (2 bugs, 1 missing debug affordance)
+**Impact on plan:** All three fixes were required for the hardware verification to succeed. UUID fix was a hard blocker; PPG tuning was needed for accurate HR; debug exposure prevented hours of blind debugging. No scope creep.
 
 ## Self-Check
 
 ### Files created/modified:
-- js/museSignalProcessing.js — FOUND (273 lines)
+- js/museSignalProcessing.js — FOUND
 - js/devices/MuseAdapter.js — FOUND (modified)
 - js/main.js — FOUND (modified)
 - index.html — FOUND (modified)
@@ -88,5 +131,8 @@ The plan note said "AF7/AF8 for Neural Calm" in the STATE.md decisions section, 
 ### Commits:
 - 27401a5 — feat(07-03): implement EEG FFT pipeline with Neural Calm scoring
 - 7172ace — feat(07-03): wire EEG pipeline into MuseAdapter and add EEG UI indicators
+- a5b43c7 — fix(07): correct Muse BLE characteristic UUIDs and set IR as default PPG channel
+- 762005c — fix(07): tune PPG peak detection for Muse-S forehead sensor
+- db4556c — fix(07): expose AppState on window for console debugging
 
 ## Self-Check: PASSED
