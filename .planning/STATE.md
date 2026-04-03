@@ -8,7 +8,7 @@ progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 8
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 ## Current Position
 
 Phase: 6 of 9 (Device Architecture)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-04-03 — v1.1 roadmap created (phases 6-9)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-04-03 — Completed 06-01 device adapter layer (DeviceAdapter, HRMAdapter, DeviceManager)
 
-Progress: [░░░░░░░░░░] 0% (v1.1) — v1.0 complete
+Progress: [█░░░░░░░░░] 12% (v1.1) — 1 of 8 plans complete
 
 ## Performance Metrics
 
@@ -39,7 +39,7 @@ Progress: [░░░░░░░░░░] 0% (v1.1) — v1.0 complete
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 6. Device Architecture | 0/2 | - | - |
+| 6. Device Architecture | 1/2 | 3 min | 3 min |
 | 7. Muse-S Connection + Signal Processing | 0/3 | - | - |
 | 8. Session Integration | 0/2 | - | - |
 | 9. Neural Calm Dashboard | 0/1 | - | - |
@@ -57,6 +57,13 @@ Progress: [░░░░░░░░░░] 0% (v1.1) — v1.0 complete
 - v1.1: Threshold-based artifact rejection (>100 µV epoch discard) — ICA too expensive for real-time JS
 - v1.1: Port muse-js protocol as custom vanilla JS adapter (reference Respiire/MuseJS) — avoid RxJS dependency
 
+### Decisions
+
+- 06-01: HRMAdapter quick-reconnect-first: reads saved chestStrapName, attempts getDevices() lookup, falls back to picker
+- 06-01: Storage key migration chained — chestStrapName primary, deviceName legacy fallback, writes both on picker selection
+- 06-01: DeviceManager derives backward-compat AppState.connected and connectionStatus — zero changes to main.js/DSP in plan 06-01
+- 06-01: Muse stub uses optionalServices:[0xfe8d] so Phase 7 can reuse pairing without re-prompting
+
 ### Pending Todos
 
 None yet.
@@ -71,5 +78,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: Roadmap created — phases 6-9 defined, all 21 requirements mapped, files written
-Resume: `/gsd:plan-phase 6` to plan Device Architecture
+Stopped at: Completed 06-01-PLAN.md — DeviceAdapter, HRMAdapter, DeviceManager created; state.js updated with multi-device fields
+Resume: `/gsd:execute-phase 6` to execute plan 06-02 (main.js wiring)
