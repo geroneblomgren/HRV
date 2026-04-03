@@ -89,8 +89,8 @@ export async function connectMuse() {
     const name = device.name;
     await setSetting('museName', name);
     AppState.museName = name;
-    // Note: museConnected remains false — no GATT connection in Phase 6
-    // UI should show "(Beta)" label for the Muse button
+    // Mark as paired but not connected — GATT connection added in Phase 7
+    AppState.museStatus = 'paired';
   } catch (err) {
     console.warn('Muse pairing cancelled or failed:', err.message);
   }

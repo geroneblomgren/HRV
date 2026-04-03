@@ -73,6 +73,7 @@ function updateDeviceChipUI(_deviceId, status, dot, text, btn) {
     connecting: 'Connecting...',
     connected: 'Connected',
     reconnecting: 'Reconnecting...',
+    paired: 'Paired — ready for Phase 7',
   };
   text.textContent = labels[status] || 'Not connected';
 

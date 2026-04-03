@@ -990,6 +990,10 @@ body {
   background: var(--accent-teal);
 }
 
+.status-dot.paired {
+  background: var(--accent-action);
+}
+
 .device-status-text {
   font-size: 0.7rem;
   color: var(--text-secondary);
