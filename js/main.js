@@ -29,6 +29,10 @@ const bannerText = document.getElementById('banner-text');
 const connectionArea = document.getElementById('connection-area');
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabPanels = document.querySelectorAll('.tab-panel');
+const eyesOpenWarningEl = document.getElementById('eyes-open-warning');
+const ppgQualityCell = document.getElementById('ppg-quality-cell');
+const ppgQualityDot = document.getElementById('ppg-quality-dot');
+const ppgQualityText = document.getElementById('ppg-quality-text');
 
 // ---- Uptime timer ----
 let uptimeInterval = null;
@@ -192,6 +196,10 @@ subscribe('hrSourceLabel', label => {
   if (discoveryWarning) {
     discoveryWarning.classList.toggle('hidden', label !== 'Muse PPG');
   }
+  // Show PPG quality cell only when Muse is active HR source
+  if (ppgQualityCell) {
+    ppgQualityCell.style.display = label === 'Muse PPG' ? '' : 'none';
+  }
 });
 
 // Saved device name labels
@@ -215,6 +223,36 @@ subscribe('showManualReconnect', show => {
 // Capability gating
 subscribe('chestStrapCapabilities', updateCapabilityGating);
 subscribe('museCapabilities', updateCapabilityGating);
+
+// EEG calibration status — show "EEG calibrating..." on Muse chip when calibrating
+subscribe('eegCalibrating', calibrating => {
+  if (calibrating && AppState.museConnected) {
+    museStatusText.textContent = 'EEG calibrating...';
+  } else if (!calibrating && AppState.museStatus === 'streaming') {
+    museStatusText.textContent = 'Streaming';
+  }
+});
+
+// Eyes-open warning indicator
+subscribe('eyesOpenWarning', visible => {
+  if (eyesOpenWarningEl) {
+    eyesOpenWarningEl.classList.toggle('hidden', !visible);
+  }
+});
+
+// PPG signal quality indicator (shown when Muse is active HR source)
+subscribe('ppgSignalQuality', quality => {
+  const museActive = AppState.hrSourceLabel === 'Muse PPG';
+  if (ppgQualityCell) {
+    ppgQualityCell.style.display = museActive ? '' : 'none';
+  }
+  if (ppgQualityDot) {
+    ppgQualityDot.className = `ppg-quality-dot ${quality}`;
+  }
+  if (ppgQualityText) {
+    ppgQualityText.textContent = quality || '--';
+  }
+});
 
 // ---- Nav tab switching ----
 

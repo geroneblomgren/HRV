@@ -266,6 +266,11 @@
     </section>
   </main>
 
+  <!-- Eyes-open warning (shown briefly when sharp alpha drop detected) -->
+  <div id="eyes-open-warning" class="eyes-open-warning hidden">
+    <span>Eyes open?</span>
+  </div>
+
   <!-- Live data panel (always visible) -->
   <div id="live-data-panel" class="live-panel">
     <div class="data-cell" id="hr-display">
@@ -284,6 +289,13 @@
     <div class="data-cell">
       <span class="data-value" id="uptime">0:00</span>
       <span class="data-label">Uptime</span>
+    </div>
+    <div class="data-cell" id="ppg-quality-cell" style="display:none;">
+      <span class="data-value">
+        <span id="ppg-quality-dot" class="ppg-quality-dot"></span>
+        <span id="ppg-quality-text">--</span>
+      </span>
+      <span class="data-label">PPG</span>
     </div>
   </div>
 

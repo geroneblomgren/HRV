@@ -1041,3 +1041,45 @@ body {
   text-align: center;
   margin-top: 0.25rem;
 }
+
+/* ---- EEG indicators (Plan 03) ---- */
+
+/* Eyes-open warning — floats above live panel, near bottom of content area */
+.eyes-open-warning {
+  position: fixed;
+  bottom: calc(var(--live-panel-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 30, 30, 0.88);
+  border: 1px solid var(--accent-amber);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  color: var(--accent-amber);
+  pointer-events: none;
+  z-index: 50;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+  transition: opacity 0.3s;
+}
+
+/* PPG signal quality dot in live panel */
+.ppg-quality-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.ppg-quality-dot.good  { background: var(--accent-green); }
+.ppg-quality-dot.fair  { background: var(--accent-amber); }
+.ppg-quality-dot.poor  { background: var(--accent-red); }
+
+/* EEG calibration status label on Muse chip */
+.muse-eeg-status {
+  font-size: 0.65rem;
+  color: var(--accent-amber);
+  text-align: center;
+}
