@@ -12,7 +12,7 @@ Requirements for Muse-S Neurocardiac Integration. Each maps to roadmap phases.
 - [x] **DEV-01**: User can select between HRM 600 chest strap and Muse-S headband from a device picker before connecting
 - [x] **DEV-02**: App detects device type from BLE scan results and loads the appropriate adapter
 - [x] **DEV-03**: User can connect to both HRM 600 and Muse-S simultaneously for dual biofeedback
-- [ ] **DEV-04**: Session modes gracefully adapt UI based on connected device capabilities (HR-only vs HR+EEG)
+- [x] **DEV-04**: Session modes gracefully adapt UI based on connected device capabilities (HR-only vs HR+EEG)
 
 ### Muse-S Connectivity
 
@@ -76,7 +76,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEV-01 | Phase 6 | Complete |
 | DEV-02 | Phase 6 | Complete |
 | DEV-03 | Phase 6 | Complete |
-| DEV-04 | Phase 6 | Pending |
+| DEV-04 | Phase 6 | Complete |
 | MUSE-01 | Phase 7 | Pending |
 | MUSE-02 | Phase 7 | Pending |
 | MUSE-03 | Phase 7 | Pending |
