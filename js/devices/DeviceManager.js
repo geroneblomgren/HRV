@@ -10,6 +10,12 @@ import {
   getCapabilities as hrmCaps,
   getDeviceType as hrmType,
 } from './HRMAdapter.js';
+import {
+  connect as museConnect,
+  disconnect as museDisconnect,
+  getCapabilities as museCaps,
+  getDeviceType as museType,
+} from './MuseAdapter.js';
 
 // ---- Adapter slots ----
 // Each slot must satisfy the DeviceAdapter interface (connect, disconnect, getCapabilities, getDeviceType).
@@ -20,7 +26,12 @@ const _adapters = {
     getCapabilities: hrmCaps,
     getDeviceType: hrmType,
   },
-  muse: null, // Phase 7 wires this
+  muse: {
+    connect: museConnect,
+    disconnect: museDisconnect,
+    getCapabilities: museCaps,
+    getDeviceType: museType,
+  },
 };
 
 // ---- Public API ----
@@ -72,28 +83,15 @@ export async function connectChestStrap() {
 }
 
 /**
- * Phase 6 Muse stub: open the BLE picker to allow pairing, store device name.
- * Does NOT attempt GATT connect — no Muse adapter exists yet (Phase 7).
+ * Open the BLE picker (or quick reconnect) for Muse-S and establish full GATT connection.
+ * Delegates to MuseAdapter which sends p50 preset and subscribes EEG+PPG characteristics.
  * Must be called from a user gesture.
- *
- * The optionalServices: [0xfe8d] ensures Phase 7 can reuse the pairing without re-prompting.
  *
  * @returns {Promise<void>}
  */
 export async function connectMuse() {
-  try {
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: 'Muse' }],
-      optionalServices: [0xfe8d], // Muse data service — required for Phase 7 GATT access
-    });
-    const name = device.name;
-    await setSetting('museName', name);
-    AppState.museName = name;
-    // Mark as paired but not connected — GATT connection added in Phase 7
-    AppState.museStatus = 'paired';
-  } catch (err) {
-    console.warn('Muse pairing cancelled or failed:', err.message);
-  }
+  await _adapters.muse.connect();
+  AppState.museCapabilities = _adapters.muse.getCapabilities();
 }
 
 /**
