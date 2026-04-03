@@ -1,152 +1,105 @@
 # Requirements: ResonanceHRV
 
-**Defined:** 2026-03-21
+**Defined:** 2026-04-03
 **Core Value:** Real-time HRV biofeedback during breathing sessions — seeing your heart rate oscillate in sync with your breath and knowing you're training at your exact resonance frequency.
 
-## v1 Requirements
+## v1.1 Requirements
 
-Requirements for initial release. Each maps to roadmap phases.
+Requirements for Muse-S Neurocardiac Integration. Each maps to roadmap phases.
 
-### BLE Connection
+### Device Architecture
 
-- [x] **BLE-01**: App connects to Garmin HRM 600 via Web Bluetooth using Heart Rate Service (0x180D)
-- [x] **BLE-02**: App streams RR intervals in real-time from characteristic 0x2A37, handling multiple RR values per notification
-- [x] **BLE-03**: Connection status indicator shows connecting/connected/disconnected states
-- [x] **BLE-04**: App auto-reconnects when BLE connection drops, with Promise.race() timeout to prevent hung promises
-- [x] **BLE-05**: App rejects artifact RR intervals (< 300ms, > 2000ms, > 20% deviation from 5-beat running median)
+- [ ] **DEV-01**: User can select between HRM 600 chest strap and Muse-S headband from a device picker before connecting
+- [ ] **DEV-02**: App detects device type from BLE scan results and loads the appropriate adapter
+- [ ] **DEV-03**: User can connect to both HRM 600 and Muse-S simultaneously for dual biofeedback
+- [ ] **DEV-04**: Session modes gracefully adapt UI based on connected device capabilities (HR-only vs HR+EEG)
 
-### Signal Processing
+### Muse-S Connectivity
 
-- [x] **DSP-01**: App computes instantaneous heart rate from clean RR intervals for waveform display
-- [x] **DSP-02**: App performs spectral analysis on RR-interval data to identify LF power peak (0.04-0.15 Hz band)
-- [x] **DSP-03**: App computes coherence score as LF peak power / total spectral power (0.04-0.26 Hz), rolling 64s window, updated every 1-2s
-- [x] **DSP-04**: App displays "calibrating" state for first 90-120s while accumulating sufficient data for stable spectral analysis
-- [x] **DSP-05**: App computes RSA amplitude (peak-to-trough HR variation) per frequency block during Discovery mode
+- [ ] **MUSE-01**: User can connect to Muse-S headband via Web Bluetooth (service 0xfe8d)
+- [ ] **MUSE-02**: App initializes Muse-S with p50 preset to enable both EEG and PPG streaming
+- [ ] **MUSE-03**: App receives 5-channel EEG data at 256 Hz from Muse-S
+- [ ] **MUSE-04**: App receives 3-channel PPG data at 64 Hz from Muse-S
+- [ ] **MUSE-05**: Connection status UI shows Muse-S state (connecting, connected, streaming, disconnected)
 
-### Breathing Pacer
+### PPG Heart Rate
 
-- [x] **PAC-01**: Visual pacer displays expanding/contracting circle animation timed to inhale/exhale at configurable breathing rate
-- [x] **PAC-02**: Audio pacer style 1: sine wave (~300-400 Hz) with pitch rising on inhale, falling on exhale, smooth gain envelopes
-- [x] **PAC-03**: Audio pacer style 2: constant pitch with volume swelling on inhale, fading on exhale
-- [x] **PAC-04**: Audio pacer style 3: soft chime tones at inhale/exhale transition points
-- [x] **PAC-05**: User can switch between audio styles without restarting the session
-- [x] **PAC-06**: Audio uses Web Audio API lookahead scheduler pattern (25ms setTimeout + 100ms pre-scheduling) for drift-free timing over 20-min sessions
-- [x] **PAC-07**: Session timer displays time remaining (countdown) for practice sessions and per-block countdown for discovery sessions
+- [ ] **PPG-01**: App performs peak detection on Muse PPG waveform to extract inter-beat intervals
+- [ ] **PPG-02**: PPG-derived RR intervals are artifact-rejected (physiological bounds + rate-of-change filter)
+- [ ] **PPG-03**: User can run a full practice or discovery session using only Muse-S PPG for heart rate (no chest strap required)
+- [ ] **PPG-04**: PPG-derived HR and coherence scores are visually distinguished from chest-strap-derived values when accuracy confidence is lower
 
-### Discovery Mode
+### EEG Processing
 
-- [x] **DISC-01**: Discovery mode guides user through 5 breathing rate blocks: 6.5, 6.0, 5.5, 5.0, 4.5 breaths/min, 2 minutes each
-- [x] **DISC-02**: Real-time HR waveform visible during each block showing RSA oscillation
-- [x] **DISC-03**: Power spectrum chart visible during each block showing LF peak position and amplitude
-- [x] **DISC-04**: After all blocks, app displays comparison of RSA amplitude and LF peak power across all 5 frequencies
-- [x] **DISC-05**: User confirms resonance frequency selection and app saves it to IndexedDB for Practice mode
+- [ ] **EEG-01**: App computes alpha (8-12 Hz) and beta (13-30 Hz) power from EEG channels in real-time
+- [ ] **EEG-02**: EEG artifact rejection filters out eye blinks, jaw clenching, and movement contamination
+- [ ] **EEG-03**: App computes Neural Calm score (alpha/beta power ratio) updating every 1-2 seconds
 
-### Practice Mode
+### Session Integration
 
-- [x] **PRAC-01**: Practice mode loads saved resonance frequency and runs breathing pacer at that rate
-- [x] **PRAC-02**: Default session length is 20 minutes with visible countdown timer
-- [x] **PRAC-03**: Real-time scrolling HR waveform displayed during practice (60s visible window)
-- [x] **PRAC-04**: Live coherence score displayed prominently, updating every 1-2 seconds
-- [x] **PRAC-05**: Session summary shown on completion: duration, mean coherence, peak coherence, time in high coherence
+- [ ] **SESS-01**: Neural Calm score displays as a live metric during practice and discovery sessions when Muse-S is connected
+- [ ] **SESS-02**: Live scrolling EEG waveform renders on Canvas during sessions when Muse-S is connected
+- [ ] **SESS-03**: Session summary includes mean Neural Calm, peak Neural Calm, and time in high calm when Muse-S was used
 
-### Visualization
+### Dashboard
 
-- [x] **VIZ-01**: Real-time scrolling HR waveform rendered on Canvas 2D using requestAnimationFrame at 60fps
-- [x] **VIZ-02**: Power spectrum chart rendered on Canvas showing frequency (Hz) vs power, with LF band highlighted
-- [x] **VIZ-03**: Coherence score displayed as a large readable number/gauge that updates smoothly
+- [ ] **DASH-04**: Session Neural Calm averages are persisted to IndexedDB alongside coherence data
+- [ ] **DASH-05**: Recovery dashboard displays Neural Calm trend line alongside Oura HRV and session coherence trends
 
-### Oura Integration
+## Future Requirements
 
-- [x] **OURA-01**: App authenticates with Oura API v2 via OAuth2 (authorization code flow or implicit flow)
-- [x] **OURA-02**: App pulls daily readiness/sleep data including overnight HRV (rMSSD) for the past 30 days
-- [x] **OURA-03**: Oura data cached in IndexedDB and refreshed on each app load
+### Garmin Fenix 8
 
-### Recovery Dashboard
+- **FEN-01**: User can connect Fenix 8 as HR-only device (no HRV capability)
+- **FEN-02**: Sessions with Fenix 8 show HR waveform but disable coherence scoring
 
-- [x] **DASH-01**: Dashboard displays session coherence trend (mean coherence per session) over days/weeks
-- [x] **DASH-02**: Dashboard overlays Oura overnight HRV trend on the same time axis
-- [x] **DASH-03**: Dashboard renders as a Canvas chart with dual Y-axes (coherence 0-100, HRV in ms)
+### Advanced EEG
 
-### Storage
-
-- [x] **STOR-01**: All session data (date, mode, duration, frequency, mean coherence, RR summary stats) stored in IndexedDB via idb library
-- [x] **STOR-02**: Saved resonance frequency persisted in IndexedDB, loaded on app start
-- [x] **STOR-03**: Oura data cached in IndexedDB with timestamp for freshness checking
-
-## v2 Requirements
-
-### Data Export
-
-- **EXP-01**: User can export all session data to JSON with one click
-- **EXP-02**: User can export RR-interval time series from individual sessions
-
-### Refinement
-
-- **REF-01**: Adjustable inhale/exhale ratio (default 1:1, support 4:6 and custom)
-- **REF-02**: Multiple resonance frequency profiles for periodic re-testing
+- **AEEG-01**: Theta/alpha ratio for deeper meditation state tracking
+- **AEEG-02**: EEG-guided breathing rate suggestion (adjust pace based on neural state)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Mobile/responsive design | Desktop Chrome only; seated sessions; Web Bluetooth unavailable on iOS |
-| Cloud sync / user accounts | Personal tool; local storage sufficient; avoids backend complexity |
-| iOS/Safari support | Web Bluetooth not available on WebKit platforms |
-| Camera PPG fallback | HRM 600 provides superior RR data; camera adds complexity for no gain |
-| Gamification (streaks, badges) | Encourages quantity over quality; conflicts with session length goals |
-| Guided meditation audio | Distracts from biofeedback signal; user should watch waveform |
-| Morning readiness measurement | Oura Ring already provides this via API |
-| Social/sharing features | Misaligned with personal medical/recovery tool |
+| Combined neurocardiac single metric | No validated protocol exists for merging EEG + HRV into one feedback signal |
+| Garmin Fenix 8 support | Cannot transmit RR intervals over BLE; wrist PPG too noisy for HRV |
+| Muse-S accelerometer data | Low value for seated breathing sessions |
+| Raw EEG export | Can add later; not core to biofeedback purpose |
 
 ## Traceability
 
+Which phases cover which requirements. Updated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BLE-01 | Phase 1 | Complete |
-| BLE-02 | Phase 1 | Complete |
-| BLE-03 | Phase 1 | Complete |
-| BLE-04 | Phase 1 | Complete |
-| BLE-05 | Phase 1 | Complete |
-| STOR-01 | Phase 1 | Complete |
-| STOR-02 | Phase 1 | Complete |
-| STOR-03 | Phase 1 | Complete |
-| DSP-01 | Phase 2 | Complete |
-| DSP-02 | Phase 2 | Complete |
-| DSP-03 | Phase 2 | Complete |
-| DSP-04 | Phase 2 | Complete |
-| DSP-05 | Phase 2 | Complete |
-| VIZ-01 | Phase 2 | Complete |
-| VIZ-02 | Phase 2 | Complete |
-| VIZ-03 | Phase 2 | Complete |
-| PAC-01 | Phase 3 | Complete |
-| PAC-02 | Phase 3 | Complete |
-| PAC-03 | Phase 3 | Complete |
-| PAC-04 | Phase 3 | Complete |
-| PAC-05 | Phase 3 | Complete |
-| PAC-06 | Phase 3 | Complete |
-| PAC-07 | Phase 3 | Complete |
-| DISC-01 | Phase 4 | Complete |
-| DISC-02 | Phase 4 | Complete |
-| DISC-03 | Phase 4 | Complete |
-| DISC-04 | Phase 4 | Complete |
-| DISC-05 | Phase 4 | Complete |
-| PRAC-01 | Phase 4 | Complete |
-| PRAC-02 | Phase 4 | Complete |
-| PRAC-03 | Phase 4 | Complete |
-| PRAC-04 | Phase 4 | Complete |
-| PRAC-05 | Phase 4 | Complete |
-| OURA-01 | Phase 5 | Complete |
-| OURA-02 | Phase 5 | Complete |
-| OURA-03 | Phase 5 | Complete |
-| DASH-01 | Phase 5 | Complete |
-| DASH-02 | Phase 5 | Complete |
-| DASH-03 | Phase 5 | Complete |
+| DEV-01 | — | Pending |
+| DEV-02 | — | Pending |
+| DEV-03 | — | Pending |
+| DEV-04 | — | Pending |
+| MUSE-01 | — | Pending |
+| MUSE-02 | — | Pending |
+| MUSE-03 | — | Pending |
+| MUSE-04 | — | Pending |
+| MUSE-05 | — | Pending |
+| PPG-01 | — | Pending |
+| PPG-02 | — | Pending |
+| PPG-03 | — | Pending |
+| PPG-04 | — | Pending |
+| EEG-01 | — | Pending |
+| EEG-02 | — | Pending |
+| EEG-03 | — | Pending |
+| SESS-01 | — | Pending |
+| SESS-02 | — | Pending |
+| SESS-03 | — | Pending |
+| DASH-04 | — | Pending |
+| DASH-05 | — | Pending |
 
 **Coverage:**
-- v1 requirements: 39 total (note: header previously stated 30; actual count is 39 across 9 categories)
-- Mapped to phases: 39
-- Unmapped: 0
+- v1.1 requirements: 21 total
+- Mapped to phases: 0
+- Unmapped: 21
 
 ---
-*Requirements defined: 2026-03-21*
-*Last updated: 2026-03-21 after roadmap creation*
+*Requirements defined: 2026-04-03*
+*Last updated: 2026-04-03 after initial definition*
