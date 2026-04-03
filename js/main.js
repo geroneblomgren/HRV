@@ -407,6 +407,9 @@ document.addEventListener('DOMContentLoaded', init);
 
 // ---- Dev utilities ----
 
+// Expose AppState for console debugging
+window.AppState = AppState;
+
 /**
  * Toggle the hidden PPG debug panel visibility.
  * Available at browser console: window.togglePPGDebug()
