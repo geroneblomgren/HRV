@@ -106,15 +106,12 @@ export function startPractice() {
     tick(elapsed);
     _coherenceTrace.push(AppState.coherenceScore);
 
-    // Chime detection: play once when timer reaches zero
+    // When timer reaches zero, play chime then auto-end session
     if (elapsed >= _selectedDuration * 60 && !_chimePlayed) {
       _chimePlayed = true;
       playChime();
-      // Highlight End Session button to prompt user to end
-      const endBtnEl = _getEl('practice-end-btn');
-      if (endBtnEl) {
-        endBtnEl.classList.add('chime-pulse');
-      }
+      // Brief delay so the chime is audible before session teardown
+      setTimeout(() => stopPractice(), 500);
     }
   }, 1000);
 }
