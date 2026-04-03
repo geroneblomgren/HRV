@@ -120,7 +120,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — MuseAdapter BLE connection (service 0xfe8d, p50 preset, EEG/PPG data parsing), AppState Phase 7 fields, DeviceManager wiring
+- [x] 07-01-PLAN.md — MuseAdapter BLE connection (service 0xfe8d, p50 preset, EEG/PPG data parsing), AppState Phase 7 fields, DeviceManager wiring (completed 2026-04-03)
 - [ ] 07-02-PLAN.md — PPG pipeline: 4th-order Butterworth bandpass (0.5-3 Hz), peak detection, IBI extraction, artifact rejection, signal quality indicator, hidden debug view
 - [ ] 07-03-PLAN.md — EEG pipeline: sliding FFT on TP9/TP10, alpha/beta power, Neural Calm score (0-100), artifact rejection (100 µV), per-session baseline, eyes-open detection
 
@@ -167,6 +167,6 @@ v1.1: 6 → 7 → 8 → 9
 | 4. Session Modes | v1.0 | 2/2 | Complete | 2026-03-22 |
 | 5. Oura + Recovery Dashboard | v1.0 | 2/2 | Complete | 2026-03-22 |
 | 6. Device Architecture | 2/2 | Complete   | 2026-04-03 | - |
-| 7. Muse-S Connection + Signal Processing | 2/3 | In Progress|  | - |
+| 7. Muse-S Connection + Signal Processing | 3/3 | Complete   | 2026-04-03 | - |
 | 8. Session Integration | v1.1 | 0/2 | Not started | - |
 | 9. Neural Calm Dashboard | v1.1 | 0/1 | Not started | - |

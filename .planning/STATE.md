@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Muse-S Neurocardiac Integration
 status: unknown
-last_updated: "2026-04-03T20:31:51.144Z"
+last_updated: "2026-04-03T20:38:57.315Z"
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 ## Current Position
 
 Phase: 7 of 9 (Muse-S Connection + Signal Processing) — IN PROGRESS
-Plan: 1 of 3 — 07-01 complete; advance to 07-02
-Status: In progress — 07-01 executed and committed
-Last activity: 2026-04-03 — 07-01 complete: MuseAdapter BLE layer + Phase 7 AppState fields
+Plan: 2 of 3 — 07-02 complete; advance to 07-03
+Status: In progress — 07-02 executed and committed
+Last activity: 2026-04-03 — 07-02 complete: PPG signal processing pipeline (bandpass filter, peak detection, artifact rejection, RR buffer writes)
 
-Progress: [████░░░░░░] 38% (v1.1) — 3 of 8 plans complete (phase 7 started)
+Progress: [█████░░░░░] 50% (v1.1) — 4 of 8 plans complete (phase 7 at 2/3)
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Progress: [████░░░░░░] 38% (v1.1) — 3 of 8 plans complete 
 | Phase 06-device-architecture P02 | 2 | 3 tasks | 3 files |
 | Phase 07-muse-s-connection P01 | 2 | 2 tasks | 3 files |
 | Phase 07-muse-s-connection-signal-processing P03 | 3 | 2 tasks | 5 files |
+| Phase 07 P02 | 9 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Progress: [████░░░░░░] 38% (v1.1) — 3 of 8 plans complete 
 - [Phase 07-03]: TP9/TP10 used for Neural Calm (not AF7/AF8) — frontal channels too susceptible to blink artifacts
 - [Phase 07-03]: Separate FFT(512) instance created in initEEGPipeline — isolated from dsp.js HRV FFT
 - [Phase 07-03]: Artifact rejection: reject entire epoch if EITHER TP9 or TP10 exceeds 100 µV peak-to-peak; carry forward last valid Neural Calm
+- [Phase 07]: Cascaded HP+LP Butterworth sections (not joint bandpass design): -3 dB exactly at 0.5 Hz and 3.0 Hz, matches scipy butter(2, [f1/32, f2/32], 'band')
+- [Phase 07]: Green channel (index 1) is default PPG channel; setPPGChannel() for runtime empirical switching
 
 ### Decisions
 
@@ -92,5 +95,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: Checkpoint — Task 3 human-verify in 07-03-PLAN.md (EEG pipeline built, awaiting physical Muse-S verification)
-Resume: After verifying Muse-S connection and Neural Calm behavior, resume Plan 07-03 Task 3 checkpoint verification
+Stopped at: Completed 07-02-PLAN.md — PPG signal processing pipeline, debug panel, MuseAdapter wiring
+Resume: Run `/gsd:execute-phase 7` for Plan 07-03 (EEG Neural Calm pipeline)

@@ -24,15 +24,15 @@ Requirements for Muse-S Neurocardiac Integration. Each maps to roadmap phases.
 
 ### PPG Heart Rate
 
-- [ ] **PPG-01**: App performs peak detection on Muse PPG waveform to extract inter-beat intervals
-- [ ] **PPG-02**: PPG-derived RR intervals are artifact-rejected (physiological bounds + rate-of-change filter)
+- [x] **PPG-01**: App performs peak detection on Muse PPG waveform to extract inter-beat intervals
+- [x] **PPG-02**: PPG-derived RR intervals are artifact-rejected (physiological bounds + rate-of-change filter)
 - [ ] **PPG-03**: User can run a full practice or discovery session using only Muse-S PPG for heart rate (no chest strap required)
 - [ ] **PPG-04**: PPG-derived HR and coherence scores are visually distinguished from chest-strap-derived values when accuracy confidence is lower
 
 ### EEG Processing
 
-- [ ] **EEG-01**: App computes alpha (8-12 Hz) and beta (13-30 Hz) power from EEG channels in real-time
-- [ ] **EEG-02**: EEG artifact rejection filters out eye blinks, jaw clenching, and movement contamination
+- [x] **EEG-01**: App computes alpha (8-12 Hz) and beta (13-30 Hz) power from EEG channels in real-time
+- [x] **EEG-02**: EEG artifact rejection filters out eye blinks, jaw clenching, and movement contamination
 - [ ] **EEG-03**: App computes Neural Calm score (alpha/beta power ratio) updating every 1-2 seconds
 
 ### Session Integration
@@ -82,12 +82,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MUSE-03 | Phase 7 | Complete |
 | MUSE-04 | Phase 7 | Complete |
 | MUSE-05 | Phase 7 | Complete |
-| PPG-01 | Phase 7 | Pending |
-| PPG-02 | Phase 7 | Pending |
+| PPG-01 | Phase 7 | Complete |
+| PPG-02 | Phase 7 | Complete |
 | PPG-03 | Phase 8 | Pending |
 | PPG-04 | Phase 8 | Pending |
-| EEG-01 | Phase 7 | Pending |
-| EEG-02 | Phase 7 | Pending |
+| EEG-01 | Phase 7 | Complete |
+| EEG-02 | Phase 7 | Complete |
 | EEG-03 | Phase 8 | Pending |
 | SESS-01 | Phase 8 | Pending |
 | SESS-02 | Phase 8 | Pending |
