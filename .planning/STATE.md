@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Muse-S Neurocardiac Integration
-status: unknown
-last_updated: "2026-04-03T19:33:58.225Z"
+status: in_progress
+last_updated: "2026-04-03T20:25:57Z"
 progress:
-  total_phases: 6
+  total_phases: 9
   completed_phases: 6
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 20
+  completed_plans: 13
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 
 ## Current Position
 
-Phase: 6 of 9 (Device Architecture) — COMPLETE
-Plan: 2 of 2 — phase complete; advance to Phase 7
-Status: Complete — all plans executed and approved
-Last activity: 2026-04-03 — 06-02 Task 3 human-verify APPROVED; Muse paired status fix committed (0578906)
+Phase: 7 of 9 (Muse-S Connection + Signal Processing) — IN PROGRESS
+Plan: 1 of 3 — 07-01 complete; advance to 07-02
+Status: In progress — 07-01 executed and committed
+Last activity: 2026-04-03 — 07-01 complete: MuseAdapter BLE layer + Phase 7 AppState fields
 
-Progress: [███░░░░░░░] 25% (v1.1) — 2 of 8 plans complete (phase 6 done)
+Progress: [████░░░░░░] 38% (v1.1) — 3 of 8 plans complete (phase 7 started)
 
 ## Performance Metrics
 
@@ -46,11 +46,16 @@ Progress: [███░░░░░░░] 25% (v1.1) — 2 of 8 plans complete 
 
 *Updated after each plan completion*
 | Phase 06-device-architecture P02 | 2 | 3 tasks | 3 files |
+| Phase 07-muse-s-connection P01 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
 ### Decisions
 
+- 07-01: MuseAdapter quick-reconnect-first: reads saved museName, attempts getDevices() lookup, falls back to picker
+- 07-01: eegHead incremented only from TP9 (channel 0) — single time reference for all 4 EEG channels
+- 07-01: No auto-reconnect for Muse in Phase 7 — explicit user action required to reconnect
+- 07-01: Buffers preserved on unexpected GATT disconnect (cleared only on explicit disconnect())
 - v1.1: Muse-S over Fenix 8 — Fenix 8 cannot transmit RR intervals over BLE; wrist PPG inadequate for HRV
 - v1.1: Standalone PPG HRV from Muse — chest strap remains gold standard; PPG coherence marked lower confidence
 - v1.1: Neural Calm = alpha/beta power ratio (AF7/AF8); displayed alongside HRV, not merged into single metric
@@ -83,5 +88,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: Completed 06-02-PLAN.md — phase 6 fully done, all tasks approved
-Resume: Run `/gsd:execute-phase 7` for Muse-S connection + signal processing
+Stopped at: Completed 07-01-PLAN.md — MuseAdapter BLE layer, Phase 7 AppState fields, DeviceManager wired
+Resume: Run `/gsd:execute-phase 7` for Plan 07-02 (PPG signal processing pipeline)

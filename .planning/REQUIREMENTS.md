@@ -16,11 +16,11 @@ Requirements for Muse-S Neurocardiac Integration. Each maps to roadmap phases.
 
 ### Muse-S Connectivity
 
-- [ ] **MUSE-01**: User can connect to Muse-S headband via Web Bluetooth (service 0xfe8d)
-- [ ] **MUSE-02**: App initializes Muse-S with p50 preset to enable both EEG and PPG streaming
-- [ ] **MUSE-03**: App receives 5-channel EEG data at 256 Hz from Muse-S
-- [ ] **MUSE-04**: App receives 3-channel PPG data at 64 Hz from Muse-S
-- [ ] **MUSE-05**: Connection status UI shows Muse-S state (connecting, connected, streaming, disconnected)
+- [x] **MUSE-01**: User can connect to Muse-S headband via Web Bluetooth (service 0xfe8d)
+- [x] **MUSE-02**: App initializes Muse-S with p50 preset to enable both EEG and PPG streaming
+- [x] **MUSE-03**: App receives 5-channel EEG data at 256 Hz from Muse-S
+- [x] **MUSE-04**: App receives 3-channel PPG data at 64 Hz from Muse-S
+- [x] **MUSE-05**: Connection status UI shows Muse-S state (connecting, connected, streaming, disconnected)
 
 ### PPG Heart Rate
 
@@ -77,11 +77,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEV-02 | Phase 6 | Complete |
 | DEV-03 | Phase 6 | Complete |
 | DEV-04 | Phase 6 | Complete |
-| MUSE-01 | Phase 7 | Pending |
-| MUSE-02 | Phase 7 | Pending |
-| MUSE-03 | Phase 7 | Pending |
-| MUSE-04 | Phase 7 | Pending |
-| MUSE-05 | Phase 7 | Pending |
+| MUSE-01 | Phase 7 | Complete |
+| MUSE-02 | Phase 7 | Complete |
+| MUSE-03 | Phase 7 | Complete |
+| MUSE-04 | Phase 7 | Complete |
+| MUSE-05 | Phase 7 | Complete |
 | PPG-01 | Phase 7 | Pending |
 | PPG-02 | Phase 7 | Pending |
 | PPG-03 | Phase 8 | Pending |
