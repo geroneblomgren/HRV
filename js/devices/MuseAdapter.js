@@ -17,22 +17,22 @@ const CONNECT_TIMEOUT_MS = 12000;
 const MUSE_SERVICE = 0xfe8d;
 
 // Control characteristic — used to send preset + start commands
-const MUSE_CONTROL_UUID = '273e0001-4e6f-7265-6d49-6d6f62697665';
+const MUSE_CONTROL_UUID = '273e0001-4c4d-454d-96be-f03bac821358';
 
 // EEG channel characteristics: TP9, AF7, AF8, TP10 (indices 0-3)
-// Note: Muse has a 5th EEG channel (AUX/273e0008) omitted here — 4 channels used.
+// Note: Muse has a 5th EEG channel (AUX/273e0007) omitted here — 4 channels used.
 const EEG_UUIDS = [
-  '273e0003-4e6f-7265-6d49-6d6f62697665', // TP9  (index 0)
-  '273e0004-4e6f-7265-6d49-6d6f62697665', // AF7  (index 1)
-  '273e0005-4e6f-7265-6d49-6d6f62697665', // AF8  (index 2)
-  '273e0006-4e6f-7265-6d49-6d6f62697665', // TP10 (index 3)
+  '273e0003-4c4d-454d-96be-f03bac821358', // TP9  (index 0)
+  '273e0004-4c4d-454d-96be-f03bac821358', // AF7  (index 1)
+  '273e0005-4c4d-454d-96be-f03bac821358', // AF8  (index 2)
+  '273e0006-4c4d-454d-96be-f03bac821358', // TP10 (index 3)
 ];
 
 // PPG channel characteristics: Ch0 (IR), Ch1 (Green), Ch2
 const PPG_UUIDS = [
-  '273e000f-4e6f-7265-6d49-6d6f62697665', // Ch0 — Infrared
-  '273e0010-4e6f-7265-6d49-6d6f62697665', // Ch1 — Green (best cardiac signal)
-  '273e0011-4e6f-7265-6d49-6d6f62697665', // Ch2
+  '273e000f-4c4d-454d-96be-f03bac821358', // Ch0 — Infrared
+  '273e0010-4c4d-454d-96be-f03bac821358', // Ch1 — Green (best cardiac signal)
+  '273e0011-4c4d-454d-96be-f03bac821358', // Ch2
 ];
 
 // ---- Module state ----
@@ -64,25 +64,11 @@ export async function connect() {
   // Try quick reconnect if we have a saved name
   const savedName = await getSetting('museName');
 
-  if (savedName) {
-    if (typeof navigator.bluetooth.getDevices === 'function') {
-      try {
-        const devices = await navigator.bluetooth.getDevices();
-        const muse = devices.find(d => d.name === savedName);
-        if (muse) {
-          _device = muse;
-          await _connectGATT();
-          return;
-        }
-      } catch (err) {
-        console.warn('Muse quick reconnect failed, falling back to picker:', err.message);
-      }
-    }
-  }
-
-  // Fall back to picker
+  // Always use the picker for Muse — getDevices() returns remembered devices
+  // but Chrome requires a fresh requestDevice() for GATT access on non-HRS devices.
   _device = await navigator.bluetooth.requestDevice({
-    filters: [{ services: [MUSE_SERVICE] }],
+    filters: [{ namePrefix: 'Muse' }],
+    optionalServices: [MUSE_SERVICE],
   });
   await _connectGATT();
 }

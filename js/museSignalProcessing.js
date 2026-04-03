@@ -375,7 +375,7 @@ function makeBandpass() {
 // ---- PPG Module state ----
 
 let _ppgFilter = null;          // bandpass filter instance (recreated on init)
-let _activeChannel = 1;         // default: channel 1 = Green (best cardiac signal)
+let _activeChannel = 0;         // default: channel 0 = IR (clearest cardiac signal per empirical test)
 
 // Peak detector state
 let _ppgSampleCount = 0;        // total samples processed since init
