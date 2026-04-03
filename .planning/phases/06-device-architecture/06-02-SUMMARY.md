@@ -63,8 +63,8 @@ completed: 2026-04-03
 
 - **Duration:** 2 min
 - **Started:** 2026-04-03T18:58:49Z
-- **Completed:** 2026-04-03T19:01:28Z
-- **Tasks:** 2 of 3 automated (Task 3 is human-verify checkpoint)
+- **Completed:** 2026-04-03
+- **Tasks:** 3 of 3 (all complete — Task 3 human-verify APPROVED)
 - **Files modified:** 3
 
 ## Accomplishments
@@ -80,7 +80,8 @@ Each task was committed atomically:
 
 1. **Task 1: Update HTML and CSS for dual device UI** - `65f93bb` (feat)
 2. **Task 2: Rewire main.js to use DeviceManager and per-device subscriptions** - `18165f0` (feat)
-3. **Task 3: Verify dual device UI and HRM 600 regression test** - checkpoint:human-verify (awaiting)
+3. **Task 3 fix: Show paired status after Muse-S BLE picker selection** - `0578906` (fix)
+4. **Task 3: Verify dual device UI and HRM 600 regression test** - APPROVED by user
 
 ## Files Created/Modified
 - `index.html` - Replaced connection-area contents with dual device-chips, added hr-source-label in live panel, added discovery-ppg-warning
@@ -104,10 +105,18 @@ Each task was committed atomically:
 - **Verification:** Variable exists in :root, no undefined CSS custom property references
 - **Committed in:** 65f93bb (Task 1 commit)
 
+**2. [Rule 1 - Bug] Muse-S BLE picker gave no UI feedback after pairing**
+- **Found during:** Task 3 (human-verify — Muse button tested in browser)
+- **Issue:** `connectMuse()` stub completed pairing but never updated museStatus, leaving status dot stuck on "Not connected" and user with no confirmation that pairing succeeded
+- **Fix:** After BLE picker selection in the Muse stub, set `AppState.museStatus = 'paired'` and update status dot to orange with text "Paired — ready for Phase 7"
+- **Files modified:** js/devices/DeviceManager.js
+- **Verification:** Clicking Connect Muse-S, selecting device, and confirming status chip updates correctly
+- **Committed in:** 0578906
+
 ---
 
-**Total deviations:** 1 auto-fixed (1 bug — undefined CSS variable)
-**Impact on plan:** Zero scope change; purely a variable name correction to use the existing palette.
+**Total deviations:** 2 auto-fixed (1 bug — undefined CSS variable; 1 bug — missing UI feedback on Muse pairing)
+**Impact on plan:** Both fixes necessary for correctness and usability. No scope creep.
 
 ## Issues Encountered
 None beyond the CSS variable name.
@@ -120,8 +129,6 @@ None - no external service configuration required.
 - Muse-S button wired and already subscribed to museName, museStatus, museConnected — Phase 7 just needs to implement MuseAdapter and wire it into DeviceManager
 - PPG accuracy warning subscription already live — activates automatically when hrSourceLabel becomes 'Muse PPG'
 - Capability-gated coherence panel ready for Phase 8 when Muse PPG RR capability is enabled
-
-**Awaiting:** Human checkpoint (Task 3) — user verifies HRM 600 regression test and dual UI in browser
 
 ---
 *Phase: 06-device-architecture*
