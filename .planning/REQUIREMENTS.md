@@ -73,33 +73,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEV-01 | — | Pending |
-| DEV-02 | — | Pending |
-| DEV-03 | — | Pending |
-| DEV-04 | — | Pending |
-| MUSE-01 | — | Pending |
-| MUSE-02 | — | Pending |
-| MUSE-03 | — | Pending |
-| MUSE-04 | — | Pending |
-| MUSE-05 | — | Pending |
-| PPG-01 | — | Pending |
-| PPG-02 | — | Pending |
-| PPG-03 | — | Pending |
-| PPG-04 | — | Pending |
-| EEG-01 | — | Pending |
-| EEG-02 | — | Pending |
-| EEG-03 | — | Pending |
-| SESS-01 | — | Pending |
-| SESS-02 | — | Pending |
-| SESS-03 | — | Pending |
-| DASH-04 | — | Pending |
-| DASH-05 | — | Pending |
+| DEV-01 | Phase 6 | Pending |
+| DEV-02 | Phase 6 | Pending |
+| DEV-03 | Phase 6 | Pending |
+| DEV-04 | Phase 6 | Pending |
+| MUSE-01 | Phase 7 | Pending |
+| MUSE-02 | Phase 7 | Pending |
+| MUSE-03 | Phase 7 | Pending |
+| MUSE-04 | Phase 7 | Pending |
+| MUSE-05 | Phase 7 | Pending |
+| PPG-01 | Phase 7 | Pending |
+| PPG-02 | Phase 7 | Pending |
+| PPG-03 | Phase 8 | Pending |
+| PPG-04 | Phase 8 | Pending |
+| EEG-01 | Phase 7 | Pending |
+| EEG-02 | Phase 7 | Pending |
+| EEG-03 | Phase 8 | Pending |
+| SESS-01 | Phase 8 | Pending |
+| SESS-02 | Phase 8 | Pending |
+| SESS-03 | Phase 8 | Pending |
+| DASH-04 | Phase 9 | Pending |
+| DASH-05 | Phase 9 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21
+- Mapped to phases: 21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-03*
-*Last updated: 2026-04-03 after initial definition*
+*Last updated: 2026-04-03 after roadmap creation (phases 6-9)*

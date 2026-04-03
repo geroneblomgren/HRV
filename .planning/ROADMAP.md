@@ -1,24 +1,16 @@
 # Roadmap: ResonanceHRV
 
-## Overview
+## Milestones
 
-ResonanceHRV is built in five phases that follow the strict data dependency chain inherent to a real-time biofeedback system. The BLE pipeline must exist before signal processing can run; DSP and the breathing pacer must both be solid before session modes integrate them; Oura and the dashboard are fully decoupled and close out the build. Every phase delivers a coherent, independently verifiable capability.
+- ✅ **v1.0 Core HRV Biofeedback** - Phases 1-5 (shipped 2026-03-22)
+- 🚧 **v1.1 Muse-S Neurocardiac Integration** - Phases 6-9 (in progress)
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+<details>
+<summary>✅ v1.0 Core HRV Biofeedback (Phases 1-5) - SHIPPED 2026-03-22</summary>
 
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [x] **Phase 1: Foundation** - BLE connection + RR streaming + IndexedDB storage wired through AppState (completed 2026-03-22)
-- [x] **Phase 2: Signal Processing + Visualization** - Artifact rejection, spectral analysis, coherence scoring, and Canvas rendering (completed 2026-03-22)
-- [x] **Phase 3: Breathing Pacer** - Visual expanding-circle animation and three audio styles with drift-free lookahead scheduler (completed 2026-03-22)
-- [x] **Phase 4: Session Modes** - Discovery protocol (5 blocks) and Practice mode (20-min guided sessions), integrating all prior phases (completed 2026-03-22)
-- [x] **Phase 5: Oura + Recovery Dashboard** - OAuth2 PKCE Oura auth, overnight HRV pull, and dual-axis recovery trend chart (completed 2026-03-22)
-
-## Phase Details
+**Milestone Goal:** Build a complete resonance frequency breathing trainer with real-time HRV biofeedback via Garmin HRM 600 and Oura overnight recovery tracking.
 
 ### Phase 1: Foundation
 **Goal**: The app can connect to the Garmin HRM 600, stream verified RR intervals into a reactive state store, and persist session data to IndexedDB — the data pipeline all later phases depend on.
@@ -88,21 +80,93 @@ Plans:
   1. User completes OAuth2 PKCE Oura authorization flow from within the app; token is stored and reused on subsequent loads without re-auth
   2. App fetches and caches 30 days of overnight HRV (rMSSD) data from Oura API v2 on each app load; cached data is used when offline
   3. Recovery dashboard displays a Canvas chart with session coherence trend and Oura overnight HRV trend on the same time axis with dual Y-axes
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
 - [x] 05-01-PLAN.md — OuraClient: PAT confirmed, CORS blocked (proxy required), /sleep HRV fetch, IndexedDB cache with 6h freshness, 29 days of data verified end-to-end
-- [ ] 05-02-PLAN.md — Recovery Dashboard: 4 metric cards, Canvas dual-axis chart (HRV teal line + coherence purple dots), time range selector, hover tooltips, main.js wiring
+- [x] 05-02-PLAN.md — Recovery Dashboard: 4 metric cards, Canvas dual-axis chart (HRV teal line + coherence purple dots), time range selector, hover tooltips, main.js wiring
+
+</details>
+
+### 🚧 v1.1 Muse-S Neurocardiac Integration (In Progress)
+
+**Milestone Goal:** Add Muse-S headband as a second biofeedback device, providing standalone PPG-derived HRV plus live EEG neural calm metrics during sessions, with trends tracked on the recovery dashboard.
+
+#### Phase 6: Device Architecture
+**Goal**: The BLE layer is refactored into an adapter pattern so HRM 600 continues working and the app is ready to host any new device type — Muse-S and future devices require zero changes to core session logic.
+**Depends on**: Phase 5
+**Requirements**: DEV-01, DEV-02, DEV-03, DEV-04
+**Success Criteria** (what must be TRUE):
+  1. User sees a device picker UI and can initiate a Garmin HRM 600 connection exactly as before — no regression in existing behavior
+  2. When user connects a second device (simulated or real), both appear in an active devices panel with individual connection status indicators
+  3. App correctly routes HR and RR data based on which device is connected; sessions using HRM 600 alone produce identical results to v1.0
+  4. Session UI adapts based on connected device capabilities — coherence scoring is hidden when no RR-capable device is connected
+**Plans**: TBD
+
+Plans:
+- [ ] 06-01: DeviceAdapter interface + DeviceManager orchestrator; extract HRMAdapter from ble.js; multi-filter requestDevice() with auto-detect by GATT service
+- [ ] 06-02: Device picker UI, dual connection status panel, AppState fields for activeDevices + deviceCapabilities, capability-gated UI rules
+
+#### Phase 7: Muse-S Connection + Signal Processing
+**Goal**: The app connects to the Muse-S headband, receives live EEG and PPG data streams, and runs the full signal processing pipeline — PPG peak detection extracts RR intervals and the EEG alpha/beta FFT computes a Neural Calm score — all in real-time in the browser.
+**Depends on**: Phase 6
+**Requirements**: MUSE-01, MUSE-02, MUSE-03, MUSE-04, MUSE-05, PPG-01, PPG-02, EEG-01, EEG-02
+**Success Criteria** (what must be TRUE):
+  1. User clicks "Connect Muse-S", selects the headband in the browser picker, and sees status transition through connecting → streaming within 5 seconds; p50 preset is applied automatically enabling both PPG and EEG streams
+  2. Raw PPG waveform from the infrared channel is visible in a debug or diagnostic view, showing a clear cardiac pulse waveform at approximately the user's resting heart rate
+  3. App extracts beat-to-beat intervals from PPG via peak detection and artifact rejection; derived HR stays within ±5 bpm of chest strap reading during a side-by-side seated rest test
+  4. Neural Calm score (alpha/beta power ratio from AF7/AF8) updates every 1-2 seconds and noticeably rises when the user closes their eyes and relaxes for 10 seconds
+  5. EEG artifact rejection prevents eye blinks (100+ µV spikes on AF7/AF8) from corrupting the Neural Calm score — score remains stable during a deliberate blink sequence
+**Plans**: TBD
+
+Plans:
+- [ ] 07-01: MuseAdapter — BLE connect to 0xfe8d, p50 preset, subscribe to PPG (3 ch) + EEG (4 ch) characteristics, raw data parsing (16-bit event index + samples), AppState EEG/PPG circular buffers
+- [ ] 07-02: PPG pipeline — bandpass filter (0.5–5 Hz), systolic peak detection, IBI extraction, physiological artifact rejection; feed cleaned IBI into existing DSPEngine
+- [ ] 07-03: EEG pipeline — 2-second sliding FFT window on AF7/AF8, alpha (8–12 Hz) and beta (13–30 Hz) power extraction, threshold-based artifact rejection (>100 µV epoch discard), Neural Calm ratio computation
+
+#### Phase 8: Session Integration
+**Goal**: A Muse-S user can run a complete practice or discovery session using PPG-derived HRV with the Neural Calm score and live EEG waveform visible alongside the existing coherence display — and the session summary captures all Muse-S metrics.
+**Depends on**: Phase 7
+**Requirements**: PPG-03, PPG-04, EEG-03, SESS-01, SESS-02, SESS-03
+**Success Criteria** (what must be TRUE):
+  1. User can start and complete a full Practice session using only the Muse-S (no chest strap) — breathing pacer runs, coherence score updates from PPG-derived RR intervals, session saves to IndexedDB
+  2. Neural Calm score is visible as a live metric during any session where Muse-S is connected — it updates continuously and is visually distinct from the coherence score
+  3. A live scrolling EEG waveform renders on Canvas during sessions, showing real-time brain activity across at least 2 channels
+  4. When PPG-derived data is used for HRV, the coherence display is visually marked to indicate lower confidence compared to chest strap data
+  5. Session summary screen shows mean Neural Calm, peak Neural Calm, and time spent above a high-calm threshold when Muse-S was used
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01: Muse-S standalone session mode — PPG-sourced IBI feeds coherence engine, source confidence indicator, session persistence with Muse-S provenance flag
+- [ ] 08-02: Neural Calm live display panel + scrolling EEG Canvas renderer; session summary Neural Calm metrics (mean, peak, time-in-high-calm)
+
+#### Phase 9: Neural Calm Dashboard
+**Goal**: Neural Calm session averages are persisted and displayed on the recovery dashboard alongside coherence and Oura HRV, so the user can see how their brain-state metric trends over days and weeks of practice.
+**Depends on**: Phase 8
+**Requirements**: DASH-04, DASH-05
+**Success Criteria** (what must be TRUE):
+  1. After completing a Muse-S session, the session's mean Neural Calm value is persisted to IndexedDB and appears on the recovery dashboard immediately on next page load
+  2. Recovery dashboard displays a Neural Calm trend line alongside the existing coherence and Oura HRV trends — all three are visible on the same time axis with clearly labeled Y-axes
+  3. Sessions recorded without Muse-S show no Neural Calm data point (gap in line) rather than a zero — the chart handles missing data gracefully
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: IndexedDB schema update for Neural Calm session averages; dashboard Neural Calm trend line on existing Canvas chart with gap handling for HRM-only sessions
 
 ## Progress
 
 **Execution Order:**
-Phases 1 -> 2 -> 3 (can overlap with 2) -> 4 -> 5
+v1.0: 1 → 2 → 3 → 4 → 5 (complete)
+v1.1: 6 → 7 → 8 → 9
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Foundation | 2/2 | Complete    | 2026-03-22 |
-| 2. Signal Processing + Visualization | 2/2 | Complete    | 2026-03-22 |
-| 3. Breathing Pacer | 2/2 | Complete    | 2026-03-22 |
-| 4. Session Modes | 2/2 | Complete   | 2026-03-22 |
-| 5. Oura + Recovery Dashboard | 2/2 | Complete   | 2026-03-22 |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Foundation | v1.0 | 2/2 | Complete | 2026-03-22 |
+| 2. Signal Processing + Visualization | v1.0 | 2/2 | Complete | 2026-03-22 |
+| 3. Breathing Pacer | v1.0 | 2/2 | Complete | 2026-03-22 |
+| 4. Session Modes | v1.0 | 2/2 | Complete | 2026-03-22 |
+| 5. Oura + Recovery Dashboard | v1.0 | 2/2 | Complete | 2026-03-22 |
+| 6. Device Architecture | v1.1 | 0/2 | Not started | - |
+| 7. Muse-S Connection + Signal Processing | v1.1 | 0/3 | Not started | - |
+| 8. Session Integration | v1.1 | 0/2 | Not started | - |
+| 9. Neural Calm Dashboard | v1.1 | 0/1 | Not started | - |
