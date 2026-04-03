@@ -55,6 +55,34 @@ export const AppState = new Proxy({
   museName: null,
   museCapabilities: { hr: false, rr: false, eeg: false, ppg: false },
 
+  // PPG signal quality (Plan 02 writes, UI reads)
+  ppgSignalQuality: 'good',        // 'good'|'fair'|'poor'
+
+  // EEG Neural Calm (Plan 03 writes, UI reads)
+  neuralCalm: 0,                   // 0-100 score
+  rawNeuralCalmRatio: 0,           // raw alpha/(alpha+beta)
+  eegCalibrating: true,            // true during 20-sec baseline collection
+
+  // Eyes-open indicator (Plan 03 writes, UI reads)
+  eyesOpenWarning: false,          // true for 3s after sharp alpha drop
+
+  // Debug: all 3 PPG channel waveforms (circular buffers for hidden debug view)
+  ppgDebugBuffers: [
+    new Float32Array(256),         // Ch0 — last 4 sec at 64 Hz
+    new Float32Array(256),         // Ch1
+    new Float32Array(256),         // Ch2
+  ],
+  ppgDebugHead: 0,
+
+  // EEG circular buffers per channel (Plan 03 reads for FFT)
+  eegBuffers: [
+    new Float32Array(512),         // TP9 — 2 sec at 256 Hz
+    new Float32Array(512),         // AF7
+    new Float32Array(512),         // AF8
+    new Float32Array(512),         // TP10
+  ],
+  eegHead: 0,
+
   // HR source routing (Phase 6)
   hrSourceLabel: null,           // 'Chest Strap' | 'Muse PPG' | null (no device)
   hrSourceLocked: false,         // true during active session — prevents mid-session switch
