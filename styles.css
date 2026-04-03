@@ -921,3 +921,119 @@ body {
 .trend-flat {
   color: var(--text-secondary);
 }
+
+/* ---- Dual device chips (Phase 6) ---- */
+
+.device-chips {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.device-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.device-connect-btn {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 24px;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.2s, opacity 0.2s;
+}
+
+.device-connect-btn:hover {
+  border-color: var(--accent-teal);
+}
+
+.device-connect-btn.connected {
+  border-color: var(--accent-teal);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Status dots */
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.disconnected {
+  background: var(--text-secondary);
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.status-dot.connecting,
+.status-dot.reconnecting {
+  background: var(--accent-action);
+  animation: status-pulse 1.2s ease-in-out infinite;
+}
+
+.status-dot.connected {
+  background: var(--accent-teal);
+}
+
+.device-status-text {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+/* HR source label (shown below BPM in live panel) */
+
+.hr-source-label {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 0.15rem;
+}
+
+/* No-HRV-data overlay on coherence panel */
+
+.no-hrv-data .coherence-score,
+.no-hrv-data .spectrum-chart,
+.no-hrv-data .coherence-gauge {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.no-hrv-data {
+  position: relative;
+}
+
+.no-hrv-data::after {
+  content: 'No HRV data';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+/* PPG accuracy warning (discovery mode, Muse PPG source) */
+
+.ppg-warning {
+  font-size: 0.7rem;
+  color: var(--accent-action);
+  text-align: center;
+  margin-top: 0.25rem;
+}
