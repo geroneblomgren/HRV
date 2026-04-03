@@ -43,6 +43,24 @@ export const AppState = new Proxy({
   // Oura (Phase 5)
   ouraData: null,
   ouraConnected: false,
+
+  // Multi-device state (Phase 6)
+  chestStrapConnected: false,
+  chestStrapStatus: 'disconnected',   // 'disconnected'|'connecting'|'connected'|'reconnecting'
+  chestStrapName: null,
+  chestStrapCapabilities: { hr: false, rr: false, eeg: false, ppg: false },
+
+  museConnected: false,
+  museStatus: 'disconnected',
+  museName: null,
+  museCapabilities: { hr: false, rr: false, eeg: false, ppg: false },
+
+  // HR source routing (Phase 6)
+  hrSourceLabel: null,           // 'Chest Strap' | 'Muse PPG' | null (no device)
+  hrSourceLocked: false,         // true during active session — prevents mid-session switch
+
+  // Active capabilities (Phase 6) — logical OR of all connected adapters
+  activeCapabilities: { hr: false, rr: false, eeg: false, ppg: false },
 }, {
   set(target, key, value) {
     target[key] = value;
