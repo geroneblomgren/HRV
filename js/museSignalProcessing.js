@@ -597,12 +597,12 @@ function _ingestIBI(ibi, timeMs) {
   // Write to AppState — identical to HRMAdapter pattern (DSP engine is source-agnostic)
   AppState.rrBuffer[AppState.rrHead % 512] = ibi;
   AppState.rrHead++;
-  AppState.bpm = Math.round(60000 / ibi);
-  AppState.beats++;
+  AppState.currentHR = Math.round(60000 / ibi);
+  AppState.rrCount++;
 }
 
 /**
- * Two-tier artifact rejection (matches HRMAdapter thresholds exactly):
+ * Two-tier artifact rejection (relaxed vs HRMAdapter 20% for forehead PPG jitter):
  * Tier 1: absolute physiological bounds (300–2000 ms)
  * Tier 2: relative — reject if IBI deviates >20% from 5-beat rolling median
  *
@@ -699,7 +699,7 @@ function _startPPGDebugRenderer() {
     const hrEl = document.getElementById('ppg-debug-hr');
     const chEl = document.getElementById('ppg-debug-channel');
     if (qualityEl) qualityEl.textContent = 'Quality: ' + (AppState.ppgSignalQuality || '--');
-    if (hrEl) hrEl.textContent = 'HR: ' + (AppState.bpm || '--') + ' bpm';
+    if (hrEl) hrEl.textContent = 'HR: ' + (AppState.currentHR || '--') + ' bpm';
     if (chEl) chEl.textContent = 'Ch: ' + ['IR', 'Green', 'Unknown'][_activeChannel];
   }
 

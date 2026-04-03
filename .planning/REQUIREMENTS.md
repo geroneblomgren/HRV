@@ -18,7 +18,7 @@ Requirements for Muse-S Neurocardiac Integration. Each maps to roadmap phases.
 
 - [x] **MUSE-01**: User can connect to Muse-S headband via Web Bluetooth (service 0xfe8d)
 - [x] **MUSE-02**: App initializes Muse-S with p50 preset to enable both EEG and PPG streaming
-- [x] **MUSE-03**: App receives 5-channel EEG data at 256 Hz from Muse-S
+- [x] **MUSE-03**: App receives 4-channel EEG data (TP9, AF7, AF8, TP10) at 256 Hz from Muse-S
 - [x] **MUSE-04**: App receives 3-channel PPG data at 64 Hz from Muse-S
 - [x] **MUSE-05**: Connection status UI shows Muse-S state (connecting, connected, streaming, disconnected)
 
