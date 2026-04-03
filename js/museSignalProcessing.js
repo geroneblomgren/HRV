@@ -275,7 +275,7 @@ function _checkEyesOpen(ratio) {
 // Pipeline stages:
 //   1. 4th-order Butterworth bandpass filter (0.5–3 Hz at 64 Hz Fs)
 //   2. Derivative-based peak detection with adaptive threshold + 2-second warmup
-//   3. Two-tier artifact rejection (absolute bounds 300–2000 ms + 20% median deviation)
+//   3. Two-tier artifact rejection (absolute bounds 300–2000 ms + 35% median deviation)
 //   4. Rolling signal quality computation (good/fair/poor updated every 5 seconds)
 //   5. RR buffer write (same AppState.rrBuffer/rrHead used by HRMAdapter)
 
@@ -604,7 +604,7 @@ function _ingestIBI(ibi, timeMs) {
 /**
  * Two-tier artifact rejection (relaxed vs HRMAdapter 20% for forehead PPG jitter):
  * Tier 1: absolute physiological bounds (300–2000 ms)
- * Tier 2: relative — reject if IBI deviates >20% from 5-beat rolling median
+ * Tier 2: relative — reject if IBI deviates >35% from 5-beat rolling median
  *
  * @param {number} ms - IBI in milliseconds
  * @returns {boolean} true if IBI should be rejected
