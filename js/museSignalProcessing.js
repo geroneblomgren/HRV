@@ -1,16 +1,16 @@
 // js/museSignalProcessing.js — Muse-S signal processing pipelines
 // This module handles both EEG and PPG signal processing for the Muse-S headband.
 //
+// PPG pipeline (Plan 02): 4th-order Butterworth bandpass filter (0.5–3 Hz), derivative
+// + adaptive threshold peak detection with 2-second warmup, two-tier artifact rejection,
+// signal quality indicator, and RR buffer writes compatible with existing DSP engine.
+//
 // EEG pipeline (Plan 03): Sliding-window FFT on TP9/TP10 channels, alpha/beta band
 // power extraction, artifact rejection, per-session baseline normalization, and
 // Neural Calm score (0-100) updated every 0.5 seconds.
-//
-// PPG pipeline (Plan 02): Peak detection on PPG channels for heart rate and HRV.
-//
-// Note: This file is created by Plan 03. Plan 02 appends the PPG pipeline section.
 
 import { AppState } from './state.js';
-import { setEEGCallback } from './devices/MuseAdapter.js';
+import { setPPGCallback, setEEGCallback } from './devices/MuseAdapter.js';
 
 // ============================================================================
 // EEG PIPELINE (Plan 03)
@@ -268,6 +268,430 @@ function _checkEyesOpen(ratio) {
 }
 
 // ============================================================================
-// PPG PIPELINE — See Plan 02
-// (Plan 02 will append setPPGCallback import and PPG pipeline functions here)
+// PPG PIPELINE (Plan 02)
 // ============================================================================
+//
+// Transforms raw 24-bit PPG samples from the Muse-S into clean inter-beat intervals (IBI).
+// Pipeline stages:
+//   1. 4th-order Butterworth bandpass filter (0.5–3 Hz at 64 Hz Fs)
+//   2. Derivative-based peak detection with adaptive threshold + 2-second warmup
+//   3. Two-tier artifact rejection (absolute bounds 300–2000 ms + 20% median deviation)
+//   4. Rolling signal quality computation (good/fair/poor updated every 5 seconds)
+//   5. RR buffer write (same AppState.rrBuffer/rrHead used by HRMAdapter)
+
+// ---- PPG Constants ----
+
+const PPG_FS = 64;                          // Muse-S PPG sample rate (Hz)
+const SAMPLE_INTERVAL_MS = 1000 / PPG_FS;  // 15.625 ms per sample
+
+// Refractory period: minimum time between detected peaks (300 ms = max 200 BPM)
+const REFRACTORY = 300;
+const REFRACTORY_SAMPLES = Math.ceil(REFRACTORY / SAMPLE_INTERVAL_MS); // 20 samples
+
+// Artifact rejection thresholds (matches HRMAdapter exactly)
+const RR_MIN_MS = 300;
+const RR_MAX_MS = 2000;
+const MAX_DEVIATION = 0.20;
+const MEDIAN_WINDOW = 5;
+
+// Adaptive threshold decay per sample (at 64 Hz: ~32%/sec decay)
+const THRESHOLD_DECAY = 0.995;
+// On peak: blend new amplitude (60%) with current threshold (40%)
+const THRESHOLD_BLEND_PEAK = 0.60;
+const THRESHOLD_BLEND_OLD  = 0.40;
+
+// Initial threshold set to 75th percentile of absolute amplitude during warmup
+const WARMUP_PERCENTILE = 0.75;
+
+// Warmup: 2 seconds = 128 samples — filter runs but no peak detection
+const WARMUP_SAMPLES = 2 * PPG_FS; // 128
+
+// Signal quality: rolling 30-second window, updated every 5 seconds
+const QUALITY_WINDOW_MS = 30000;
+const QUALITY_UPDATE_INTERVAL_MS = 5000;
+
+// ---- Butterworth Bandpass Filter Coefficients (0.5–3 Hz, Fs=64 Hz) ----
+//
+// Implemented as two cascaded 2nd-order biquad sections (4th-order total).
+// Derived via bilinear transform:
+//   Section 0 = 2nd-order Butterworth Highpass at 0.5 Hz (-3 dB at 0.5 Hz)
+//   Section 1 = 2nd-order Butterworth Lowpass at 3.0 Hz (-3 dB at 3.0 Hz)
+//
+// Frequency response verification:
+//   DC  (0.001 Hz): -108 dB (baseline wander fully rejected)
+//   0.5 Hz cutoff:  -3.01 dB (correct -3 dB point)
+//   1.0 Hz:          -0.31 dB (flat passband)
+//   1.5 Hz:          -0.31 dB (flat passband)
+//   2.0 Hz:          -0.79 dB (flat passband)
+//   3.0 Hz cutoff:   -3.01 dB (correct -3 dB point)
+//   8.0 Hz:         -17.91 dB (good HF rejection)
+//
+// [b0, b1, b2, a1, a2] — a0 is normalized to 1.0
+
+const PPG_SOS = [
+  // Section 0: 2nd-order Butterworth Highpass at 0.5 Hz
+  [ 0.9658852897, -1.9317705795,  0.9658852897, -1.9306064272,  0.9329347318],
+  // Section 1: 2nd-order Butterworth Lowpass at 3.0 Hz
+  [ 0.0178631928,  0.0357263855,  0.0178631928, -1.5879371063,  0.6593898773],
+];
+
+// ---- Biquad factory (Transposed Direct Form II) ----
+
+/**
+ * Create a stateful biquad filter that processes one sample at a time.
+ * Preserves state (z1, z2) between calls.
+ *
+ * @param {number} b0
+ * @param {number} b1
+ * @param {number} b2
+ * @param {number} a1
+ * @param {number} a2
+ * @returns {(x: number) => number}
+ */
+function makeBiquad(b0, b1, b2, a1, a2) {
+  let z1 = 0, z2 = 0;
+  return function process(x) {
+    const y = b0 * x + z1;
+    z1 = b1 * x - a1 * y + z2;
+    z2 = b2 * x - a2 * y;
+    return y;
+  };
+}
+
+/**
+ * Create a bandpass filter by chaining two biquad sections.
+ * Each call processes one sample through both sections in series.
+ *
+ * @returns {(x: number) => number}
+ */
+function makeBandpass() {
+  const bq0 = makeBiquad(...PPG_SOS[0]);
+  const bq1 = makeBiquad(...PPG_SOS[1]);
+  return function filter(x) {
+    return bq1(bq0(x));
+  };
+}
+
+// ---- PPG Module state ----
+
+let _ppgFilter = null;          // bandpass filter instance (recreated on init)
+let _activeChannel = 1;         // default: channel 1 = Green (best cardiac signal)
+
+// Peak detector state
+let _ppgSampleCount = 0;        // total samples processed since init
+let _prevFiltered = 0;          // filtered value at previous sample
+let _prevDeriv = 0;             // derivative at previous sample
+let _ppgThreshold = 0;          // adaptive peak threshold
+let _refractoryRemaining = 0;   // samples remaining in refractory period
+let _warmupBuffer = [];         // accumulates |filtered| during warmup for percentile
+
+// IBI / artifact rejection state
+let _ppgRrHistory = [];         // last MEDIAN_WINDOW clean IBI values (ms)
+let _lastPeakTimeMs = null;     // performance.now() timestamp of last peak
+
+// Signal quality state
+let _qualityWindow = [];        // [{t: epochMs, artifact: bool}] rolling 30-second window
+let _lastQualityUpdate = 0;     // performance.now() of last quality update
+
+// rAF debug rendering
+let _ppgRafHandle = null;
+
+// ---- PPG Public API ----
+
+/**
+ * Reset all PPG state, create fresh filter, register PPG callback via MuseAdapter.
+ * Must be called when Muse-S connects and starts streaming.
+ */
+export function initPPGPipeline() {
+  _ppgFilter = makeBandpass();
+
+  _ppgSampleCount = 0;
+  _prevFiltered = 0;
+  _prevDeriv = 0;
+  _ppgThreshold = 0;
+  _refractoryRemaining = 0;
+  _warmupBuffer = [];
+
+  _ppgRrHistory = [];
+  _lastPeakTimeMs = null;
+
+  _qualityWindow = [];
+  _lastQualityUpdate = performance.now();
+
+  setPPGCallback(_handlePPGSamples);
+
+  _startPPGDebugRenderer();
+
+  console.log('[PPG] Pipeline initialized — channel', _activeChannel,
+    _activeChannel === 0 ? '(IR)' : _activeChannel === 1 ? '(Green)' : '(Unknown)');
+}
+
+/**
+ * Deregister callback, stop debug renderer, reset signal quality.
+ * Must be called when Muse-S disconnects.
+ */
+export function stopPPGPipeline() {
+  setPPGCallback(null);
+  _stopPPGDebugRenderer();
+  AppState.ppgSignalQuality = 'good';
+  console.log('[PPG] Pipeline stopped');
+}
+
+/**
+ * Change which PPG channel feeds the processing pipeline.
+ * 0 = Infrared, 1 = Green (default), 2 = Unknown.
+ * Used by the calibration task (Plan 04) to switch channels empirically.
+ *
+ * @param {number} index - 0, 1, or 2
+ */
+export function setPPGChannel(index) {
+  if (index < 0 || index > 2) return;
+  _activeChannel = index;
+  console.log('[PPG] Active channel changed to', index);
+}
+
+// ---- PPG Internal: callback ----
+
+/**
+ * Called by MuseAdapter for each PPG characteristicvaluechanged notification.
+ * Receives channelIndex and 6 raw 24-bit samples.
+ * Only processes the active channel; interpolates sample timestamps within the batch.
+ *
+ * @param {number} channelIndex - 0=IR, 1=Green, 2=Unknown
+ * @param {number[]} samples    - 6 raw 24-bit PPG values
+ */
+function _handlePPGSamples(channelIndex, samples) {
+  if (channelIndex !== _activeChannel) return;
+
+  // Interpolate timestamps: performance.now() at notification end, subtract back 5 sample intervals
+  const batchEndMs = performance.now();
+  const batchStartMs = batchEndMs - (samples.length - 1) * SAMPLE_INTERVAL_MS;
+
+  for (let i = 0; i < samples.length; i++) {
+    const sampleTimeMs = batchStartMs + i * SAMPLE_INTERVAL_MS;
+    _processPPGSample(samples[i], sampleTimeMs);
+  }
+}
+
+// ---- PPG Internal: sample-by-sample processing ----
+
+/**
+ * Run one raw PPG sample through the full pipeline.
+ *
+ * @param {number} rawSample - raw 24-bit PPG value from Muse-S
+ * @param {number} timeMs    - interpolated sample timestamp (performance.now)
+ */
+function _processPPGSample(rawSample, timeMs) {
+  // Stage 1: Bandpass filter (removes baseline wander + high-freq noise)
+  const filtered = _ppgFilter(rawSample);
+  _ppgSampleCount++;
+
+  // Stage 2: Warmup — run filter but no peak detection for first 2 seconds (128 samples)
+  if (_ppgSampleCount <= WARMUP_SAMPLES) {
+    _warmupBuffer.push(Math.abs(filtered));
+
+    if (_ppgSampleCount === WARMUP_SAMPLES) {
+      // Set initial threshold to 75th percentile of warmup absolute amplitudes
+      const sorted = [..._warmupBuffer].sort((a, b) => a - b);
+      const idx = Math.floor(sorted.length * WARMUP_PERCENTILE);
+      _ppgThreshold = sorted[idx] || 0;
+      console.log('[PPG] Warmup complete — initial threshold:', _ppgThreshold.toFixed(2));
+    }
+    _prevFiltered = filtered;
+    _prevDeriv = 0;
+    return;
+  }
+
+  // Decay adaptive threshold each sample
+  _ppgThreshold *= THRESHOLD_DECAY;
+
+  // Decrement refractory counter
+  if (_refractoryRemaining > 0) {
+    _refractoryRemaining--;
+  }
+
+  // Stage 3: Derivative-based peak detection
+  // A systolic peak is a zero-crossing of the derivative (positive -> negative)
+  // where the signal exceeds the adaptive threshold and we're not in refractory
+  const deriv = filtered - _prevFiltered;
+
+  if (_prevDeriv > 0 && deriv <= 0 &&
+      _prevFiltered > _ppgThreshold &&
+      _refractoryRemaining === 0) {
+
+    // Peak is at the previous sample (where derivative crossed zero)
+    const peakTimeMs = timeMs - SAMPLE_INTERVAL_MS;
+    const peakAmplitude = _prevFiltered;
+
+    // Update adaptive threshold: blend peak amplitude into current threshold
+    _ppgThreshold = THRESHOLD_BLEND_PEAK * peakAmplitude + THRESHOLD_BLEND_OLD * _ppgThreshold;
+
+    // Enforce refractory period (prevents double-counting same peak)
+    _refractoryRemaining = REFRACTORY_SAMPLES;
+
+    // Compute IBI from last peak
+    if (_lastPeakTimeMs !== null) {
+      const ibi = peakTimeMs - _lastPeakTimeMs;
+      _ingestIBI(ibi, peakTimeMs);
+    }
+
+    _lastPeakTimeMs = peakTimeMs;
+  }
+
+  _prevFiltered = filtered;
+  _prevDeriv = deriv;
+}
+
+// ---- PPG Internal: artifact rejection + RR write ----
+
+/**
+ * Apply two-tier artifact rejection, update signal quality window,
+ * and write valid IBI to AppState.rrBuffer/rrHead.
+ *
+ * @param {number} ibi    - inter-beat interval in milliseconds
+ * @param {number} timeMs - peak timestamp for quality window
+ */
+function _ingestIBI(ibi, timeMs) {
+  const isArtifact = _rejectArtifact(ibi);
+
+  // Track in rolling quality window
+  _qualityWindow.push({ t: timeMs, artifact: isArtifact });
+
+  // Trim entries older than 30 seconds
+  const cutoff = timeMs - QUALITY_WINDOW_MS;
+  while (_qualityWindow.length > 0 && _qualityWindow[0].t < cutoff) {
+    _qualityWindow.shift();
+  }
+
+  // Update signal quality every 5 seconds
+  if (timeMs - _lastQualityUpdate >= QUALITY_UPDATE_INTERVAL_MS) {
+    _updateSignalQuality(timeMs);
+  }
+
+  // Rejected IBI: do not write to buffer
+  if (isArtifact) return;
+
+  // Update rolling median history
+  _ppgRrHistory.push(ibi);
+  if (_ppgRrHistory.length > MEDIAN_WINDOW) _ppgRrHistory.shift();
+
+  // Write to AppState — identical to HRMAdapter pattern (DSP engine is source-agnostic)
+  AppState.rrBuffer[AppState.rrHead % 512] = ibi;
+  AppState.rrHead++;
+  AppState.bpm = Math.round(60000 / ibi);
+  AppState.beats++;
+}
+
+/**
+ * Two-tier artifact rejection (matches HRMAdapter thresholds exactly):
+ * Tier 1: absolute physiological bounds (300–2000 ms)
+ * Tier 2: relative — reject if IBI deviates >20% from 5-beat rolling median
+ *
+ * @param {number} ms - IBI in milliseconds
+ * @returns {boolean} true if IBI should be rejected
+ */
+function _rejectArtifact(ms) {
+  // Tier 1: absolute bounds
+  if (ms < RR_MIN_MS || ms > RR_MAX_MS) return true;
+
+  // Tier 2: relative deviation from median (need at least MEDIAN_WINDOW values)
+  if (_ppgRrHistory.length >= MEDIAN_WINDOW) {
+    const sorted = [..._ppgRrHistory].sort((a, b) => a - b);
+    const median = sorted[Math.floor(MEDIAN_WINDOW / 2)];
+    if (Math.abs(ms - median) / median > MAX_DEVIATION) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Compute and update AppState.ppgSignalQuality from the rolling 30-second window.
+ * Thresholds: good < 10%, fair 10–30%, poor > 30% artifact rate.
+ *
+ * @param {number} nowMs - current performance.now() timestamp
+ */
+function _updateSignalQuality(nowMs) {
+  if (_qualityWindow.length === 0) return;
+
+  const total = _qualityWindow.length;
+  const artifacts = _qualityWindow.filter(e => e.artifact).length;
+  const rate = artifacts / total;
+
+  AppState.ppgSignalQuality = rate < 0.10 ? 'good' : rate <= 0.30 ? 'fair' : 'poor';
+  _lastQualityUpdate = nowMs;
+}
+
+// ---- PPG Debug renderer ----
+
+/**
+ * Start a rAF loop that renders all 3 PPG channel waveforms into the debug panel.
+ * Only executes drawing when the debug panel is visible (performance-safe).
+ */
+function _startPPGDebugRenderer() {
+  _stopPPGDebugRenderer();
+
+  function render() {
+    _ppgRafHandle = requestAnimationFrame(render);
+
+    const panel = document.getElementById('ppg-debug-panel');
+    if (!panel || panel.classList.contains('hidden')) return;
+
+    for (let ch = 0; ch < 3; ch++) {
+      const canvas = document.getElementById('ppg-debug-ch' + ch);
+      if (!canvas) continue;
+
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, w, h);
+
+      const buf = AppState.ppgDebugBuffers[ch];
+      const head = AppState.ppgDebugHead;
+      const len = buf.length; // 256 samples
+
+      // Auto-scale: find min/max of buffer
+      let minVal = Infinity, maxVal = -Infinity;
+      for (let i = 0; i < len; i++) {
+        if (buf[i] < minVal) minVal = buf[i];
+        if (buf[i] > maxVal) maxVal = buf[i];
+      }
+      const range = maxVal - minVal || 1;
+
+      ctx.strokeStyle = ch === 0 ? '#ff4444' : ch === 1 ? '#44ff44' : '#4488ff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+
+      for (let i = 0; i < len; i++) {
+        const idx = (head - len + i + len * 8) % len;
+        const v = buf[idx];
+        const x = (i / (len - 1)) * w;
+        const y = h - ((v - minVal) / range) * h * 0.88 - h * 0.06;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // Update stats text
+    const qualityEl = document.getElementById('ppg-debug-quality');
+    const hrEl = document.getElementById('ppg-debug-hr');
+    const chEl = document.getElementById('ppg-debug-channel');
+    if (qualityEl) qualityEl.textContent = 'Quality: ' + (AppState.ppgSignalQuality || '--');
+    if (hrEl) hrEl.textContent = 'HR: ' + (AppState.bpm || '--') + ' bpm';
+    if (chEl) chEl.textContent = 'Ch: ' + ['IR', 'Green', 'Unknown'][_activeChannel];
+  }
+
+  _ppgRafHandle = requestAnimationFrame(render);
+}
+
+/**
+ * Cancel the debug rAF loop.
+ */
+function _stopPPGDebugRenderer() {
+  if (_ppgRafHandle !== null) {
+    cancelAnimationFrame(_ppgRafHandle);
+    _ppgRafHandle = null;
+  }
+}
