@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Muse-S Neurocardiac Integration
-status: in_progress
-last_updated: "2026-04-03T20:25:57Z"
+status: unknown
+last_updated: "2026-04-03T20:31:51.144Z"
 progress:
-  total_phases: 9
+  total_phases: 7
   completed_phases: 6
-  total_plans: 20
-  completed_plans: 13
+  total_plans: 15
+  completed_plans: 14
 ---
 
 # Project State
@@ -47,6 +47,7 @@ Progress: [████░░░░░░] 38% (v1.1) — 3 of 8 plans complete 
 *Updated after each plan completion*
 | Phase 06-device-architecture P02 | 2 | 3 tasks | 3 files |
 | Phase 07-muse-s-connection P01 | 2 | 2 tasks | 3 files |
+| Phase 07-muse-s-connection-signal-processing P03 | 3 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,9 @@ Progress: [████░░░░░░] 38% (v1.1) — 3 of 8 plans complete 
 - v1.1: Threshold-based artifact rejection (>100 µV epoch discard) — ICA too expensive for real-time JS
 - v1.1: Port muse-js protocol as custom vanilla JS adapter (reference Respiire/MuseJS) — avoid RxJS dependency
 - [Phase 06-02]: Muse-S BLE picker feedback: museStatus set to 'paired' with orange dot after picker selection so user gets visual confirmation before Phase 7 wires full GATT connection
+- [Phase 07-03]: TP9/TP10 used for Neural Calm (not AF7/AF8) — frontal channels too susceptible to blink artifacts
+- [Phase 07-03]: Separate FFT(512) instance created in initEEGPipeline — isolated from dsp.js HRV FFT
+- [Phase 07-03]: Artifact rejection: reject entire epoch if EITHER TP9 or TP10 exceeds 100 µV peak-to-peak; carry forward last valid Neural Calm
 
 ### Decisions
 
@@ -82,11 +86,11 @@ None yet.
 
 - **PPG HRV accuracy:** Muse PPG at 64 Hz — no published Muse-S-specific HRV validation. Needs empirical dual-wear test (Muse + HRM 600 simultaneously).
 - **PPG channel selection:** Which of 3 PPG channels gives strongest cardiac signal is unconfirmed for Muse-S (IR vs Green vs Unknown). Must test empirically early in Phase 7.
-- **EEG artifact rejection quality:** AF7/AF8 are most blink-contaminated channels. May need to fall back to TP9/TP10 for Neural Calm if frontal channels are too noisy.
+- **EEG artifact rejection quality:** Implementation uses TP9/TP10 (resolved per 07-03 decision). Empirical validation of 100 µV threshold still pending physical test.
 - **muse-js firmware compatibility:** Library abandoned 2021 — community reports it still works; test early in Phase 7 before committing to full port.
 
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: Completed 07-01-PLAN.md — MuseAdapter BLE layer, Phase 7 AppState fields, DeviceManager wired
-Resume: Run `/gsd:execute-phase 7` for Plan 07-02 (PPG signal processing pipeline)
+Stopped at: Checkpoint — Task 3 human-verify in 07-03-PLAN.md (EEG pipeline built, awaiting physical Muse-S verification)
+Resume: After verifying Muse-S connection and Neural Calm behavior, resume Plan 07-03 Task 3 checkpoint verification
