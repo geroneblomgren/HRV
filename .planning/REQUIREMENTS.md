@@ -1,105 +1,89 @@
 # Requirements: ResonanceHRV
 
-**Defined:** 2026-04-03
-**Core Value:** Real-time HRV biofeedback during breathing sessions — seeing your heart rate oscillate in sync with your breath and knowing you're training at your exact resonance frequency.
+**Defined:** 2026-04-04
+**Core Value:** The app actively optimizes your breathing to maximize autonomic training — right frequency, right phase alignment, every session.
 
-## v1.1 Requirements
+## v1.2 Requirements
 
-Requirements for Muse-S Neurocardiac Integration. Each maps to roadmap phases.
+Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 
-### Device Architecture
+### Resonance Tuning
 
-- [x] **DEV-01**: User can select between HRM 600 chest strap and Muse-S headband from a device picker before connecting
-- [x] **DEV-02**: App detects device type from BLE scan results and loads the appropriate adapter
-- [x] **DEV-03**: User can connect to both HRM 600 and Muse-S simultaneously for dual biofeedback
-- [x] **DEV-04**: Session modes gracefully adapt UI based on connected device capabilities (HR-only vs HR+EEG)
+- [ ] **TUNE-01**: User sees a 60-second tuning phase before each practice session that identifies their current resonance frequency
+- [ ] **TUNE-02**: Tuning phase cycles through candidate frequencies centered on stored RF and selects the one with highest RSA amplitude
+- [ ] **TUNE-03**: User sees their tuned frequency with comparison to stored frequency ("Today: 4.7 BPM" vs stored 5.0)
+- [ ] **TUNE-04**: When RF has shifted significantly, app celebrates the change as a sign of improved vagal tone
 
-### Muse-S Connectivity
+### Resonance Mapping
 
-- [x] **MUSE-01**: User can connect to Muse-S headband via Web Bluetooth (service 0xfe8d)
-- [x] **MUSE-02**: App initializes Muse-S with p50 preset to enable both EEG and PPG streaming
-- [x] **MUSE-03**: App receives 4-channel EEG data (TP9, AF7, AF8, TP10) at 256 Hz from Muse-S
-- [x] **MUSE-04**: App receives 3-channel PPG data at 64 Hz from Muse-S
-- [x] **MUSE-05**: Connection status UI shows Muse-S state (connecting, connected, streaming, disconnected)
+- [ ] **MAP-01**: Each session record includes the tuned frequency and peak RSA amplitude
+- [ ] **MAP-02**: Dashboard displays RF trend over sessions on the recovery chart
+- [ ] **MAP-03**: RF trend correlates visually with Oura HRV recovery on same time axis
 
-### PPG Heart Rate
+### Phase Lock
 
-- [x] **PPG-01**: App performs peak detection on Muse PPG waveform to extract inter-beat intervals
-- [x] **PPG-02**: PPG-derived RR intervals are artifact-rejected (physiological bounds + rate-of-change filter)
-- [x] **PPG-03**: User can run a full practice or discovery session using only Muse-S PPG for heart rate (no chest strap required)
-- [x] **PPG-04**: PPG-derived HR and coherence scores are visually distinguished from chest-strap-derived values when accuracy confidence is lower
+- [ ] **LOCK-01**: App computes instantaneous phase angle between breathing pacer and HR oscillation via Hilbert transform
+- [ ] **LOCK-02**: Phase lock score (0-100) replaces coherence as the primary biofeedback metric during sessions
+- [ ] **LOCK-03**: Phase lock gauge replaces coherence gauge in session UI
+- [ ] **LOCK-04**: Session summary shows phase lock metrics (mean, peak, time locked in) instead of coherence
 
-### EEG Processing
+### Adaptive Pace
 
-- [x] **EEG-01**: App computes alpha (8-12 Hz) and beta (13-30 Hz) power from EEG channels in real-time
-- [x] **EEG-02**: EEG artifact rejection filters out eye blinks, jaw clenching, and movement contamination
-- [x] **EEG-03**: App computes Neural Calm score (alpha/beta power ratio) updating every 1-2 seconds
+- [ ] **PACE-01**: When phase lock is below threshold for >10 seconds, pace controller begins micro-adjusting breathing rate
+- [ ] **PACE-02**: Pace adjustments are smooth and imperceptible (max ±0.01 Hz per 30 seconds)
+- [ ] **PACE-03**: Pace never adjusts more than ±0.5 BPM from tuned frequency
+- [ ] **PACE-04**: Bowl echo timing shifts naturally with pace changes
 
-### Session Integration
+### Dashboard Integration
 
-- [x] **SESS-01**: Neural Calm score displays as a live metric during practice and discovery sessions when Muse-S is connected
-- [x] **SESS-02**: Live scrolling EEG waveform renders on Canvas during sessions when Muse-S is connected
-- [x] **SESS-03**: Session summary includes mean Neural Calm, peak Neural Calm, and time in high calm when Muse-S was used
-
-### Dashboard
-
-- [x] **DASH-04**: Session Neural Calm averages are persisted to IndexedDB alongside coherence data
-- [x] **DASH-05**: Recovery dashboard displays Neural Calm trend line alongside Oura HRV and session coherence trends
+- [ ] **DASH-06**: Phase lock trend replaces coherence trend on recovery dashboard
+- [ ] **DASH-07**: Old coherence data points display with legacy labeling
+- [ ] **DASH-08**: RF trend line appears on dashboard alongside HRV and phase lock
 
 ## Future Requirements
 
-### Garmin Fenix 8
+### Advanced Tuning
 
-- **FEN-01**: User can connect Fenix 8 as HR-only device (no HRV capability)
-- **FEN-02**: Sessions with Fenix 8 show HR waveform but disable coherence scoring
-
-### Advanced EEG
-
-- **AEEG-01**: Theta/alpha ratio for deeper meditation state tracking
-- **AEEG-02**: EEG-guided breathing rate suggestion (adjust pace based on neural state)
+- **ATUNE-01**: Continuous background RF tracking during sessions (not just pre-session)
+- **ATUNE-02**: Oura-informed session timing recommendations (morning vs evening)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Combined neurocardiac single metric | No validated protocol exists for merging EEG + HRV into one feedback signal |
-| Garmin Fenix 8 support | Cannot transmit RR intervals over BLE; wrist PPG too noisy for HRV |
-| Muse-S accelerometer data | Low value for seated breathing sessions |
-| Raw EEG export | Can add later; not core to biofeedback purpose |
+| HEP neurofeedback | HRM 600 lacks R-peak timestamps, Muse SNR insufficient |
+| Baroreflex sensitivity training | Requires beat-by-beat blood pressure data |
+| Polyvagal state classification | Contested science, would relabel existing metrics |
+| ML-based frequency prediction | Simple RSA peak comparison is sufficient |
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEV-01 | Phase 6 | Complete |
-| DEV-02 | Phase 6 | Complete |
-| DEV-03 | Phase 6 | Complete |
-| DEV-04 | Phase 6 | Complete |
-| MUSE-01 | Phase 7 | Complete |
-| MUSE-02 | Phase 7 | Complete |
-| MUSE-03 | Phase 7 | Complete |
-| MUSE-04 | Phase 7 | Complete |
-| MUSE-05 | Phase 7 | Complete |
-| PPG-01 | Phase 7 | Complete |
-| PPG-02 | Phase 7 | Complete |
-| PPG-03 | Phase 8 | Complete (08-01) |
-| PPG-04 | Phase 8 | Complete (08-01) |
-| EEG-01 | Phase 7 | Complete |
-| EEG-02 | Phase 7 | Complete |
-| EEG-03 | Phase 8 | Complete (08-01) |
-| SESS-01 | Phase 8 | Complete (08-01) |
-| SESS-02 | Phase 8 | Complete |
-| SESS-03 | Phase 8 | Complete |
-| DASH-04 | Phase 9 | Complete |
-| DASH-05 | Phase 9 | Complete |
+| TUNE-01 | — | Pending |
+| TUNE-02 | — | Pending |
+| TUNE-03 | — | Pending |
+| TUNE-04 | — | Pending |
+| MAP-01 | — | Pending |
+| MAP-02 | — | Pending |
+| MAP-03 | — | Pending |
+| LOCK-01 | — | Pending |
+| LOCK-02 | — | Pending |
+| LOCK-03 | — | Pending |
+| LOCK-04 | — | Pending |
+| PACE-01 | — | Pending |
+| PACE-02 | — | Pending |
+| PACE-03 | — | Pending |
+| PACE-04 | — | Pending |
+| DASH-06 | — | Pending |
+| DASH-07 | — | Pending |
+| DASH-08 | — | Pending |
 
 **Coverage:**
-- v1.1 requirements: 21 total
-- Mapped to phases: 21
-- Unmapped: 0
+- v1.2 requirements: 18 total
+- Mapped to phases: 0
+- Unmapped: 18
 
 ---
-*Requirements defined: 2026-04-03*
-*Last updated: 2026-04-03 after roadmap creation (phases 6-9)*
+*Requirements defined: 2026-04-04*
+*Last updated: 2026-04-04 after initial definition*
