@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Adaptive Closed-Loop Biofeedback
 status: unknown
-last_updated: "2026-04-04T12:59:05.862Z"
+last_updated: "2026-04-04T13:03:32.030Z"
 progress:
   total_phases: 11
   completed_phases: 10
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 11 (Phase Lock Engine) — IN PROGRESS
-Plan: 11-01 complete — phase lock computation engine (phaseLock.js + state.js + dsp.js wiring)
-Status: 11-01 done — ready for 11-02 (UI swap: replace coherence gauge with phase lock gauge)
-Last activity: 2026-04-04 — 11-01 executed, 2 tasks committed
+Plan: 11-02 complete — UI swap: phase lock gauge, trace, summary, persistence
+Status: 11-02 done — ready for 11-03 (Phase Lock Engine final plan)
+Last activity: 2026-04-04 — 11-02 executed, 2 tasks committed
 
-Progress: [##########-] Phase 11 in progress (1/3 plans complete)
+Progress: [##########-] Phase 11 in progress (2/3 plans complete)
 
 ## Performance Metrics
 
@@ -40,6 +40,7 @@ Progress: [##########-] Phase 11 in progress (1/3 plans complete)
 | Phase 10 P02 | 18 | 3 tasks | 4 files |
 | Phase 10 P03 | 15 | 2 tasks | 1 files |
 | Phase 11-phase-lock-engine P01 | 15 | 2 tasks | 3 files |
+| Phase 11-phase-lock-engine P02 | 8 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,8 @@ Progress: [##########-] Phase 11 in progress (1/3 plans complete)
 - [Phase 11-phase-lock-engine]: FFT bin extraction (Pattern 2) chosen for phase lock — reuses _fft instance, no IFFT needed
 - [Phase 11-phase-lock-engine]: Pacer phase computed relative to window center — avoids AudioContext epoch dependency
 - [Phase 11-phase-lock-engine]: MIN_POWER_THRESHOLD=0 (amplitude gate disabled) — tune after first real session
+- [Phase 11-phase-lock-engine]: Phase lock gauge uses 0.05 smoothing interpolation (between coherence 0.08 and Neural Calm 0.015)
+- [Phase 11-phase-lock-engine]: Locked zone threshold is 70 for phase lock (was 66 for old coherence Locked In)
 
 ### Roadmap Structure
 
@@ -89,5 +92,5 @@ Progress: [##########-] Phase 11 in progress (1/3 plans complete)
 ## Session Continuity
 
 Last session: 2026-04-04
-Stopped at: Completed 11-01-PLAN.md — phase lock computation engine (phaseLock.js, state.js, dsp.js)
-Resume: Execute 11-02 (UI swap — replace coherence gauge with phase lock gauge)
+Stopped at: Completed 11-02-PLAN.md — UI swap: phase lock gauge, trace, summary, persistence
+Resume: Execute 11-03 (Phase Lock Engine — final plan)

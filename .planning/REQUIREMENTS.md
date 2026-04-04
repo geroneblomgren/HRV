@@ -24,8 +24,8 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 
 - [x] **LOCK-01**: App computes instantaneous phase angle between breathing pacer and HR oscillation via Hilbert transform
 - [x] **LOCK-02**: Phase lock score (0-100) replaces coherence as the primary biofeedback metric during sessions
-- [ ] **LOCK-03**: Phase lock gauge replaces coherence gauge in session UI
-- [ ] **LOCK-04**: Session summary shows phase lock metrics (mean, peak, time locked in) instead of coherence
+- [x] **LOCK-03**: Phase lock gauge replaces coherence gauge in session UI
+- [x] **LOCK-04**: Session summary shows phase lock metrics (mean, peak, time locked in) instead of coherence
 
 ### Adaptive Pace
 
@@ -69,8 +69,8 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 | MAP-03 | Phase 10 | Complete |
 | LOCK-01 | Phase 11 | Complete |
 | LOCK-02 | Phase 11 | Complete |
-| LOCK-03 | Phase 11 | Pending |
-| LOCK-04 | Phase 11 | Pending |
+| LOCK-03 | Phase 11 | Complete |
+| LOCK-04 | Phase 11 | Complete |
 | PACE-01 | Phase 12 | Pending |
 | PACE-02 | Phase 12 | Pending |
 | PACE-03 | Phase 12 | Pending |
