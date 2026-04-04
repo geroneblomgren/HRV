@@ -139,12 +139,18 @@ export function buildEvenlySpacedTachogram(rrBuffer, rrHead, rrCount) {
   }
 
   // Resample to SAMPLE_RATE_HZ using cubic spline
+  // Use the MOST RECENT data when duration exceeds FFT window (128s).
+  // Before this fix, resampling started from t=0 (oldest), which meant
+  // old tuning data polluted the spectrum and newest practice data was lost.
   const duration = times[count - 1];
-  const nSamples = Math.min(FFT_SIZE, Math.floor(duration * SAMPLE_RATE_HZ));
+  const maxWindowSec = FFT_SIZE / SAMPLE_RATE_HZ; // 128s
+  const startTime = Math.max(0, duration - maxWindowSec);
+  const windowDuration = duration - startTime;
+  const nSamples = Math.min(FFT_SIZE, Math.floor(windowDuration * SAMPLE_RATE_HZ));
   const output = new Float32Array(FFT_SIZE); // zero-padded
 
   for (let i = 0; i < nSamples; i++) {
-    const queryTime = i / SAMPLE_RATE_HZ;
+    const queryTime = startTime + i / SAMPLE_RATE_HZ;
     output[i] = cubicSplineInterpolate(times, hr, queryTime);
   }
 
