@@ -50,8 +50,15 @@ export function initAudio() {
  */
 export function startPacer(pacingFreqHz) {
   if (!_ctx) return;
+  // Stop any running scheduler to prevent overlap with old cues
+  if (_schedulerTimer !== null) {
+    clearTimeout(_schedulerTimer);
+    _schedulerTimer = null;
+  }
   AppState.pacingFreq = pacingFreqHz;
-  _nextCueTime = _ctx.currentTime + 0.1;
+  // Start scheduling past the lookahead window so already-queued
+  // AudioContext nodes from the previous tempo finish without overlap
+  _nextCueTime = _ctx.currentTime + SCHEDULE_AHEAD_SEC + 0.05;
   _nextPhase = 'inhale';
   AppState.pacerEpoch = _nextCueTime;
   _schedulerTick();
