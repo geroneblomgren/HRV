@@ -1,76 +1,56 @@
 // js/phaseLock.js — Phase Lock Score computation
-// Extracts instantaneous phase alignment between breathing pacer and HR oscillation
-// via FFT complex coefficient at the pacing frequency bin.
+// Measures how consistently the HR oscillation is phase-aligned with the
+// breathing pacer using a sliding-window Phase Locking Value (PLV) approach.
 //
-// Algorithm (Pattern 2 from RESEARCH.md — FFT bin extraction):
-//   1. Build evenly-sampled tachogram from last windowSeconds of RR data
-//   2. Subtract mean + apply Hann window
-//   3. FFT → extract complex coefficient at pacing frequency bin
-//   4. Compute pacer phase analytically (relative to window center)
-//   5. Phase error = circular distance between HR phase and pacer phase
-//   6. Score = (1 - |err| / PI) * 100, clamped 0-100
+// Algorithm:
+//   1. Collect last windowSeconds of RR data from circular buffer
+//   2. Build evenly-spaced tachogram from ONLY that window (not full buffer)
+//   3. Subtract mean, apply Hann window, FFT
+//   4. Extract instantaneous HR phase at pacing frequency bin
+//   5. Compute pacer phase using session elapsed time (real reference)
+//   6. Store phase difference in circular history buffer
+//   7. PLV = mean resultant length of recent phase differences
+//   8. Score = PLV * 100 (0 = random phase, 100 = perfectly locked)
 //
 // Writes: AppState.phaseLockScore, AppState.phaseLockCalibrating
 // Called from: dsp.js tick() every second
 
 import { AppState } from './state.js';
-import { buildEvenlySpacedTachogram, FFT_SIZE, SAMPLE_RATE_HZ } from './dsp.js';
+import { cubicSplineInterpolate, FFT_SIZE, SAMPLE_RATE_HZ } from './dsp.js';
 
 // ---- Shared FFT instance (set by initPhaseLock) ----
 let _fft = null;
 
 // ---- Constants ----
 const MIN_WINDOW_MS = 25000;   // 25 seconds minimum accumulated RR data before scoring
-const RSA_HALF_BAND = 0.02;    // Hz — band around pacing freq for amplitude gate
-const MIN_POWER_THRESHOLD = 0; // Disabled — tune empirically after first real session
+const PLV_HISTORY = 10;        // number of phase-difference samples for PLV averaging
+
+// ---- Phase difference history (circular buffer for PLV) ----
+const _phaseDiffHistory = new Float64Array(PLV_HISTORY);
+let _phaseDiffHead = 0;
+let _phaseDiffCount = 0;
 
 /**
  * Initialize the phase lock module with a shared FFT instance.
- * Must be called from initDSP() after the FFT instance is created.
- *
  * @param {FFT} fftInstance - the same FFT instance used by dsp.js
  */
 export function initPhaseLock(fftInstance) {
   _fft = fftInstance;
+  _phaseDiffHead = 0;
+  _phaseDiffCount = 0;
 }
 
 /**
- * Apply Hann window in-place to a Float32Array.
- * @param {Float32Array} signal
- * @param {number} nSamples - number of real (non-zero-padded) samples
- */
-function applyHannWindowPartial(signal, nSamples) {
-  for (let i = 0; i < nSamples; i++) {
-    signal[i] *= 0.5 * (1 - Math.cos(2 * Math.PI * i / nSamples));
-  }
-}
-
-/**
- * Compute phase lock score between breathing pacer and HR oscillation.
+ * Build a windowed tachogram from the LAST windowSeconds of RR data only.
+ * Unlike dsp.js buildEvenlySpacedTachogram which uses the entire buffer,
+ * this extracts only the requested time window for phase analysis.
  *
- * Steps:
- *  1. Walk back through RR circular buffer to collect up to windowSeconds of data
- *  2. Gate: if accumulated time < MIN_WINDOW_MS, return null (calibrating)
- *  3. Build evenly-spaced tachogram (reuses dsp.js buildEvenlySpacedTachogram)
- *  4. Subtract mean, apply Hann window
- *  5. FFT → extract complex coefficient at pacingFreqHz bin
- *  6. Compute expected pacer phase at window center (relative to window start)
- *  7. Phase error via circular distance
- *  8. Score = (1 - |err| / PI) * 100, amplitude-gated, written to AppState
- *
- * @param {number} [windowSeconds=30] - seconds of RR history to analyze
- * @param {number} [pacingFreqHz=0.0833] - current pacer frequency in Hz
- * @returns {number|null} phase lock score 0-100, or null if calibrating
+ * @param {number} windowSeconds - seconds of RR history to use
+ * @returns {{ tachogram: Float32Array, realSamples: number }|null}
  */
-export function computePhaseLockScore(windowSeconds = 30, pacingFreqHz = 0.0833) {
-  if (!_fft) return null;
-
+function buildWindowedTachogram(windowSeconds) {
   const count = Math.min(AppState.rrCount, 512);
-  if (count < 10) {
-    AppState.phaseLockCalibrating = true;
-    AppState.phaseLockScore = 0;
-    return null;
-  }
+  if (count < 10) return null;
 
   const rrBuf = AppState.rrBuffer;
   const head = AppState.rrHead;
@@ -86,16 +66,9 @@ export function computePhaseLockScore(windowSeconds = 30, pacingFreqHz = 0.0833)
     rrValues.unshift(rr);
   }
 
-  // Calibration gate — need at least 25s of data
-  if (accMs < MIN_WINDOW_MS || rrValues.length < 10) {
-    AppState.phaseLockCalibrating = true;
-    AppState.phaseLockScore = 0;
-    return null;
-  }
+  if (accMs < MIN_WINDOW_MS || rrValues.length < 10) return null;
 
-  AppState.phaseLockCalibrating = false;
-
-  // Build time axis (seconds) and instantaneous HR (BPM)
+  // Build time axis and instantaneous HR from this window only
   const n = rrValues.length;
   const times = new Float64Array(n);
   const hr = new Float64Array(n);
@@ -106,92 +79,112 @@ export function computePhaseLockScore(windowSeconds = 30, pacingFreqHz = 0.0833)
     t += rrValues[i] / 1000;
   }
 
-  // Resample to even spacing via cubic spline (reuse dsp.js function)
-  // buildEvenlySpacedTachogram reads directly from AppState — we replicate
-  // the resampling inline using the already-collected rrValues.
-  //
-  // We need a separate tachogram from the one dsp.js already computed, because
-  // we must run our own FFT to get complex output (dsp.js only writes PSD).
+  // Resample to even spacing via cubic spline
   const duration = times[n - 1];
-  const nSamples = Math.min(FFT_SIZE, Math.floor(duration * SAMPLE_RATE_HZ));
+  const realSamples = Math.min(FFT_SIZE, Math.floor(duration * SAMPLE_RATE_HZ));
+  if (realSamples < 40) return null;
 
-  if (nSamples < 40) {
+  const tachogram = new Float32Array(FFT_SIZE); // zero-padded
+  for (let i = 0; i < realSamples; i++) {
+    tachogram[i] = cubicSplineInterpolate(times, hr, i / SAMPLE_RATE_HZ);
+  }
+
+  return { tachogram, realSamples };
+}
+
+/**
+ * Apply Hann window in-place over the first nSamples of a signal.
+ * @param {Float32Array} signal
+ * @param {number} nSamples
+ */
+function applyHannWindowPartial(signal, nSamples) {
+  for (let i = 0; i < nSamples; i++) {
+    signal[i] *= 0.5 * (1 - Math.cos(2 * Math.PI * i / nSamples));
+  }
+}
+
+/**
+ * Compute phase lock score between breathing pacer and HR oscillation.
+ *
+ * Uses Phase Locking Value (PLV): measures consistency of the phase
+ * relationship over time. A stable phase difference (even if non-zero)
+ * produces a high score. Random phase produces a low score.
+ *
+ * @param {number} [windowSeconds=30] - seconds of RR history to analyze
+ * @param {number} [pacingFreqHz=0.0833] - current pacer frequency in Hz
+ * @param {number} [sessionElapsedSec=0] - seconds since session started
+ * @returns {number|null} phase lock score 0-100, or null if calibrating
+ */
+export function computePhaseLockScore(windowSeconds = 30, pacingFreqHz = 0.0833, sessionElapsedSec = 0) {
+  if (!_fft) return null;
+
+  // Build tachogram from ONLY the requested time window
+  const result = buildWindowedTachogram(windowSeconds);
+  if (!result) {
     AppState.phaseLockCalibrating = true;
     AppState.phaseLockScore = 0;
     return null;
   }
 
-  // Import cubicSplineInterpolate to resample
-  // Instead of re-importing, we use buildEvenlySpacedTachogram with a temp
-  // trick: we don't have access to xs/ys directly. Use the exported function.
-  //
-  // Actually: build the tachogram using the exported function from dsp.js,
-  // which already handles the full pipeline (read from AppState buffer,
-  // spline interpolate, zero-pad). This is simpler and avoids duplication.
-  const tachogram = buildEvenlySpacedTachogram(AppState.rrBuffer, AppState.rrHead, AppState.rrCount);
-  if (!tachogram) {
-    AppState.phaseLockCalibrating = true;
-    AppState.phaseLockScore = 0;
-    return null;
-  }
+  AppState.phaseLockCalibrating = false;
 
-  // Determine actual number of non-zero samples in tachogram
-  // buildEvenlySpacedTachogram returns zero-padded array; find last non-zero
-  let realSamples = FFT_SIZE;
-  for (let i = FFT_SIZE - 1; i >= 0; i--) {
-    if (tachogram[i] !== 0) { realSamples = i + 1; break; }
-  }
-  if (realSamples < 40) {
-    AppState.phaseLockCalibrating = true;
-    AppState.phaseLockScore = 0;
-    return null;
-  }
+  const { tachogram, realSamples } = result;
 
-  // Subtract mean (detrend — prevents DC offset from inflating phase estimate)
+  // Subtract mean (detrend)
   let mean = 0;
   for (let i = 0; i < realSamples; i++) mean += tachogram[i];
   mean /= realSamples;
   for (let i = 0; i < realSamples; i++) tachogram[i] -= mean;
-  // zero-padded region remains 0 after mean subtraction of real samples
 
   // Apply Hann window over real samples only
   applyHannWindowPartial(tachogram, realSamples);
 
-  // FFT — get complex output (interleaved re/im, length FFT_SIZE * 2)
+  // FFT → extract complex coefficient at pacing frequency bin
   const fftOut = new Float32Array(_fft.size * 2);
   _fft.realTransform(fftOut, tachogram);
 
-  // Extract complex coefficient at pacing frequency bin
   const bin = Math.round(pacingFreqHz * FFT_SIZE / SAMPLE_RATE_HZ);
-  const safeBin = Math.max(1, Math.min(bin, FFT_SIZE / 2 - 1)); // guard edges
+  const safeBin = Math.max(1, Math.min(bin, FFT_SIZE / 2 - 1));
   const re = fftOut[2 * safeBin];
   const im = fftOut[2 * safeBin + 1];
-
-  // Amplitude gate: check power at pacing frequency band
-  // Power at this single bin (before amplitude conversion)
-  const binPower = re * re + im * im;
-  if (MIN_POWER_THRESHOLD > 0 && binPower < MIN_POWER_THRESHOLD) {
-    AppState.phaseLockScore = 0;
-    return 0;
-  }
 
   // HR phase at pacing frequency (angle of complex coefficient)
   const hrPhase = Math.atan2(im, re);
 
-  // Pacer phase: expected phase at window center, relative to window start.
-  // FFT phase is referenced to t=0 of the data window, so we compute
-  // how far the pacer has advanced from t=0 to t=windowCenter.
-  // windowCenter = (realSamples / 2) / SAMPLE_RATE_HZ seconds
-  const windowCenterSec = (realSamples / 2) / SAMPLE_RATE_HZ;
-  const pacerPhase = (2 * Math.PI * pacingFreqHz * windowCenterSec) % (2 * Math.PI);
+  // Pacer phase: use session elapsed time as the real reference.
+  // The pacer runs continuously from session start at pacingFreqHz.
+  // We need the pacer's phase at the START of the data window, since
+  // the FFT phase is referenced to t=0 of the input signal.
+  // Window start time = sessionElapsed - windowDuration
+  const windowDurationSec = realSamples / SAMPLE_RATE_HZ;
+  const windowStartSec = Math.max(0, sessionElapsedSec - windowDurationSec);
+  const pacerPhase = (2 * Math.PI * pacingFreqHz * windowStartSec) % (2 * Math.PI);
 
-  // Phase error: circular distance between HR phase and pacer phase
-  let err = hrPhase - pacerPhase;
-  if (err > Math.PI)  err -= 2 * Math.PI;
-  if (err < -Math.PI) err += 2 * Math.PI;
+  // Phase difference (wrapped to [-PI, PI])
+  let phaseDiff = hrPhase - pacerPhase;
+  if (phaseDiff > Math.PI)  phaseDiff -= 2 * Math.PI;
+  if (phaseDiff < -Math.PI) phaseDiff += 2 * Math.PI;
 
-  // Score: 100 = perfectly locked (err=0), 0 = anti-phase (err=±PI)
-  const score = Math.max(0, Math.min(100, Math.round((1 - Math.abs(err) / Math.PI) * 100)));
+  // Store in circular history buffer
+  _phaseDiffHistory[_phaseDiffHead] = phaseDiff;
+  _phaseDiffHead = (_phaseDiffHead + 1) % PLV_HISTORY;
+  if (_phaseDiffCount < PLV_HISTORY) _phaseDiffCount++;
+
+  // Phase Locking Value = mean resultant length of unit vectors at phase differences
+  // PLV = |mean(e^{i*phaseDiff})|  = sqrt(meanCos^2 + meanSin^2)
+  // PLV = 1 when all phase differences are identical (locked)
+  // PLV ≈ 0 when phase differences are uniformly random (unlocked)
+  let sumCos = 0, sumSin = 0;
+  for (let i = 0; i < _phaseDiffCount; i++) {
+    sumCos += Math.cos(_phaseDiffHistory[i]);
+    sumSin += Math.sin(_phaseDiffHistory[i]);
+  }
+  const plv = Math.sqrt(
+    (sumCos / _phaseDiffCount) ** 2 + (sumSin / _phaseDiffCount) ** 2
+  );
+
+  // Score: PLV 0-1 → 0-100
+  const score = Math.max(0, Math.min(100, Math.round(plv * 100)));
 
   AppState.phaseLockScore = score;
   return score;
