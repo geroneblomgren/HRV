@@ -4,6 +4,7 @@
 // AppState.coherenceScore/lfPower/spectralBuffer/calibrating.
 
 import { AppState } from './state.js';
+import { initPhaseLock, computePhaseLockScore } from './phaseLock.js';
 
 // ---- Constants ----
 export const SAMPLE_RATE_HZ = 4;           // standard HRV resampling rate
@@ -421,6 +422,7 @@ export function initDSP() {
     throw new Error('FFT library not loaded. Check that fft.js CDN script loaded before main.js.');
   }
   _fft = new FFT(FFT_SIZE);
+  initPhaseLock(_fft);
 }
 
 // ---- Tick (main entry point) ----
@@ -456,4 +458,7 @@ export function tick(sessionElapsedSeconds) {
   AppState.spectralBuffer = psd;
   AppState.lfPower = integrateBand(psd, LF_LOW_HZ, LF_HIGH_HZ);
   AppState.coherenceScore = computeCoherenceScore(psd);
+
+  // Phase lock score (replaces coherence in UI — Phase 11)
+  computePhaseLockScore(30, AppState.pacingFreq);
 }
