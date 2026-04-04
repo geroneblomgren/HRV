@@ -169,4 +169,4 @@ v1.1: 6 → 7 → 8 → 9
 | 6. Device Architecture | 2/2 | Complete   | 2026-04-03 | - |
 | 7. Muse-S Connection + Signal Processing | 3/3 | Complete   | 2026-04-03 | - |
 | 8. Session Integration | 2/2 | Complete   | 2026-04-04 | - |
-| 9. Neural Calm Dashboard | v1.1 | 0/1 | Not started | - |
+| 9. Neural Calm Dashboard | 1/1 | Complete   | 2026-04-04 | - |

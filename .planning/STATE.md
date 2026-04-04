@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Muse-S Neurocardiac Integration
 status: unknown
-last_updated: "2026-04-04T01:07:41.019Z"
+last_updated: "2026-04-04T01:29:47.663Z"
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 17
-  completed_plans: 17
+  total_phases: 9
+  completed_phases: 9
+  total_plans: 18
+  completed_plans: 18
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 
 ## Current Position
 
-Phase: 8 of 9 (Session Integration) — IN PROGRESS
-Plan: 2 of 2 — 08-02 COMPLETE (verified + post-checkpoint improvements done)
-Status: Phase 8 complete — all plans done; ready to begin Phase 9 (Neural Calm Dashboard)
-Last activity: 2026-04-03 — 08-02 verified: alpha power bar, smoothed Neural Calm gauge, session summary line graphs (HR, HRV-RMSSD, Neural Calm), bowl audio echo subdivisions
+Phase: 9 of 9 (Neural Calm Dashboard) — AT CHECKPOINT
+Plan: 1 of 1 — 09-01 Task 1 COMPLETE, Task 2 awaiting human-verify checkpoint
+Status: Awaiting visual verification of Neural Calm dashboard integration
+Last activity: 2026-04-03 — 09-01 Task 1: blue Neural Calm trend line, inline legend, tooltip, Avg Neural Calm 7d metric card added to dashboard
 
-Progress: [█████████░] 94% (v1.1) — 8 of 9 plans complete (phase 8: 2/2 done)
+Progress: [██████████] 100% (v1.1) — 18 of 18 plans committed (awaiting final checkpoint verification)
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [█████████░] 94% (v1.1) — 8 of 9 plans complete 
 | Phase 07 P02 | 9 | 2 tasks | 5 files |
 | Phase 08-session-integration P01 | 3 | 2 tasks | 5 files |
 | Phase 08-session-integration P02 | ~60 | 3 tasks | 5 files |
+| Phase 09-neural-calm-dashboard P01 | 2 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ Progress: [█████████░] 94% (v1.1) — 8 of 9 plans complete 
 - [Phase 08-02]: Session summary provides 3 line graphs (HR, HRV-RMSSD, Neural Calm) with 7-point moving average for post-session trend review
 - [Phase 08-02]: Coherence graph replaced by RMSSD HRV graph in session summary — more clinically meaningful than redundant coherence
 - [Phase 08-02]: Bowl audio uses quarter-beat echo subdivisions — aids eyes-closed pacing; pitch/swell styles removed
+- [Phase 09-01]: Right Y-axis relabeled from 'Coherence' to 'Score (0-100)' — applies to both coherence and Neural Calm
+- [Phase 09-01]: Neural Calm line uses broken-path rendering for days without Muse-S — honest gap representation, no zero-fill
+- [Phase 09-01]: Neural Calm line width 1.5 and globalAlpha 0.85 — thinner and slightly transparent to layer cleanly under coherence dots
 
 ### Decisions
 
@@ -112,5 +116,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: Completed 08-02-PLAN.md — all tasks verified, SUMMARY created, Phase 8 fully done
-Resume: Run `/gsd:execute-phase 9` to begin Phase 9 (Neural Calm Dashboard)
+Stopped at: Checkpoint: Task 2 human-verify — 09-01 Neural Calm dashboard awaiting visual verification
+Resume: Start app with ResonanceHRV.bat, verify dashboard chart shows blue Neural Calm line, legend, and 5th metric card; then type "approved" to complete phase

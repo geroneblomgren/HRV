@@ -43,8 +43,8 @@ Requirements for Muse-S Neurocardiac Integration. Each maps to roadmap phases.
 
 ### Dashboard
 
-- [ ] **DASH-04**: Session Neural Calm averages are persisted to IndexedDB alongside coherence data
-- [ ] **DASH-05**: Recovery dashboard displays Neural Calm trend line alongside Oura HRV and session coherence trends
+- [x] **DASH-04**: Session Neural Calm averages are persisted to IndexedDB alongside coherence data
+- [x] **DASH-05**: Recovery dashboard displays Neural Calm trend line alongside Oura HRV and session coherence trends
 
 ## Future Requirements
 
@@ -92,8 +92,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SESS-01 | Phase 8 | Complete (08-01) |
 | SESS-02 | Phase 8 | Complete |
 | SESS-03 | Phase 8 | Complete |
-| DASH-04 | Phase 9 | Pending |
-| DASH-05 | Phase 9 | Pending |
+| DASH-04 | Phase 9 | Complete |
+| DASH-05 | Phase 9 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 21 total
