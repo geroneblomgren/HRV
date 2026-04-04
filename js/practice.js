@@ -6,8 +6,9 @@
 import { AppState, subscribe, unsubscribe } from './state.js';
 import { initAudio, startPacer, stopPacer, playChime, setVolume } from './audio.js';
 import { initDSP, tick } from './dsp.js';
-import { startRendering, stopRendering } from './renderer.js';
+import { startRendering, stopRendering, startTuningRenderer, stopTuningRenderer } from './renderer.js';
 import { saveSession } from './storage.js';
+import { startTuning, stopTuning } from './tuning.js';
 
 // ---- Module state ----
 
@@ -48,12 +49,11 @@ function _hide(el) {
 
 /**
  * Entry point. Call from a user gesture so AudioContext can init.
- * Reads AppState.savedResonanceFreq and starts a guided breathing session.
+ * Runs a 60-second tuning phase, then starts the guided breathing session
+ * at the tuned resonance frequency.
  */
-export function startPractice() {
+export async function startPractice() {
   if (_active) return;
-  const savedFreq = AppState.savedResonanceFreq;
-  if (!savedFreq) return;
 
   _active = true;
   _chimePlayed = false;
@@ -62,22 +62,105 @@ export function startPractice() {
   _neuralCalmTrace = [];
   _hrTrace = [];
   _hrvTrace = [];
+
+  // ---- Tuning phase ----
+
+  // Show tuning overlay, hide placeholder and summary
+  const tuningOverlay = _getEl('tuning-overlay');
+  _show(tuningOverlay);
+  _hide(_getEl('practice-placeholder'));
+  _hide(_getEl('practice-summary'));
+  _hide(_getEl('practice-session-viz'));
+
+  // Init audio and DSP before tuning starts
+  initAudio();
+  initDSP();
+
+  // Start the tuning scanning ring animation
+  const tuningRingCanvas = _getEl('tuning-ring-canvas');
+  startTuningRenderer(tuningRingCanvas);
+
+  // Update UI countdown and current candidate freq every second
+  const tuningStartEpoch = Date.now();
+  let _tuningUIInterval = setInterval(() => {
+    const elapsed = Math.round((Date.now() - tuningStartEpoch) / 1000);
+    const remaining = Math.max(0, 60 - elapsed);
+    const timeEl = _getEl('tuning-time-remaining');
+    if (timeEl) timeEl.textContent = `${remaining}s remaining`;
+    const freqEl = _getEl('tuning-current-freq');
+    if (freqEl && AppState.tuningCurrentFreqBPM > 0) {
+      freqEl.textContent = `${AppState.tuningCurrentFreqBPM.toFixed(2)} BPM`;
+    }
+  }, 1000);
+
+  // Run tuning — awaits ~60 seconds
+  let result;
+  try {
+    result = await startTuning(AppState.savedResonanceFreq);
+  } catch (err) {
+    console.error('Practice: tuning failed', err);
+    // Fall back to saved freq or a safe default
+    const fallback = AppState.savedResonanceFreq || (5.0 / 60);
+    result = { freqHz: fallback, freqBPM: fallback * 60, rsaAmplitude: 0 };
+  }
+
+  // Tear down tuning UI
+  stopTuningRenderer();
+  clearInterval(_tuningUIInterval);
+  _hide(tuningOverlay);
+
+  // ---- Result display ----
+
+  const resultEl = _getEl('tuning-result');
+  const resultFreqEl = _getEl('tuning-result-freq');
+  const resultCompEl = _getEl('tuning-result-comparison');
+  const celebrationEl = _getEl('tuning-result-celebration');
+
+  if (resultFreqEl) resultFreqEl.textContent = `Today: ${result.freqBPM.toFixed(1)} BPM`;
+
+  let showCelebration = false;
+  const stored = AppState.tuningStoredFreqBPM;
+  if (stored > 0) {
+    if (resultCompEl) resultCompEl.textContent = `Previously: ${stored.toFixed(1)} BPM`;
+    const shift = Math.abs(result.freqBPM - stored);
+    if (shift > 0.3 && celebrationEl) {
+      const direction = result.freqBPM < stored ? '\u2193' : '\u2191';
+      celebrationEl.textContent = `Your resonance shifted from ${stored.toFixed(1)} to ${result.freqBPM.toFixed(1)} BPM ${direction} — improved vagal tone`;
+      _show(celebrationEl);
+      showCelebration = true;
+    }
+  } else {
+    if (resultCompEl) resultCompEl.textContent = 'First tuned session';
+    if (celebrationEl) _hide(celebrationEl);
+  }
+
+  _show(resultEl);
+
+  // Wait 3s (4s if celebration is shown)
+  await new Promise(resolve => setTimeout(resolve, showCelebration ? 4000 : 3000));
+
+  _hide(resultEl);
+
+  // ---- Start actual session at tuned frequency ----
+
+  // If stopped during tuning/result display, abort
+  if (!_active) return;
+
   _lastRRCount = AppState.rrCount;
   _sessionStart = Date.now();
   _sessionDurationMs = _selectedDuration * 60 * 1000;
 
   AppState.sessionPhase = 'practice';
-  AppState.pacingFreq = savedFreq;
+  AppState.pacingFreq = result.freqHz;
+  AppState.savedResonanceFreq = result.freqHz;
   AppState.sessionStartTime = _sessionStart;
 
-  // Show session viz, hide placeholder and summary
+  // Show session viz
   const sessionViz = _getEl('practice-session-viz');
   if (sessionViz) {
     sessionViz.style.display = 'flex';
     sessionViz.style.flexDirection = 'column';
   }
-  _hide(_getEl('practice-placeholder'));
-  _hide(_getEl('practice-summary'));
 
   // Reset End Session button text
   const endBtn = _getEl('practice-end-btn');
@@ -93,10 +176,6 @@ export function startPractice() {
   const neuralCalmCanvas = _getEl('practice-neural-calm-gauge-canvas');
   const eegCanvas = _getEl('practice-eeg-waveform-canvas');
 
-  // Init audio and DSP
-  initAudio();
-  initDSP();
-
   // Start renderer in countdown mode (sessionDuration > 0)
   startRendering(
     waveformCanvas,
@@ -109,8 +188,8 @@ export function startPractice() {
     eegCanvas
   );
 
-  // Start pacer audio at saved resonance frequency
-  startPacer(savedFreq);
+  // Start pacer audio at tuned resonance frequency
+  startPacer(result.freqHz);
 
   // Start 1-second DSP tick interval
   _dspInterval = setInterval(() => {
@@ -132,11 +211,19 @@ export function startPractice() {
 }
 
 /**
- * Stop the session, compute summary, save, and show summary screen.
+ * Stop the session (or abort during tuning phase), compute summary, save, and show summary screen.
  */
 export function stopPractice() {
   if (!_active) return;
   _active = false;
+
+  // If tuning is still running, stop it
+  if (AppState.tuningPhase === 'scanning') {
+    stopTuning();
+    stopTuningRenderer();
+    _hide(_getEl('tuning-overlay'));
+    _hide(_getEl('tuning-result'));
+  }
 
   // Teardown DSP and audio
   if (_dspInterval) {
@@ -146,10 +233,25 @@ export function stopPractice() {
   stopPacer();
   stopRendering();
 
-  // Compute and display summary
-  const summary = _computeSummary();
-  _saveSession(summary);
-  _showSummary(summary);
+  // Reset tuning AppState fields
+  AppState.tuningPhase = 'idle';
+  AppState.tuningProgress = 0;
+  AppState.tuningCandidateIndex = -1;
+  AppState.tuningResults = [];
+
+  // Only show summary if session actually started (has trace data or session started)
+  if (_sessionStart > 0) {
+    const summary = _computeSummary();
+    _saveSession(summary);
+    _showSummary(summary);
+  } else {
+    // Aborted during tuning — return to placeholder
+    _hide(_getEl('practice-session-viz'));
+    _hide(_getEl('practice-summary'));
+    _show(_getEl('practice-placeholder'));
+    AppState.sessionPhase = 'idle';
+    _sessionStart = 0;
+  }
 }
 
 /**
@@ -198,7 +300,7 @@ export function initPracticeUI() {
       const bpm = (freq * 60).toFixed(1);
       freqDisplay.textContent = `Your frequency: ${bpm} breaths/min`;
     } else {
-      freqDisplay.textContent = 'No frequency set — complete Discovery first.';
+      freqDisplay.textContent = 'Tuning will find your frequency';
     }
     _updateStartBtn();
   };
@@ -253,7 +355,8 @@ export function initPracticeUI() {
 function _updateStartBtn() {
   const startBtn = _getEl('practice-start-btn');
   if (!startBtn) return;
-  const canStart = AppState.connected && !!AppState.savedResonanceFreq;
+  // Tuning handles null savedResonanceFreq — only require connected
+  const canStart = AppState.connected;
   startBtn.disabled = !canStart;
 }
 
@@ -539,6 +642,11 @@ async function _saveSession(summary) {
       timeInHighSeconds: summary.timeInHigh,
       coherenceTrace: summary.trace,
       hrSource: AppState.hrSourceLabel || 'unknown',
+      // Tuning data (Phase 10)
+      ...(AppState.tuningSelectedFreqBPM > 0 ? {
+        tuningFreqHz: AppState.tuningSelectedFreqBPM / 60,
+        tuningRsaAmplitude: AppState.tuningSelectedRSA > 0 ? AppState.tuningSelectedRSA : undefined,
+      } : {}),
       ...(summary.meanCalm !== null ? {
         meanNeuralCalm: summary.meanCalm,
         peakNeuralCalm: summary.peakCalm,
