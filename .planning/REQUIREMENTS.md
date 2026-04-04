@@ -17,8 +17,8 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 ### Resonance Mapping
 
 - [x] **MAP-01**: Each session record includes the tuned frequency and peak RSA amplitude
-- [ ] **MAP-02**: Dashboard displays RF trend over sessions on the recovery chart
-- [ ] **MAP-03**: RF trend correlates visually with Oura HRV recovery on same time axis
+- [x] **MAP-02**: Dashboard displays RF trend over sessions on the recovery chart
+- [x] **MAP-03**: RF trend correlates visually with Oura HRV recovery on same time axis
 
 ### Phase Lock
 
@@ -65,8 +65,8 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 | TUNE-03 | Phase 10 | Pending |
 | TUNE-04 | Phase 10 | Pending |
 | MAP-01 | Phase 10 | Complete |
-| MAP-02 | Phase 10 | Pending |
-| MAP-03 | Phase 10 | Pending |
+| MAP-02 | Phase 10 | Complete |
+| MAP-03 | Phase 10 | Complete |
 | LOCK-01 | Phase 11 | Pending |
 | LOCK-02 | Phase 11 | Pending |
 | LOCK-03 | Phase 11 | Pending |

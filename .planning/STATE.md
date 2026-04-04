@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 10 (Resonance Tuning + Mapping) — in progress
-Plan: 10-01 complete (tuning engine), 10-02 next
+Plan: 10-03 implementation complete (RF trend line), awaiting 10-03 human-verify checkpoint
 Status: Active — executing Phase 10 plans
-Last activity: 2026-04-04 — 10-01 complete (js/tuning.js, AppState tuning fields, storage JSDoc)
+Last activity: 2026-04-03 — 10-03 RF trend line on dashboard (b8b8ad9), 10-02 executing in parallel
 
 Progress: [#---------] 1/4 phases in progress
 
@@ -53,6 +53,8 @@ Progress: [#---------] 1/4 phases in progress
 - v1.2: Session schema additions: tuningFreqHz, tuningRsaAmplitude, phaseLock fields
 - [Phase 10]: Candidate generation: stored ±0.5 BPM in 0.25 BPM steps; first-session fallback to Discovery range [4.5-6.5 BPM]
 - [Phase 10]: RSA measurement uses computeSpectralRSA() directly — bypasses tick() calibration gate for tuning
+- [10-03]: RF Y-axis on far right (PAD.right=110); Score title at _canvasW-35, RF title at _canvasW-12
+- [10-03]: RF line dashed [6,3] with diamond markers; gap >2 days produces broken segment
 
 ### Roadmap Structure
 
@@ -78,6 +80,6 @@ Progress: [#---------] 1/4 phases in progress
 
 ## Session Continuity
 
-Last session: 2026-04-04
-Stopped at: Completed 10-01-PLAN.md — tuning engine created (js/tuning.js, state.js, storage.js)
-Resume: Execute 10-02 next (tuning UX integration in practice.js)
+Last session: 2026-04-03
+Stopped at: 10-03 Task 1 complete (RF trend line on dashboard) — at checkpoint:human-verify (Task 2)
+Resume: After human verification of RF trend on dashboard, complete 10-03 final commit
