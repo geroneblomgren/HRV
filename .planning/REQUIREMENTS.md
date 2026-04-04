@@ -11,8 +11,8 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 
 - [x] **TUNE-01**: User sees a 60-second tuning phase before each practice session that identifies their current resonance frequency
 - [x] **TUNE-02**: Tuning phase cycles through candidate frequencies centered on stored RF and selects the one with highest RSA amplitude
-- [ ] **TUNE-03**: User sees their tuned frequency with comparison to stored frequency ("Today: 4.7 BPM" vs stored 5.0)
-- [ ] **TUNE-04**: When RF has shifted significantly, app celebrates the change as a sign of improved vagal tone
+- [x] **TUNE-03**: User sees their tuned frequency with comparison to stored frequency ("Today: 4.7 BPM" vs stored 5.0)
+- [x] **TUNE-04**: When RF has shifted significantly, app celebrates the change as a sign of improved vagal tone
 
 ### Resonance Mapping
 
@@ -62,8 +62,8 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 |-------------|-------|--------|
 | TUNE-01 | Phase 10 | Complete |
 | TUNE-02 | Phase 10 | Complete |
-| TUNE-03 | Phase 10 | Pending |
-| TUNE-04 | Phase 10 | Pending |
+| TUNE-03 | Phase 10 | Complete |
+| TUNE-04 | Phase 10 | Complete |
 | MAP-01 | Phase 10 | Complete |
 | MAP-02 | Phase 10 | Complete |
 | MAP-03 | Phase 10 | Complete |

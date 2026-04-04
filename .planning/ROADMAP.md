@@ -161,7 +161,7 @@ Plans:
 
 **Milestone Goal:** Convert from open-loop breathing pacer to closed-loop autonomic training system. Auto-tune resonance frequency before each session and optimize breath-heart phase alignment in real-time.
 
-- [ ] **Phase 10: Resonance Tuning + Mapping** - Pre-session RF identification and longitudinal trend tracking
+- [x] **Phase 10: Resonance Tuning + Mapping** - Pre-session RF identification and longitudinal trend tracking (completed 2026-04-04)
 - [ ] **Phase 11: Phase Lock Engine** - Hilbert transform phase computation and score replacing coherence
 - [ ] **Phase 12: Adaptive Pace Controller** - Closed-loop pace micro-adjustment driven by phase lock
 - [ ] **Phase 13: Dashboard Integration** - Phase lock and RF trends on recovery dashboard with legacy labeling
@@ -233,7 +233,7 @@ v1.2: 10 → 11 → 12 → 13
 | 7. Muse-S Connection + Signal Processing | v1.1 | 3/3 | Complete | 2026-04-03 |
 | 8. Session Integration | v1.1 | 2/2 | Complete | 2026-04-04 |
 | 9. Neural Calm Dashboard | v1.1 | 1/1 | Complete | 2026-04-04 |
-| 10. Resonance Tuning + Mapping | 2/3 | In Progress|  | - |
+| 10. Resonance Tuning + Mapping | 3/3 | Complete   | 2026-04-04 | - |
 | 11. Phase Lock Engine | v1.2 | 0/? | Not started | - |
 | 12. Adaptive Pace Controller | v1.2 | 0/? | Not started | - |
 | 13. Dashboard Integration | v1.2 | 0/? | Not started | - |

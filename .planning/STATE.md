@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Adaptive Closed-Loop Biofeedback
 status: unknown
-last_updated: "2026-04-04T04:38:33.154Z"
+last_updated: "2026-04-04T04:44:21.570Z"
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 21
-  completed_plans: 19
+  completed_plans: 21
 ---
 
 # Project State
@@ -55,6 +55,8 @@ Progress: [#---------] 1/4 phases in progress
 - [Phase 10]: RSA measurement uses computeSpectralRSA() directly — bypasses tick() calibration gate for tuning
 - [10-03]: RF Y-axis on far right (PAD.right=110); Score title at _canvasW-35, RF title at _canvasW-12
 - [10-03]: RF line dashed [6,3] with diamond markers; gap >2 days produces broken segment
+- [Phase 10]: 10-02: startPractice() is async — tuning is mandatory before every session, no skip path
+- [Phase 10]: 10-02: Start button requires only connected (tuning handles null savedResonanceFreq — first-session capable)
 
 ### Roadmap Structure
 
