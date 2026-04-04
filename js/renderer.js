@@ -1,4 +1,4 @@
-// js/renderer.js — Canvas 2D renderers: Waveform, Spectrum, CoherenceGauge
+// js/renderer.js — Canvas 2D renderers: Waveform, Spectrum, PhaseLockGauge
 // All three share a single requestAnimationFrame loop at 60fps.
 // Reads from AppState for live data; imports getHRArray from dsp.js.
 
@@ -20,9 +20,9 @@ const TEAL = '#14b8a6';
 const TEAL_FILL_TOP = 'rgba(20, 184, 166, 0.5)';
 const TEAL_FILL_BOTTOM = 'rgba(20, 184, 166, 0.02)';
 
-const ZONE_COLORS = { low: '#ef4444', building: '#eab308', high: '#22c55e' };
-const ZONE_THRESHOLDS = { building: 31, high: 66 };
-const ZONE_LABELS = { low: 'Low', building: 'Building', high: 'Locked In' };
+const ZONE_COLORS = { low: '#ef4444', aligning: '#eab308', locked: '#22c55e' };
+const ZONE_THRESHOLDS = { aligning: 40, locked: 70 };
+const ZONE_LABELS = { low: 'Low', aligning: 'Aligning', locked: 'Locked' };
 
 // Neural Calm gauge constants
 const NEURAL_CALM_COLOR = '#3b82f6';
@@ -74,8 +74,8 @@ function binToHz(bin) {
 }
 
 function getZone(score) {
-  if (score >= ZONE_THRESHOLDS.high) return 'high';
-  if (score >= ZONE_THRESHOLDS.building) return 'building';
+  if (score >= ZONE_THRESHOLDS.locked) return 'locked';
+  if (score >= ZONE_THRESHOLDS.aligning) return 'aligning';
   return 'low';
 }
 
@@ -412,9 +412,9 @@ function drawSpectrum() {
   ctx.restore();
 }
 
-// ---- Coherence Gauge Renderer ----
+// ---- Phase Lock Gauge Renderer ----
 
-function drawCoherenceGauge() {
+function drawPhaseLockGauge() {
   if (!_gaugeCtx) return;
 
   const canvas = _gaugeCanvas;
@@ -430,10 +430,10 @@ function drawCoherenceGauge() {
   const radius = Math.min(w, h) * 0.35;
   const lineWidthBase = 12;
 
-  // Calibration state
-  if (AppState.calibrating) {
+  // Calibration state — 25s phase lock warmup
+  if (AppState.phaseLockCalibrating) {
     const elapsed = _sessionStartTime ? (Date.now() - _sessionStartTime) / 1000 : 0;
-    const remaining = Math.max(0, Math.ceil(120 - elapsed));
+    const remaining = Math.max(0, Math.ceil(25 - elapsed));
 
     // Grey background ring
     ctx.beginPath();
@@ -451,7 +451,7 @@ function drawCoherenceGauge() {
     ctx.fillText(`${remaining}s`, cx, cy + 14);
 
     // Progress bar below ring
-    const progress = Math.min(1, elapsed / 120);
+    const progress = Math.min(1, elapsed / 25);
     const barW = radius * 1.2;
     const barH = 3;
     const barX = cx - barW / 2;
@@ -472,10 +472,10 @@ function drawCoherenceGauge() {
   ctx.save();
   ctx.globalAlpha = _calibrationFadeAlpha;
 
-  // Smooth interpolation
-  _displayedScore += (AppState.coherenceScore - _displayedScore) * 0.08;
+  // Smooth interpolation — lighter than coherence (0.05 vs 0.08), heavier than Neural Calm (0.015)
+  _displayedScore += (AppState.phaseLockScore - _displayedScore) * 0.05;
 
-  const zone = getZone(AppState.coherenceScore);
+  const zone = getZone(AppState.phaseLockScore);
   const color = ZONE_COLORS[zone];
 
   // Background ring
@@ -489,9 +489,9 @@ function drawCoherenceGauge() {
   const sweep = (_displayedScore / 100) * Math.PI * 2;
   const startAngle = -Math.PI / 2;
 
-  // Pulse animation in high zone
+  // Pulse animation in locked zone
   let currentLineWidth = lineWidthBase;
-  if (zone === 'high') {
+  if (zone === 'locked') {
     _pulsePhase += 0.05;
     currentLineWidth = lineWidthBase + Math.sin(_pulsePhase) * 2.5;
   }
@@ -839,7 +839,7 @@ function renderLoop() {
   drawBreathingCircle();
   drawWaveform();
   drawSpectrum();
-  drawCoherenceGauge();
+  drawPhaseLockGauge();
   drawNeuralCalmGauge();
   drawEEGWaveform();
 }
