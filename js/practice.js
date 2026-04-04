@@ -367,6 +367,21 @@ function _showSummary(summary) {
  * @param {number} [fixedMin=0] - fixed Y-axis minimum (when autoRange=false)
  * @param {number} [fixedMax=100] - fixed Y-axis maximum (when autoRange=false)
  */
+function _smoothTrace(data, window) {
+  if (!data || data.length < window) return data;
+  const half = Math.floor(window / 2);
+  const result = new Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    let sum = 0, count = 0;
+    for (let j = Math.max(0, i - half); j <= Math.min(data.length - 1, i + half); j++) {
+      sum += data[j];
+      count++;
+    }
+    result[i] = sum / count;
+  }
+  return result;
+}
+
 function _drawTraceGraph(canvasId, data, color, label, autoRange = false, fixedMin = 0, fixedMax = 100) {
   const canvas = _getEl(canvasId);
   if (!canvas || !data || data.length < 2) return;
@@ -395,6 +410,9 @@ function _drawTraceGraph(canvasId, data, color, label, autoRange = false, fixedM
     yMin = fixedMin;
     yMax = fixedMax;
   }
+
+  // Smooth the data with a moving average to remove artifact spikes
+  data = _smoothTrace(data, 7);
 
   // Clear
   ctx.clearRect(0, 0, w, h);
