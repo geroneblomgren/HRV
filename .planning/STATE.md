@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 
 ## Current Position
 
-Phase: 9 of 9 (Neural Calm Dashboard) — AT CHECKPOINT
-Plan: 1 of 1 — 09-01 Task 1 COMPLETE, Task 2 awaiting human-verify checkpoint
-Status: Awaiting visual verification of Neural Calm dashboard integration
-Last activity: 2026-04-03 — 09-01 Task 1: blue Neural Calm trend line, inline legend, tooltip, Avg Neural Calm 7d metric card added to dashboard
+Phase: 9 of 9 (Neural Calm Dashboard) — COMPLETE
+Plan: 1 of 1 — ALL TASKS COMPLETE (checkpoint approved 2026-04-03)
+Status: v1.1 milestone COMPLETE
+Last activity: 2026-04-03 — 09-01 all tasks done; grid fix + SW cache bump applied; checkpoint approved
 
-Progress: [██████████] 100% (v1.1) — 18 of 18 plans committed (awaiting final checkpoint verification)
+Progress: [██████████] 100% (v1.1) — 18 of 18 plans complete
 
 ## Performance Metrics
 
@@ -116,5 +116,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: Checkpoint: Task 2 human-verify — 09-01 Neural Calm dashboard awaiting visual verification
-Resume: Start app with ResonanceHRV.bat, verify dashboard chart shows blue Neural Calm line, legend, and 5th metric card; then type "approved" to complete phase
+Stopped at: Completed 09-01-PLAN.md — v1.1 milestone fully complete
+Resume: No active work. v1.1 is shipped. Begin planning v1.2 if desired.

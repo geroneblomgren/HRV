@@ -48,14 +48,14 @@ completed: 2026-04-03
 
 # Phase 9 Plan 01: Neural Calm Dashboard Summary
 
-**Blue Neural Calm trend line with broken-gap handling, 3-series inline legend, enriched tooltips, and Avg Neural Calm 7d metric card added to recovery dashboard chart**
+**Blue Neural Calm trend line with broken-gap handling, 3-series inline legend, enriched tooltips, and Avg Neural Calm 7d metric card added to recovery dashboard — completing the v1.1 milestone**
 
 ## Performance
 
-- **Duration:** ~2 min
+- **Duration:** ~2 min (Task 1) + fix (grid layout + SW cache)
 - **Started:** 2026-04-03T00:00:49Z
-- **Completed:** 2026-04-03T00:02:16Z (awaiting checkpoint verification)
-- **Tasks:** 1 of 2 complete (Task 2 is human-verify checkpoint)
+- **Completed:** 2026-04-03 (checkpoint approved)
+- **Tasks:** 2 of 2 complete
 - **Files modified:** 2
 
 ## Accomplishments
@@ -67,17 +67,18 @@ completed: 2026-04-03
 - Relabeled right Y-axis from "Coherence" to "Score (0-100)" in neutral gray (#aaa)
 - Added 5th metric card `#dash-calm-7d` to `#dashboard-metrics` grid in `index.html`
 - Computed Avg Neural Calm 7d in `_computeMetrics()`; shows '--' when no Muse-S sessions in last 7 days
+- Human-verify checkpoint passed: blue line, legend, 5 metric cards, and gap handling all confirmed visually
 
 ## Task Commits
 
 1. **Task 1: Neural Calm data aggregation, chart line, legend, tooltip, and metric card** - `1794b31` (feat)
-2. **Task 2: Visual verification** - (checkpoint — pending human verify)
+2. **Task 2: Visual verification checkpoint** - APPROVED
 
-**Plan metadata:** (pending — will be added after checkpoint approval)
+**Auto-fix commit:** `6d13d03` (fix: dashboard metric grid 3-column layout + bust SW cache v17)
 
 ## Files Created/Modified
 - `js/dashboard.js` - Neural Calm aggregation, chart line, legend, tooltip, metric card computation
-- `index.html` - Added 5th metric card `#dash-calm-7d` to dashboard-metrics grid
+- `index.html` - Added 5th metric card `#dash-calm-7d` to dashboard-metrics grid; updated SW cache version to v17
 
 ## Decisions Made
 - Right Y-axis title changed to "Score (0-100)" in neutral gray rather than orange — it now represents two series (coherence and Neural Calm), not just one
@@ -87,11 +88,24 @@ completed: 2026-04-03
 
 ## Deviations from Plan
 
-None — plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Dashboard metric grid showed only 4 cards instead of 5; service worker served stale dashboard.js**
+- **Found during:** Task 2 (visual verification checkpoint)
+- **Issue:** The `#dashboard-metrics` CSS grid was set to 2 columns, which meant the 5th metric card (Avg Neural Calm 7d) was hidden/clipped. Additionally, the service worker was caching the old `dashboard.js` (v16 cache), so the browser loaded the pre-Neural-Calm version even after Task 1's changes were written to disk.
+- **Fix:** Updated grid CSS to 3 columns to accommodate the 5th card. Bumped the service worker cache version from v16 to v17 to force cache invalidation and ensure the updated `dashboard.js` was loaded.
+- **Files modified:** `index.html` (grid column count + SW cache version)
+- **Verification:** Dashboard reloaded cleanly; all 5 metric cards visible including "Avg Neural Calm 7d"
+- **Committed in:** `6d13d03`
+
+---
+
+**Total deviations:** 1 auto-fixed (Rule 1 - Bug)
+**Impact on plan:** Fix was necessary for the 5th metric card to be visible. No scope creep.
 
 ## Issues Encountered
 
-None.
+The service worker cache prevented the Task 1 changes from being visible during the first verification attempt. Bumping the cache version (SW cache bust) is the established pattern in this project for forcing fresh asset delivery after dashboard.js changes.
 
 ## User Setup Required
 
@@ -99,13 +113,13 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
-All created/modified files verified on disk. Task 1 commit 1794b31 confirmed in git log.
+All modified files verified on disk. Task 1 commit 1794b31 and auto-fix commit 6d13d03 confirmed in git log.
 
 ## Next Phase Readiness
-- Phase 9 implementation complete pending visual verification (Task 2 checkpoint)
-- After checkpoint approval, v1.1 milestone is fully complete: HRV + coherence + Neural Calm all visible on dashboard
+- v1.1 milestone fully complete: HRV + coherence + Neural Calm all visible on the recovery dashboard
 - No additional phases planned for v1.1
+- Any future enhancements would begin a new milestone (v1.2+)
 
 ---
 *Phase: 09-neural-calm-dashboard*
-*Completed: 2026-04-03 (pending checkpoint)*
+*Completed: 2026-04-03*

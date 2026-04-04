@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 Core HRV Biofeedback** - Phases 1-5 (shipped 2026-03-22)
-- 🚧 **v1.1 Muse-S Neurocardiac Integration** - Phases 6-9 (in progress)
+- ✅ **v1.1 Muse-S Neurocardiac Integration** - Phases 6-9 (shipped 2026-04-03)
 
 ## Phases
 
@@ -88,7 +88,7 @@ Plans:
 
 </details>
 
-### 🚧 v1.1 Muse-S Neurocardiac Integration (In Progress)
+### ✅ v1.1 Muse-S Neurocardiac Integration (Shipped 2026-04-03)
 
 **Milestone Goal:** Add Muse-S headband as a second biofeedback device, providing standalone PPG-derived HRV plus live EEG neural calm metrics during sessions, with trends tracked on the recovery dashboard.
 
@@ -138,7 +138,7 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md — PPG standalone sessions, Neural Calm live gauge, PPG confidence badge, session provenance + Neural Calm trace collection (completed 2026-04-04)
-- [ ] 08-02-PLAN.md — Scrolling EEG waveform renderer, Neural Calm session summary metrics, human verification
+- [x] 08-02-PLAN.md — Scrolling EEG waveform renderer, Neural Calm session summary metrics, human verification (completed 2026-04-03)
 
 #### Phase 9: Neural Calm Dashboard
 **Goal**: Neural Calm session averages are persisted and displayed on the recovery dashboard alongside coherence and Oura HRV, so the user can see how their brain-state metric trends over days and weeks of practice.
@@ -151,7 +151,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 09-01-PLAN.md — Neural Calm data aggregation, blue trend line on Canvas chart, inline legend, enriched tooltips, gap handling, Avg Neural Calm 7d metric card
+- [x] 09-01-PLAN.md — Neural Calm data aggregation, blue trend line on Canvas chart, inline legend, enriched tooltips, gap handling, Avg Neural Calm 7d metric card (completed 2026-04-03)
 
 ## Progress
 
