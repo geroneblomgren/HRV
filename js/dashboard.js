@@ -310,7 +310,7 @@ async function _getSessionsByDay(rangeDays) {
   const raw = await querySessions({ limit: rangeDays * 3 });
   const cutoff = _daysAgoIso(rangeDays);
 
-  /** @type {Object.<string, {total: number, count: number, durationSeconds: number, calmTotal: number, calmCount: number}>} */
+  /** @type {Object.<string, {total: number, count: number, durationSeconds: number, calmTotal: number, calmCount: number, rfTotal: number, rfCount: number}>} */
   const byDay = {};
 
   for (const s of raw) {
@@ -318,7 +318,7 @@ async function _getSessionsByDay(rangeDays) {
     const day = typeof s.date === 'string' ? s.date.slice(0, 10) : new Date(s.timestamp).toISOString().slice(0, 10);
     if (day < cutoff) continue;
 
-    if (!byDay[day]) byDay[day] = { total: 0, count: 0, durationSeconds: 0, calmTotal: 0, calmCount: 0 };
+    if (!byDay[day]) byDay[day] = { total: 0, count: 0, durationSeconds: 0, calmTotal: 0, calmCount: 0, rfTotal: 0, rfCount: 0 };
     byDay[day].total           += s.meanCoherence ?? 0;
     byDay[day].count           += 1;
     byDay[day].durationSeconds += s.durationSeconds ?? 0;
@@ -328,13 +328,20 @@ async function _getSessionsByDay(rangeDays) {
       byDay[day].calmTotal += s.meanNeuralCalm;
       byDay[day].calmCount += 1;
     }
+
+    // Resonance Frequency — only accumulate when tuningFreqHz is present (v1.2+)
+    if (typeof s.tuningFreqHz === 'number' && !isNaN(s.tuningFreqHz)) {
+      byDay[day].rfTotal += s.tuningFreqHz * 60; // convert Hz to BPM for display
+      byDay[day].rfCount += 1;
+    }
   }
 
   return Object.entries(byDay).map(([day, v]) => ({
     day,
     meanCoherence: v.count ? v.total / v.count : 0,
     durationSeconds: v.durationSeconds,
-    meanNeuralCalm: v.calmCount ? v.calmTotal / v.calmCount : null
+    meanNeuralCalm: v.calmCount ? v.calmTotal / v.calmCount : null,
+    meanRfBPM: v.rfCount ? v.rfTotal / v.rfCount : null
   })).sort((a, b) => a.day.localeCompare(b.day));
 }
 
@@ -367,7 +374,7 @@ function _setupChart() {
 // Canvas chart: draw
 // ---------------------------------------------------------------------------
 
-const PAD = { top: 30, bottom: 50, left: 60, right: 60 };
+const PAD = { top: 30, bottom: 50, left: 60, right: 110 };
 
 function _drawChart() {
   if (!_ctx || !_canvas) return;
@@ -501,7 +508,7 @@ function _drawChart() {
   _ctx.fillStyle = '#aaa';
   _ctx.font      = '11px system-ui, sans-serif';
   _ctx.textAlign = 'center';
-  _ctx.translate(_canvasW - 12, chartTop + chartH / 2);
+  _ctx.translate(_canvasW - 35, chartTop + chartH / 2);
   _ctx.rotate(Math.PI / 2);
   _ctx.fillText('Score (0-100)', 0, 0);
   _ctx.restore();
@@ -513,7 +520,8 @@ function _drawChart() {
     const legendItems = [
       { color: '#14b8a6', label: 'HRV' },
       { color: '#fb923c', label: 'Coherence' },
-      { color: '#3b82f6', label: 'Neural Calm' }
+      { color: '#3b82f6', label: 'Neural Calm' },
+      { color: '#a855f7', label: 'Resonance Freq' }
     ];
     const squareSize = 8;
     const gapSq      = 4;   // gap between square and label
@@ -655,6 +663,96 @@ function _drawChart() {
     }
   }
 
+  // ---- RF (Resonance Frequency) purple dashed trend line ----
+  const rfSlice = sessSlice.filter(s => s.meanRfBPM !== null);
+
+  if (rfSlice.length > 0) {
+    // Compute RF Y-axis range
+    const rfValues = rfSlice.map(s => s.meanRfBPM);
+    let rfMin = Math.min(...rfValues);
+    let rfMax = Math.max(...rfValues);
+    const rfPad = Math.max((rfMax - rfMin) * 0.2, 0.5); // at least 0.5 BPM padding
+    rfMin = Math.max(3, rfMin - rfPad);
+    rfMax = Math.min(8, rfMax + rfPad);
+
+    function rfYPx(v) {
+      return chartBot - ((v - rfMin) / (rfMax - rfMin)) * chartH;
+    }
+
+    // Draw RF axis labels (purple, far right)
+    _ctx.fillStyle = '#a855f7';
+    _ctx.textAlign = 'left';
+    _ctx.font      = '11px system-ui, sans-serif';
+    const rfAxisX  = chartRight + 52; // offset beyond coherence axis labels (~+6 from chartRight)
+    for (let i = 0; i <= 4; i++) {
+      const v = rfMin + (i / 4) * (rfMax - rfMin);
+      const y = chartBot - (i / 4) * chartH;
+      _ctx.fillText(v.toFixed(1), rfAxisX, y + 4);
+    }
+
+    // Draw RF axis title (rotated, purple, far right)
+    _ctx.save();
+    _ctx.fillStyle = '#a855f7';
+    _ctx.font      = '11px system-ui, sans-serif';
+    _ctx.textAlign = 'center';
+    _ctx.translate(_canvasW - 12, chartTop + chartH / 2);
+    _ctx.rotate(Math.PI / 2);
+    _ctx.fillText('RF (BPM)', 0, 0);
+    _ctx.restore();
+
+    // Draw RF trend line (dashed, purple)
+    _ctx.strokeStyle = '#a855f7';
+    _ctx.lineWidth   = 2;
+    _ctx.lineJoin    = 'round';
+    _ctx.setLineDash([6, 3]);
+
+    const rfPts = rfSlice.map(s => ({
+      x: xPx(s.day),
+      y: rfYPx(s.meanRfBPM),
+      data: s
+    }));
+
+    _ctx.beginPath();
+    let rfPathOpen = false;
+    for (let i = 0; i < rfPts.length; i++) {
+      const pt = rfPts[i];
+      if (!rfPathOpen) {
+        _ctx.moveTo(pt.x, pt.y);
+        rfPathOpen = true;
+      } else {
+        const prev    = rfPts[i - 1];
+        const prevDay = new Date(prev.data.day).getTime();
+        const currDay = new Date(pt.data.day).getTime();
+        const dayGap  = (currDay - prevDay) / (24 * 60 * 60 * 1000);
+        if (dayGap > 2) {
+          _ctx.stroke();
+          _ctx.beginPath();
+          _ctx.moveTo(pt.x, pt.y);
+        } else {
+          const mx = (prev.x + pt.x) / 2;
+          const my = (prev.y + pt.y) / 2;
+          _ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+        }
+      }
+    }
+    const lastRf = rfPts[rfPts.length - 1];
+    _ctx.lineTo(lastRf.x, lastRf.y);
+    _ctx.stroke();
+    _ctx.setLineDash([]);
+
+    // Diamond markers + hit targets for RF points
+    for (const pt of rfPts) {
+      if (pt.x < chartLeft || pt.x > chartRight) continue;
+      _ctx.save();
+      _ctx.translate(pt.x, pt.y);
+      _ctx.rotate(Math.PI / 4);
+      _ctx.fillStyle = '#a855f7';
+      _ctx.fillRect(-3, -3, 6, 6);
+      _ctx.restore();
+      _hitTargets.push({ x: pt.x, y: pt.y, type: 'rf', data: pt.data });
+    }
+  }
+
   // ---- Wire tooltip (only once) ----
   _wireTooltip();
 }
@@ -716,6 +814,9 @@ function _tooltipHtml(hit) {
   if (hit.type === 'calm') {
     return `<strong>${dateLabel}</strong><br>Neural Calm: ${hit.data.meanNeuralCalm.toFixed(1)}`;
   }
+  if (hit.type === 'rf') {
+    return `<strong>${dateLabel}</strong><br>Resonance Freq: ${hit.data.meanRfBPM.toFixed(1)} BPM`;
+  }
   // Coherence tooltip
   const mins = hit.data.durationSeconds > 0
     ? ` &bull; ${Math.round(hit.data.durationSeconds / 60)} min`
@@ -723,6 +824,9 @@ function _tooltipHtml(hit) {
   let html = `<strong>${dateLabel}</strong><br>Coherence: ${hit.data.meanCoherence.toFixed(1)}${mins}`;
   if (hit.data.meanNeuralCalm !== null) {
     html += `<br>Neural Calm: ${hit.data.meanNeuralCalm.toFixed(1)}`;
+  }
+  if (hit.data.meanRfBPM !== null) {
+    html += `<br>RF: ${hit.data.meanRfBPM.toFixed(1)} BPM`;
   }
   return html;
 }
