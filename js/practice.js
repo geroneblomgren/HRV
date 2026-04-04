@@ -17,6 +17,8 @@ let _dspInterval = null;         // setInterval handle (1s DSP tick)
 let _coherenceTrace = [];        // array of coherence scores (1 per second)
 let _neuralCalmTrace = [];       // array of Neural Calm scores (1 per second, Muse-S only)
 let _hrTrace = [];               // array of HR values (1 per second)
+let _hrvTrace = [];              // array of RMSSD values (1 per second)
+let _lastRRCount = 0;            // tracks rrCount to detect new beats for RMSSD
 let _chimePlayed = false;        // prevents double chime
 let _pausedForReconnect = false; // true when BLE disconnects mid-session
 let _selectedDuration = 20;     // minutes (default 20)
@@ -59,6 +61,8 @@ export function startPractice() {
   _coherenceTrace = [];
   _neuralCalmTrace = [];
   _hrTrace = [];
+  _hrvTrace = [];
+  _lastRRCount = AppState.rrCount;
   _sessionStart = Date.now();
   _sessionDurationMs = _selectedDuration * 60 * 1000;
 
@@ -114,6 +118,7 @@ export function startPractice() {
     tick(elapsed);
     _coherenceTrace.push(AppState.coherenceScore);
     _hrTrace.push(AppState.currentHR);
+    _hrvTrace.push(_computeCurrentRMSSD());
     if (AppState.museConnected) _neuralCalmTrace.push(AppState.neuralCalm);
 
     // When timer reaches zero, play chime then auto-end session
@@ -280,7 +285,8 @@ function _computeSummary() {
   }
 
   const hrTraceOut = _hrTrace.slice();
-  return { durationSeconds, mean, peak, timeInHigh, trace, meanCalm, peakCalm, timeInHighCalm, calmTrace, hrTrace: hrTraceOut };
+  const hrvTraceOut = _hrvTrace.slice();
+  return { durationSeconds, mean, peak, timeInHigh, trace, meanCalm, peakCalm, timeInHighCalm, calmTrace, hrTrace: hrTraceOut, hrvTrace: hrvTraceOut };
 }
 
 /**
@@ -292,6 +298,40 @@ function _formatTime(totalSeconds) {
   const mins = Math.floor(totalSeconds / 60);
   const secs = Math.floor(totalSeconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Compute current RMSSD from the last 30 RR intervals in the circular buffer.
+ * RMSSD = root mean square of successive differences between adjacent RR intervals.
+ * This is a standard short-term HRV metric (higher = more parasympathetic activity).
+ * @returns {number} RMSSD in milliseconds, or 0 if insufficient data
+ */
+function _computeCurrentRMSSD() {
+  const bufSize = 512;
+  const head = AppState.rrHead;
+  const count = Math.min(30, AppState.rrCount - _lastRRCount > 0 ? AppState.rrCount : 30);
+  if (count < 3) return 0;
+
+  // Read last 'count' RR intervals from circular buffer
+  const intervals = [];
+  for (let i = 0; i < count; i++) {
+    const idx = ((head - count + i) % bufSize + bufSize) % bufSize;
+    const val = AppState.rrBuffer[idx];
+    if (val > 0) intervals.push(val);
+  }
+
+  if (intervals.length < 3) return 0;
+
+  // Compute successive differences squared
+  let sumSqDiff = 0;
+  let n = 0;
+  for (let i = 1; i < intervals.length; i++) {
+    const diff = intervals[i] - intervals[i - 1];
+    sumSqDiff += diff * diff;
+    n++;
+  }
+
+  return n > 0 ? Math.round(Math.sqrt(sumSqDiff / n)) : 0;
 }
 
 /**
@@ -346,7 +386,7 @@ function _showSummary(summary) {
 
   // Draw session trace line graphs
   _drawTraceGraph('summary-hr-graph', summary.hrTrace, '#ef4444', 'HR (bpm)', true);
-  _drawTraceGraph('summary-coherence-graph', summary.trace, 'var(--accent-teal, #5eead4)', 'Coherence', false, 0, 100);
+  _drawTraceGraph('summary-hrv-graph', summary.hrvTrace, '#5eead4', 'HRV — RMSSD (ms)', true);
   if (summary.calmTrace && summary.calmTrace.length > 0) {
     const calmGraphEl = _getEl('summary-calm-graph');
     if (calmGraphEl) calmGraphEl.style.display = '';
