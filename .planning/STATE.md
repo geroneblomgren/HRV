@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Adaptive Closed-Loop Biofeedback
 status: unknown
-last_updated: "2026-04-04T13:03:32.030Z"
+last_updated: "2026-04-04T13:33:16.400Z"
 progress:
   total_phases: 11
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Real-time HRV biofeedback during breathing sessions — the app actively optimizes your breathing to maximize autonomic training — right frequency, right phase alignment, every session.
-**Current focus:** v1.2 Adaptive Closed-Loop Biofeedback — Phase 11 (Phase Lock Engine) next
+**Current focus:** v1.2 Adaptive Closed-Loop Biofeedback — Phase 12 (Adaptive Pace Controller) next
 
 ## Current Position
 
-Phase: 11 (Phase Lock Engine) — IN PROGRESS
-Plan: 11-02 complete — UI swap: phase lock gauge, trace, summary, persistence
-Status: 11-02 done — ready for 11-03 (Phase Lock Engine final plan)
-Last activity: 2026-04-04 — 11-02 executed, 2 tasks committed
+Phase: 11 (Phase Lock Engine) — COMPLETE
+Plan: 11-03 complete — live verification + 3 bug fixes (PLV algorithm, windowed tachogram, sessionElapsedSec anchor)
+Status: Phase 11 complete — ready for Phase 12 (Adaptive Pace Controller)
+Last activity: 2026-04-04 — 11-03 verified, 4 LOCK requirements satisfied
 
-Progress: [##########-] Phase 11 in progress (2/3 plans complete)
+Progress: [###########] Phase 11 complete (3/3 plans complete)
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Progress: [##########-] Phase 11 in progress (2/3 plans complete)
 | Phase 10 P03 | 15 | 2 tasks | 1 files |
 | Phase 11-phase-lock-engine P01 | 15 | 2 tasks | 3 files |
 | Phase 11-phase-lock-engine P02 | 8 | 2 tasks | 3 files |
+| Phase 11-phase-lock-engine P03 | 20 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Progress: [##########-] Phase 11 in progress (2/3 plans complete)
 - [Phase 11-phase-lock-engine]: MIN_POWER_THRESHOLD=0 (amplitude gate disabled) — tune after first real session
 - [Phase 11-phase-lock-engine]: Phase lock gauge uses 0.05 smoothing interpolation (between coherence 0.08 and Neural Calm 0.015)
 - [Phase 11-phase-lock-engine]: Locked zone threshold is 70 for phase lock (was 66 for old coherence Locked In)
+- [Phase 11-phase-lock-engine]: Phase lock runs before coherence gate — has its own 25s calibration window
+- [Phase 11-phase-lock-engine]: PLV over 10 samples replaces single-snapshot phase error — stable under baroreflex delay
 
 ### Roadmap Structure
 
@@ -86,11 +89,11 @@ Progress: [##########-] Phase 11 in progress (2/3 plans complete)
 ### Blockers / Concerns
 
 - **Tuning window duration RESOLVED:** Fixed — now uses 2 full breath cycles per candidate (not fixed 12s). RSA measurement is stable at all candidate frequencies tested.
-- **Hilbert transform stability:** At 4 Hz sampling with 60s window (240 samples), frequency resolution is 0.0167 Hz. May need 90-120s window for stable phase tracking — tradeoff with responsiveness. Evaluate during Phase 11.
+- **Hilbert transform stability RESOLVED:** PLV over 10 samples provides stable scores without needing 90-120s window. Baroreflex delay offset does not degrade PLV score.
 - **Phase 12 UX risk:** User must understand the pacer is adapting to them — if they fight the drift, phase lock degrades. Framing copy matters.
 
 ## Session Continuity
 
 Last session: 2026-04-04
-Stopped at: Completed 11-02-PLAN.md — UI swap: phase lock gauge, trace, summary, persistence
-Resume: Execute 11-03 (Phase Lock Engine — final plan)
+Stopped at: Completed 11-03-PLAN.md — Phase Lock Engine verified end-to-end (3 bugs fixed, user approved)
+Resume: Begin Phase 12 (Adaptive Pace Controller)
