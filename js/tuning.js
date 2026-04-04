@@ -91,8 +91,11 @@ export function startTuning(savedFreqHz) {
     tick(elapsed);
   }, 1000);
 
-  // Start cycling through candidates
-  _startCandidate(0);
+  // Brief settling delay before first candidate — lets AudioContext and DSP
+  // initialize fully so the first breath cycle isn't cut short
+  setTimeout(() => {
+    if (_active) _startCandidate(0);
+  }, 1500);
 
   // Return a Promise that resolves when _selectWinner() calls _resolve()
   return new Promise((resolve) => {
