@@ -1,7 +1,7 @@
 // sw.js — Network-first service worker for ResonanceHRV app shell
 // Serves fresh content when the server is reachable; falls back to cache when offline.
 
-const CACHE_NAME = 'resonancehrv-v16';
+const CACHE_NAME = 'resonancehrv-v17';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
