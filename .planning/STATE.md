@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 ## Current Position
 
-Phase: 11 (Phase Lock Engine) — COMPLETE
-Plan: 11-03 complete — live verification + 3 bug fixes (PLV algorithm, windowed tachogram, sessionElapsedSec anchor)
-Status: Phase 11 complete — ready for Phase 12 (Adaptive Pace Controller)
-Last activity: 2026-04-04 — 11-03 verified, 4 LOCK requirements satisfied
+Phase: 12 (Adaptive Pace Controller) — IN PROGRESS
+Plan: 12-01 complete — dynamic frequency scheduler + Phase 12 AppState fields
+Status: Phase 12 active — Plan 01/03 complete (PACE-02, PACE-04 satisfied)
+Last activity: 2026-04-04 — 12-01 executed, audio scheduler reads AppState.pacingFreq live
 
-Progress: [###########] Phase 11 complete (3/3 plans complete)
+Progress: [############] Phase 12 in progress (1/3 plans complete)
 
 ## Performance Metrics
 
@@ -69,6 +69,8 @@ Progress: [###########] Phase 11 complete (3/3 plans complete)
 - [Phase 11-phase-lock-engine]: Locked zone threshold is 70 for phase lock (was 66 for old coherence Locked In)
 - [Phase 11-phase-lock-engine]: Phase lock runs before coherence gate — has its own 25s calibration window
 - [Phase 11-phase-lock-engine]: PLV over 10 samples replaces single-snapshot phase error — stable under baroreflex delay
+- [Phase 12]: _schedulerTick reads AppState.pacingFreq live each 25ms — no closure, no restart needed for frequency changes
+- [Phase 12]: pacingFreqTuned anchors the tuned RF; pacingFreq drifts around it; no stopPacer/startPacer on tempo change
 
 ### Roadmap Structure
 
@@ -95,5 +97,5 @@ Progress: [###########] Phase 11 complete (3/3 plans complete)
 ## Session Continuity
 
 Last session: 2026-04-04
-Stopped at: Completed 11-03-PLAN.md — Phase Lock Engine verified end-to-end (3 bugs fixed, user approved)
-Resume: Begin Phase 12 (Adaptive Pace Controller)
+Stopped at: Completed 12-01-PLAN.md — dynamic audio scheduler + Phase 12 AppState fields
+Resume: Begin Phase 12 Plan 02 (Pace Controller logic)

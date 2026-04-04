@@ -30,9 +30,9 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 ### Adaptive Pace
 
 - [ ] **PACE-01**: When phase lock is below threshold for >10 seconds, pace controller begins micro-adjusting breathing rate
-- [ ] **PACE-02**: Pace adjustments are smooth and imperceptible (max ±0.01 Hz per 30 seconds)
+- [x] **PACE-02**: Pace adjustments are smooth and imperceptible (max ±0.01 Hz per 30 seconds)
 - [ ] **PACE-03**: Pace never adjusts more than ±0.5 BPM from tuned frequency
-- [ ] **PACE-04**: Bowl echo timing shifts naturally with pace changes
+- [x] **PACE-04**: Bowl echo timing shifts naturally with pace changes
 
 ### Dashboard Integration
 
@@ -72,9 +72,9 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 | LOCK-03 | Phase 11 | Complete |
 | LOCK-04 | Phase 11 | Complete |
 | PACE-01 | Phase 12 | Pending |
-| PACE-02 | Phase 12 | Pending |
+| PACE-02 | Phase 12 | Complete |
 | PACE-03 | Phase 12 | Pending |
-| PACE-04 | Phase 12 | Pending |
+| PACE-04 | Phase 12 | Complete |
 | DASH-06 | Phase 13 | Pending |
 | DASH-07 | Phase 13 | Pending |
 | DASH-08 | Phase 13 | Pending |
