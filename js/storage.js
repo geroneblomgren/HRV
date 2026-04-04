@@ -31,7 +31,11 @@ export async function initStorage() {
 
 /**
  * Save a session record to IndexedDB.
- * @param {Object} sessionData - Session data (mode, duration, frequency, coherence, etc.)
+ * @param {Object} sessionData - Session data including:
+ *   - mode, date, durationSeconds, frequencyHz, meanCoherence, peakCoherence,
+ *     timeInHighSeconds, coherenceTrace, hrSource
+ *   - Optional Muse-S: meanNeuralCalm, peakNeuralCalm, timeInHighCalmSeconds, neuralCalmTrace
+ *   - Optional tuning (v1.2): tuningFreqHz, tuningRsaAmplitude
  * @returns {Promise<number>} The auto-generated session ID
  */
 export async function saveSession(sessionData) {

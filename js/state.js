@@ -89,6 +89,17 @@ export const AppState = new Proxy({
 
   // Active capabilities (Phase 6) — logical OR of all connected adapters
   activeCapabilities: { hr: false, rr: false, eeg: false, ppg: false },
+
+  // Tuning phase (Phase 10)
+  tuningPhase: 'idle',            // 'idle' | 'scanning' | 'result' | 'complete'
+  tuningProgress: 0,              // 0-1 progress through tuning (for progress ring)
+  tuningCandidateIndex: -1,       // which candidate is currently being tested (0-based)
+  tuningCandidateCount: 5,        // total candidates
+  tuningCurrentFreqBPM: 0,       // BPM of the candidate currently being tested
+  tuningResults: [],              // [{freqBPM, rsaAmplitude}] — results per candidate
+  tuningSelectedFreqBPM: 0,      // winning frequency after tuning completes
+  tuningSelectedRSA: 0,          // RSA amplitude at winning frequency
+  tuningStoredFreqBPM: 0,        // stored frequency from before tuning (for comparison display)
 }, {
   set(target, key, value) {
     target[key] = value;
