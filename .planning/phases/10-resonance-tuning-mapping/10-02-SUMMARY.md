@@ -59,8 +59,8 @@ completed: 2026-04-04
 - **Duration:** ~18 min
 - **Started:** 2026-04-04T04:40:35Z
 - **Completed:** 2026-04-04T04:58:00Z
-- **Tasks:** 2 of 3 auto tasks complete (Task 3 is human-verify checkpoint)
-- **Files modified:** 4
+- **Tasks:** 3 of 3 complete (including human-verify checkpoint — APPROVED)
+- **Files modified:** 4 (+ 2 post-checkpoint fixes in js/tuning.js)
 
 ## Accomplishments
 
@@ -78,7 +78,9 @@ Each task was committed atomically:
 
 1. **Task 1: Add tuning phase DOM and scanning renderer** - `72c9b52` (feat)
 2. **Task 2: Wire tuning phase into practice.js session flow** - `1e2bb15` (feat)
-3. **Task 3: Verify tuning phase UX** - checkpoint:human-verify (pending)
+3. **Post-checkpoint fix: 2 full breath cycles per candidate** - `d0b515d` (fix)
+4. **Post-checkpoint fix: 1.5s settling delay before first candidate** - `855c57b` (fix)
+5. **Task 3: Verify tuning phase UX** - APPROVED by user
 
 ## Files Created/Modified
 
@@ -123,10 +125,24 @@ Each task was committed atomically:
 - **Verification:** Logical correctness — matches expected UX.
 - **Committed in:** 1e2bb15
 
+**4. [Rule 1 - Bug] Fixed tuning window from fixed 12s to 2 full breath cycles per candidate**
+- **Found during:** Task 3 human verification
+- **Issue:** Fixed 12-second windows per candidate did not account for breathing rate variability. At slower breathing frequencies (e.g., 4.5 BPM), 12 seconds captures fewer than one complete cycle, making RSA measurement unreliable.
+- **Fix:** Changed tuning.js to use 2 full breath cycles per candidate (duration = 2 / freqHz seconds), ensuring adequate RSA data regardless of frequency.
+- **Files modified:** js/tuning.js
+- **Commit:** `d0b515d`
+
+**5. [Rule 1 - Bug] Added 1.5s settling delay before first tuning candidate**
+- **Found during:** Task 3 human verification
+- **Issue:** The first candidate began measurement immediately without allowing the user's breathing to settle into the new pace. This produced noisy RSA readings for the first candidate.
+- **Fix:** Added a 1.5-second delay before measurement begins on the first candidate.
+- **Files modified:** js/tuning.js
+- **Commit:** `855c57b`
+
 ---
 
-**Total deviations:** 3 auto-fixed (2 missing critical, 1 bug)
-**Impact on plan:** All fixes required for correctness. No scope creep.
+**Total deviations:** 5 auto-fixed (2 missing critical, 1 bug pre-checkpoint, 2 bugs post-checkpoint)
+**Impact on plan:** All fixes required for measurement reliability. No scope creep.
 
 ## Issues Encountered
 
@@ -136,11 +152,29 @@ Each task was committed atomically:
 
 None - no external service configuration required.
 
+## User Verification
+
+Task 3 checkpoint was approved by user. Verified:
+- Tuning runs with clean breath cycles (2 full cycles per candidate frequency)
+- Result display shows correct frequency comparison to stored RF
+- Session auto-starts at tuned frequency after result display
+- No console errors during tuning phase
+
 ## Next Phase Readiness
 
-- Tuning UX is wired and ready for human verification (Task 3 checkpoint)
-- After verification, Phase 10 Plan 03 can proceed (RF mapping / longitudinal trend)
-- Phase 11 (Phase Lock Engine) can proceed in parallel — it reads from AppState, not from practice.js
+- Tuning UX complete and verified — Phase 10 Plans 02 and 03 both done
+- Phase 10 (Resonance Tuning + Mapping) is fully complete
+- Phase 11 (Phase Lock Engine) is next
+
+## Self-Check: PASSED
+
+- `js/practice.js` — FOUND
+- `js/renderer.js` — FOUND
+- `index.html` — FOUND
+- Commit `72c9b52` — FOUND
+- Commit `1e2bb15` — FOUND
+- Commit `d0b515d` — FOUND
+- Commit `855c57b` — FOUND
 
 ---
 *Phase: 10-resonance-tuning-mapping*

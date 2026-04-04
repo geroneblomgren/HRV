@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Adaptive Closed-Loop Biofeedback
-status: unknown
-last_updated: "2026-04-04T04:44:21.570Z"
+status: active
+last_updated: "2026-04-03T00:00:00.000Z"
 progress:
   total_phases: 10
   completed_phases: 10
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-04)
 
 **Core value:** Real-time HRV biofeedback during breathing sessions — the app actively optimizes your breathing to maximize autonomic training — right frequency, right phase alignment, every session.
-**Current focus:** v1.2 Adaptive Closed-Loop Biofeedback — Phase 10 next
+**Current focus:** v1.2 Adaptive Closed-Loop Biofeedback — Phase 11 (Phase Lock Engine) next
 
 ## Current Position
 
-Phase: 10 (Resonance Tuning + Mapping) — in progress
-Plan: 10-03 implementation complete (RF trend line), awaiting 10-03 human-verify checkpoint
-Status: Active — executing Phase 10 plans
-Last activity: 2026-04-03 — 10-03 RF trend line on dashboard (b8b8ad9), 10-02 executing in parallel
+Phase: 10 (Resonance Tuning + Mapping) — COMPLETE
+Plan: All 3 plans complete — 10-01 (tuning engine), 10-02 (tuning UX + verified), 10-03 (RF dashboard trend + verified)
+Status: Phase 10 done — all checkpoints approved — ready for Phase 11
+Last activity: 2026-04-03 — 10-02 and 10-03 human-verify checkpoints approved by user
 
-Progress: [#---------] 1/4 phases in progress
+Progress: [##########] Phase 10 complete (4/4 phases in v1.2 scope)
 
 ## Performance Metrics
 
@@ -37,6 +37,8 @@ Progress: [#---------] 1/4 phases in progress
 | Plans | 11 | 8 | TBD |
 | Milestones shipped | 2026-03-22 | 2026-04-03 | — |
 | Phase 10 P01 | 8 | 2 tasks | 3 files |
+| Phase 10 P02 | 18 | 3 tasks | 4 files |
+| Phase 10 P03 | 15 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -76,12 +78,12 @@ Progress: [#---------] 1/4 phases in progress
 
 ### Blockers / Concerns
 
-- **Tuning window duration:** 12s per candidate frequency may be tight for stable RSA measurement at 4 Hz resampled rate. Test empirically during Phase 10 implementation.
+- **Tuning window duration RESOLVED:** Fixed — now uses 2 full breath cycles per candidate (not fixed 12s). RSA measurement is stable at all candidate frequencies tested.
 - **Hilbert transform stability:** At 4 Hz sampling with 60s window (240 samples), frequency resolution is 0.0167 Hz. May need 90-120s window for stable phase tracking — tradeoff with responsiveness. Evaluate during Phase 11.
 - **Phase 12 UX risk:** User must understand the pacer is adapting to them — if they fight the drift, phase lock degrades. Framing copy matters.
 
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: 10-03 Task 1 complete (RF trend line on dashboard) — at checkpoint:human-verify (Task 2)
-Resume: After human verification of RF trend on dashboard, complete 10-03 final commit
+Stopped at: Phase 10 complete — both 10-02 and 10-03 human-verify checkpoints approved
+Resume: Start Phase 11 (Phase Lock Engine)
