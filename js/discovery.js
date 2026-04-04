@@ -37,6 +37,7 @@ let _pausedForReconnect = false;
 let _selectedIndex = 0;
 let _activeBlocks = [];       // working copy of DISCOVERY_BLOCKS, may grow by 1 bonus block
 let _bonusChecked = false;    // true after we've evaluated whether a bonus block is needed
+let _neuralCalmTrace = [];    // array of Neural Calm scores (1 per second, Muse-S only)
 
 // Named references for subscribe/unsubscribe
 let _connectedListener = null;
@@ -177,6 +178,7 @@ export function startDiscovery() {
   _pausedForReconnect = false;
   _bonusChecked = false;
   _activeBlocks = [...DISCOVERY_BLOCKS];
+  _neuralCalmTrace = [];
   _phase = 'countdown';
   _sessionStart = Date.now();
 
@@ -214,6 +216,7 @@ export function startDiscovery() {
     } catch (err) {
       console.error('DSP tick error:', err);
     }
+    if (AppState.museConnected) _neuralCalmTrace.push(AppState.neuralCalm);
   }, 1000);
 
   // Subscribe to connected for disconnect handling
@@ -332,10 +335,11 @@ export function startBlock(index) {
   const spectrumCanvas = _getEl('spectrum-canvas');
   const gaugeCanvas = _getEl('gauge-canvas');
   const pacerCanvas = _getEl('pacer-canvas');
+  const neuralCalmCanvas = _getEl('neural-calm-gauge-canvas');
 
   startRendering(
     waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas,
-    _blockStartTime, BLOCK_DURATION_MS / 1000
+    _blockStartTime, BLOCK_DURATION_MS / 1000, neuralCalmCanvas
   );
 
   // Schedule end of this block
@@ -644,6 +648,10 @@ async function _onConfirm(results) {
       date: new Date().toISOString(),
       selectedFreqHz: selectedHz,
       blocks: results,
+      hrSource: AppState.hrSourceLabel || 'unknown',
+      ...(_neuralCalmTrace.length > 0 ? {
+        meanNeuralCalm: Math.round(_neuralCalmTrace.reduce((a, v) => a + v, 0) / _neuralCalmTrace.length),
+      } : {}),
     });
   } catch (err) {
     console.error('Failed to save discovery results:', err);

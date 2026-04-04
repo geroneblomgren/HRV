@@ -15,6 +15,7 @@ let _sessionStart = 0;           // Date.now() at session start
 let _sessionDurationMs = 0;      // selected duration in ms
 let _dspInterval = null;         // setInterval handle (1s DSP tick)
 let _coherenceTrace = [];        // array of coherence scores (1 per second)
+let _neuralCalmTrace = [];       // array of Neural Calm scores (1 per second, Muse-S only)
 let _chimePlayed = false;        // prevents double chime
 let _pausedForReconnect = false; // true when BLE disconnects mid-session
 let _selectedDuration = 20;     // minutes (default 20)
@@ -55,6 +56,7 @@ export function startPractice() {
   _chimePlayed = false;
   _pausedForReconnect = false;
   _coherenceTrace = [];
+  _neuralCalmTrace = [];
   _sessionStart = Date.now();
   _sessionDurationMs = _selectedDuration * 60 * 1000;
 
@@ -82,6 +84,7 @@ export function startPractice() {
   const waveformCanvas = _getEl('practice-waveform-canvas');
   const gaugeCanvas = _getEl('practice-gauge-canvas');
   const pacerCanvas = _getEl('practice-pacer-canvas');
+  const neuralCalmCanvas = _getEl('practice-neural-calm-gauge-canvas');
 
   // Init audio and DSP
   initAudio();
@@ -94,7 +97,8 @@ export function startPractice() {
     gaugeCanvas,
     pacerCanvas,
     _sessionStart,
-    _selectedDuration * 60
+    _selectedDuration * 60,
+    neuralCalmCanvas
   );
 
   // Start pacer audio at saved resonance frequency
@@ -105,6 +109,7 @@ export function startPractice() {
     const elapsed = (Date.now() - _sessionStart) / 1000;
     tick(elapsed);
     _coherenceTrace.push(AppState.coherenceScore);
+    if (AppState.museConnected) _neuralCalmTrace.push(AppState.neuralCalm);
 
     // When timer reaches zero, play chime then auto-end session
     if (elapsed >= _selectedDuration * 60 && !_chimePlayed) {
@@ -261,16 +266,24 @@ function _computeSummary() {
     ? trace.length
     : Math.round((Date.now() - _sessionStart) / 1000);
 
-  if (trace.length === 0) {
-    return { durationSeconds, mean: 0, peak: 0, timeInHigh: 0, trace };
+  let mean = 0, peak = 0, timeInHigh = 0;
+  if (trace.length > 0) {
+    const sum = trace.reduce((acc, v) => acc + v, 0);
+    mean = Math.round(sum / trace.length);
+    peak = Math.round(Math.max(...trace));
+    timeInHigh = trace.filter(v => v >= 66).length; // seconds in "Locked In" zone
   }
 
-  const sum = trace.reduce((acc, v) => acc + v, 0);
-  const mean = Math.round(sum / trace.length);
-  const peak = Math.round(Math.max(...trace));
-  const timeInHigh = trace.filter(v => v >= 66).length; // seconds in "Locked In" zone
+  // Neural Calm summary (only when Muse-S was connected during session)
+  const calmTrace = _neuralCalmTrace.slice();
+  let meanCalm = null, peakCalm = null, timeInHighCalm = null;
+  if (calmTrace.length > 0) {
+    meanCalm = Math.round(calmTrace.reduce((a, v) => a + v, 0) / calmTrace.length);
+    peakCalm = Math.round(Math.max(...calmTrace));
+    timeInHighCalm = calmTrace.filter(v => v >= 75).length; // seconds above threshold
+  }
 
-  return { durationSeconds, mean, peak, timeInHigh, trace };
+  return { durationSeconds, mean, peak, timeInHigh, trace, meanCalm, peakCalm, timeInHighCalm, calmTrace };
 }
 
 /**
@@ -324,6 +337,13 @@ async function _saveSession(summary) {
       peakCoherence: summary.peak,
       timeInHighSeconds: summary.timeInHigh,
       coherenceTrace: summary.trace,
+      hrSource: AppState.hrSourceLabel || 'unknown',
+      ...(summary.meanCalm !== null ? {
+        meanNeuralCalm: summary.meanCalm,
+        peakNeuralCalm: summary.peakCalm,
+        timeInHighCalmSeconds: summary.timeInHighCalm,
+        neuralCalmTrace: summary.calmTrace,
+      } : {}),
     });
   } catch (err) {
     console.error('Practice: failed to save session', err);
