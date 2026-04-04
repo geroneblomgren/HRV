@@ -102,6 +102,11 @@ export const AppState = new Proxy({
   tuningSelectedFreqBPM: 0,      // winning frequency after tuning completes
   tuningSelectedRSA: 0,          // RSA amplitude at winning frequency
   tuningStoredFreqBPM: 0,        // stored frequency from before tuning (for comparison display)
+
+  // Adaptive Pace Controller (Phase 12)
+  pacingFreqTuned: 0,         // Hz — set at session start from tuning result, never changes during session
+  paceControllerActive: false, // true when controller is actively adjusting pace
+  pacerAtBound: false,        // true when clamped at ±0.5 BPM boundary (badge turns amber)
 }, {
   set(target, key, value) {
     target[key] = value;
