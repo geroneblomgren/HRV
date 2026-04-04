@@ -16,6 +16,7 @@ let _sessionDurationMs = 0;      // selected duration in ms
 let _dspInterval = null;         // setInterval handle (1s DSP tick)
 let _coherenceTrace = [];        // array of coherence scores (1 per second)
 let _neuralCalmTrace = [];       // array of Neural Calm scores (1 per second, Muse-S only)
+let _hrTrace = [];               // array of HR values (1 per second)
 let _chimePlayed = false;        // prevents double chime
 let _pausedForReconnect = false; // true when BLE disconnects mid-session
 let _selectedDuration = 20;     // minutes (default 20)
@@ -57,6 +58,7 @@ export function startPractice() {
   _pausedForReconnect = false;
   _coherenceTrace = [];
   _neuralCalmTrace = [];
+  _hrTrace = [];
   _sessionStart = Date.now();
   _sessionDurationMs = _selectedDuration * 60 * 1000;
 
@@ -111,6 +113,7 @@ export function startPractice() {
     const elapsed = (Date.now() - _sessionStart) / 1000;
     tick(elapsed);
     _coherenceTrace.push(AppState.coherenceScore);
+    _hrTrace.push(AppState.currentHR);
     if (AppState.museConnected) _neuralCalmTrace.push(AppState.neuralCalm);
 
     // When timer reaches zero, play chime then auto-end session
@@ -276,7 +279,8 @@ function _computeSummary() {
     timeInHighCalm = calmTrace.filter(v => v >= 75).length; // seconds above threshold
   }
 
-  return { durationSeconds, mean, peak, timeInHigh, trace, meanCalm, peakCalm, timeInHighCalm, calmTrace };
+  const hrTraceOut = _hrTrace.slice();
+  return { durationSeconds, mean, peak, timeInHigh, trace, meanCalm, peakCalm, timeInHighCalm, calmTrace, hrTrace: hrTraceOut };
 }
 
 /**
@@ -338,6 +342,126 @@ function _showSummary(summary) {
     } else {
       hrSourceEl.style.display = 'none';
     }
+  }
+
+  // Draw session trace line graphs
+  _drawTraceGraph('summary-hr-graph', summary.hrTrace, '#ef4444', 'HR (bpm)', true);
+  _drawTraceGraph('summary-coherence-graph', summary.trace, 'var(--accent-teal, #5eead4)', 'Coherence', false, 0, 100);
+  if (summary.calmTrace && summary.calmTrace.length > 0) {
+    const calmGraphEl = _getEl('summary-calm-graph');
+    if (calmGraphEl) calmGraphEl.style.display = '';
+    _drawTraceGraph('summary-calm-graph', summary.calmTrace, '#3b82f6', 'Neural Calm', false, 0, 100);
+  } else {
+    const calmGraphEl = _getEl('summary-calm-graph');
+    if (calmGraphEl) calmGraphEl.style.display = 'none';
+  }
+}
+
+/**
+ * Draw a simple line graph on a canvas element showing a trace over time.
+ * @param {string} canvasId - DOM id of the canvas element
+ * @param {number[]} data - array of values (1 per second)
+ * @param {string} color - stroke color (CSS)
+ * @param {string} label - graph label text
+ * @param {boolean} autoRange - if true, auto-compute Y range from data; if false, use min/max params
+ * @param {number} [fixedMin=0] - fixed Y-axis minimum (when autoRange=false)
+ * @param {number} [fixedMax=100] - fixed Y-axis maximum (when autoRange=false)
+ */
+function _drawTraceGraph(canvasId, data, color, label, autoRange = false, fixedMin = 0, fixedMax = 100) {
+  const canvas = _getEl(canvasId);
+  if (!canvas || !data || data.length < 2) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.clientWidth * dpr;
+  canvas.height = canvas.clientHeight * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const pad = { top: 20, right: 10, bottom: 20, left: 36 };
+  const plotW = w - pad.left - pad.right;
+  const plotH = h - pad.top - pad.bottom;
+
+  // Y-axis range
+  let yMin, yMax;
+  if (autoRange) {
+    yMin = Math.min(...data);
+    yMax = Math.max(...data);
+    const margin = (yMax - yMin) * 0.1 || 5;
+    yMin = Math.floor(yMin - margin);
+    yMax = Math.ceil(yMax + margin);
+  } else {
+    yMin = fixedMin;
+    yMax = fixedMax;
+  }
+
+  // Clear
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.fillRect(pad.left, pad.top, plotW, plotH);
+
+  // Resolve CSS variable colors
+  const resolvedColor = color.startsWith('var(')
+    ? getComputedStyle(document.documentElement).getPropertyValue(color.match(/var\(([^,)]+)/)[1]).trim() || '#5eead4'
+    : color;
+
+  // Draw line
+  ctx.strokeStyle = resolvedColor;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+
+  for (let i = 0; i < data.length; i++) {
+    const x = pad.left + (i / (data.length - 1)) * plotW;
+    const y = pad.top + plotH - ((data[i] - yMin) / (yMax - yMin)) * plotH;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Fill under line
+  ctx.lineTo(pad.left + plotW, pad.top + plotH);
+  ctx.lineTo(pad.left, pad.top + plotH);
+  ctx.closePath();
+  ctx.fillStyle = resolvedColor.replace(')', ', 0.1)').replace('rgb(', 'rgba(');
+  if (!ctx.fillStyle.includes('rgba')) {
+    // Hex color — use global alpha
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = resolvedColor;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fill();
+  }
+
+  // Label
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(label, pad.left + 4, pad.top + 2);
+
+  // Y-axis labels
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillText(yMax, pad.left - 4, pad.top);
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(yMin, pad.left - 4, pad.top + plotH);
+
+  // Time axis
+  const totalSec = data.length;
+  const mins = Math.floor(totalSec / 60);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('0:00', pad.left, pad.top + plotH + 4);
+  ctx.fillText(_formatTime(totalSec), pad.left + plotW, pad.top + plotH + 4);
+  if (mins > 2) {
+    const mid = Math.floor(totalSec / 2);
+    ctx.fillText(_formatTime(mid), pad.left + plotW / 2, pad.top + plotH + 4);
   }
 }
 

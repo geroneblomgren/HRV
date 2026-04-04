@@ -77,9 +77,10 @@ export async function init() {
  * @returns {Promise<void>}
  */
 export async function connectChestStrap() {
-  await _adapters.chestStrap.connect();
-  // Update capabilities in AppState after successful connect
+  // Set capabilities BEFORE connect so _updateHRSource() sees them
+  // when chestStrapConnected triggers the subscription
   AppState.chestStrapCapabilities = _adapters.chestStrap.getCapabilities();
+  await _adapters.chestStrap.connect();
 }
 
 /**

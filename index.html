@@ -180,11 +180,6 @@
         </div>
         <!-- Controls below pacer -->
         <div class="pacer-controls">
-          <div class="style-buttons" id="practice-style-buttons">
-            <button class="style-btn" data-style="pitch">Pitch</button>
-            <button class="style-btn" data-style="swell">Swell</button>
-            <button class="style-btn active" data-style="bowl">Bowl</button>
-          </div>
           <div class="volume-control">
             <label class="volume-label" for="practice-volume-slider">Vol</label>
             <input type="range" id="practice-volume-slider" class="volume-slider" min="0" max="100" value="50">
@@ -237,6 +232,12 @@
               <span class="metric-label">Time in Deep Calm</span>
             </div>
           </div>
+        </div>
+        <!-- Session trace graphs -->
+        <div class="summary-graphs">
+          <canvas id="summary-hr-graph" class="summary-graph-canvas"></canvas>
+          <canvas id="summary-coherence-graph" class="summary-graph-canvas"></canvas>
+          <canvas id="summary-calm-graph" class="summary-graph-canvas" style="display:none;"></canvas>
         </div>
         <button id="practice-done-btn" class="connect-button practice-done-btn">Done</button>
       </div>
