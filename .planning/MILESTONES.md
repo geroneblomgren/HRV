@@ -21,3 +21,21 @@
 - PRAC-01 through PRAC-05: Practice mode with session summary
 - OURA-01 through OURA-03: Oura API integration + caching
 - DASH-01 through DASH-03: Recovery dashboard with dual-axis chart
+
+## v1.1 — Muse-S Neurocardiac Integration (Completed 2026-04-04)
+
+**Goal:** Add Muse-S headband as second biofeedback device with standalone PPG-derived HRV, live EEG neural calm metrics, and dashboard trends.
+
+**Phases:** 6-9 (all complete)
+6. Device Architecture — Adapter pattern, DeviceManager, dual-device UI
+7. Muse-S Connection + Signal Processing — MuseAdapter BLE, PPG peak detection, EEG Neural Calm
+8. Session Integration — PPG standalone sessions, Neural Calm gauge, alpha bar, bowl echoes, RMSSD graphs
+9. Neural Calm Dashboard — Neural Calm trend line, inline legend, tooltips, 7d metric card
+
+**Validated Requirements:**
+- DEV-01 through DEV-04: Device adapter pattern, dual-device support
+- MUSE-01 through MUSE-05: Muse-S BLE connection, EEG/PPG streaming
+- PPG-01 through PPG-04: PPG peak detection, artifact rejection, standalone sessions, confidence marking
+- EEG-01 through EEG-03: Alpha/beta power, artifact rejection, Neural Calm score
+- SESS-01 through SESS-03: Neural Calm live display, alpha bar, session summary metrics
+- DASH-04 through DASH-05: Neural Calm persistence and dashboard trend

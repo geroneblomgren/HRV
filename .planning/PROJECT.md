@@ -2,19 +2,18 @@
 
 ## What This Is
 
-A personal web-based resonance frequency breathing trainer with real-time HRV biofeedback and neural calm monitoring. Connects to a Garmin HRM 600 chest strap or Muse-S headband via Web Bluetooth for beat-to-beat HRV analysis. The Muse-S additionally provides live EEG-derived relaxation metrics during sessions. It identifies the user's personal resonance frequency through spectral analysis of RR intervals, then guides daily practice sessions at that frequency with audio and visual pacing. Oura Ring integration provides longitudinal overnight HRV tracking to measure autonomic recovery over weeks.
+A personal web-based adaptive resonance frequency breathing trainer with closed-loop HRV biofeedback and neural calm monitoring. Connects to a Garmin HRM 600 chest strap and/or Muse-S headband via Web Bluetooth. The app automatically tunes to the user's current resonance frequency before each session and micro-adjusts breathing pace in real-time to maximize cardiorespiratory phase alignment — converting casual breathing practice into clinical-grade autonomic training. Oura Ring integration tracks overnight recovery to measure long-term impact.
 
-## Current Milestone: v1.1 Muse-S Neurocardiac Integration
+## Current Milestone: v1.2 Adaptive Closed-Loop Biofeedback
 
-**Goal:** Add Muse-S headband as a second biofeedback device, providing standalone PPG-derived HRV plus live EEG neural calm metrics during sessions, with trends tracked on the recovery dashboard.
+**Goal:** Convert from open-loop breathing pacer to closed-loop autonomic training system. Auto-tune resonance frequency before each session and optimize breath-heart phase alignment in real-time.
 
 **Target features:**
-- Refactor BLE into device adapter pattern (HRM 600 + Muse-S)
-- Muse-S BLE connection with EEG + PPG streaming
-- PPG peak detection pipeline for standalone RR interval extraction
-- Neural Calm metric (alpha/beta power ratio) displayed during sessions
-- Live scrolling EEG waveform during sessions
-- Neural calm session averages tracked on recovery dashboard
+- 60-second pre-session tuning phase to find current resonance frequency (RF drifts in 67% of people)
+- Resonance frequency trend tracking on dashboard correlated with Oura recovery
+- Phase lock score replacing coherence (Hilbert transform measures actual breath-heart synchronization)
+- Adaptive pace controller that micro-adjusts breathing rate to maximize phase alignment
+- Smooth audio drift so pace changes are felt, not seen (bowl echo timing shifts naturally)
 
 ## Core Value
 
@@ -36,16 +35,22 @@ Real-time HRV biofeedback during breathing sessions — seeing your heart rate o
 - ✓ Session history stored in IndexedDB — v1.0
 - ✓ Oura Ring API integration for overnight HRV trends — v1.0
 - ✓ Recovery dashboard with session coherence + Oura overnight HRV trends — v1.0
+- ✓ Device adapter pattern for multi-device BLE connections — v1.1
+- ✓ Muse-S headband BLE connection with EEG + PPG streaming — v1.1
+- ✓ PPG peak detection for standalone Muse-S HR/HRV sessions — v1.1
+- ✓ Neural Calm metric (alpha/beta ratio) with live gauge during sessions — v1.1
+- ✓ Alpha power bar replacing raw EEG waveform — v1.1
+- ✓ Neural Calm trend on recovery dashboard — v1.1
+- ✓ Bowl echo subdivisions for eyes-closed pace tracking — v1.1
+- ✓ Session summary with HR, HRV (RMSSD), and Neural Calm line graphs — v1.1
 
 ### Active
 
-- [ ] Device adapter pattern abstracting BLE connections for multiple device types
-- [ ] Muse-S headband connection via Web Bluetooth (service 0xfe8d)
-- [ ] Muse-S EEG streaming (5 channels at 256 Hz) with alpha/beta spectral analysis
-- [ ] Muse-S PPG streaming (3 channels at 64 Hz) with peak detection for RR interval extraction
-- [ ] Neural Calm metric (alpha/beta power ratio) displayed as live score during sessions
-- [ ] Live scrolling EEG waveform during sessions
-- [ ] Neural calm session averages tracked on recovery dashboard over time
+- [ ] Pre-session tuning phase identifies current resonance frequency from live RSA analysis
+- [ ] Resonance frequency trend tracked over sessions and displayed on dashboard
+- [ ] Phase lock score (Hilbert transform) replaces coherence as primary biofeedback metric
+- [ ] Adaptive pace controller micro-adjusts breathing rate to maximize phase alignment
+- [ ] Session summary and dashboard use phase lock instead of coherence (legacy labeling for old data)
 
 ### Out of Scope
 
@@ -57,6 +62,9 @@ Real-time HRV biofeedback during breathing sessions — seeing your heart rate o
 - Multi-user support — built for one person
 - Garmin Fenix 8 wrist HR — cannot transmit RR intervals over BLE, wrist PPG too noisy for HRV
 - Combined neurocardiac feedback signal — EEG calm displayed alongside HRV, not merged into single metric (no validated protocol exists)
+- HEP neurofeedback — HRM 600 lacks R-peak timestamps, Muse SNR insufficient for 1-3µV signals
+- Baroreflex sensitivity training — requires beat-by-beat blood pressure data we don't have
+- Polyvagal state classification — contested science (Grossman 2023), would relabel existing metrics
 
 ## Context
 
@@ -87,9 +95,13 @@ Real-time HRV biofeedback during breathing sessions — seeing your heart rate o
 | Web Bluetooth over native app | No app store, no SDK, browser is sufficient for desktop use | ✓ Good |
 | Three audio styles | User wants to experiment with rising/falling pitch, volume swell, and soft chimes to find what feels best | ✓ Good |
 | Local storage over cloud | Personal tool, no need for accounts or sync | ✓ Good |
-| Muse-S over Fenix 8 for v1.1 | Fenix 8 can't transmit RR intervals over BLE; Muse-S provides EEG + PPG — genuinely novel biofeedback | — Pending |
-| PPG standalone HRV attempt | Muse PPG at 64 Hz may provide usable RR intervals; chest strap stays as gold standard fallback | — Pending |
-| EEG calm as parallel metric | No validated combined EEG+HRV metric exists; display separately rather than merge | — Pending |
+| Muse-S over Fenix 8 for v1.1 | Fenix 8 can't transmit RR intervals over BLE; Muse-S provides EEG + PPG — genuinely novel biofeedback | ✓ Good |
+| PPG standalone HRV attempt | Muse PPG at 64 Hz provides usable RR intervals; IR channel best; chest strap remains gold standard | ✓ Good |
+| EEG calm as parallel metric | Alpha/beta ratio from TP9/TP10 validated empirically; displayed alongside HRV | ✓ Good |
+| Bowl-only audio with echo subdivisions | Quarter-beat echoes for eyes-closed pace tracking; removed unused pitch/swell styles | ✓ Good |
+| Phase lock replacing coherence | Hilbert transform measures actual breath-heart phase alignment; coherence is an indirect proxy | — Pending |
+| Pre-session RF tuning | RF drifts in 67% of people; 60s tuning ensures every session uses current optimal frequency | — Pending |
+| Adaptive pace control | Smooth drift ±0.01 Hz/30s bounded to ±0.5 BPM from tuned frequency | — Pending |
 
 ---
-*Last updated: 2026-04-03 after v1.1 milestone start*
+*Last updated: 2026-04-04 after v1.2 milestone start*
