@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 ## Current Position
 
 Phase: 8 of 9 (Session Integration) — IN PROGRESS
-Plan: 1 of 2 — 08-01 complete
-Status: Phase 8 plan 1 complete — Neural Calm gauge + PPG session wiring done
-Last activity: 2026-04-04 — 08-01 complete: Neural Calm live gauge in Practice/Discovery sessions, PPG confidence badge on coherence gauge, hrSource provenance saved to IndexedDB
+Plan: 2 of 2 — 08-02 complete (awaiting human-verify checkpoint)
+Status: Phase 8 plan 2 complete — EEG waveform renderer + Neural Calm summary metrics done
+Last activity: 2026-04-03 — 08-02 complete: scrolling EEG waveform (TP9/TP10), Neural Calm summary section, PPG source badge in Practice and Discovery
 
-Progress: [███████░░░] 75% (v1.1) — 6 of 8 plans complete (phase 8: 1/2)
+Progress: [████████░░] 88% (v1.1) — 7 of 8 plans complete (phase 8: 2/2 pending verify)
 
 ## Performance Metrics
 
@@ -78,6 +78,9 @@ Progress: [███████░░░] 75% (v1.1) — 6 of 8 plans complete 
 - [Phase 08-01]: PPG arc shifts to lighter teal #5eead4 — arc color indicates lower confidence; score number stays zone color for readability
 - [Phase 08-01]: neuralCalmCanvas passed as optional 7th arg to startRendering() with null guard — existing callers with 6 args still work
 - [Phase 08-01]: EEG calibrating window uses 20s (AppState.eegCalibrating baseline), not 120s HRV calibration window
+- [Phase 08-02]: EEG stacked layout: TP9 centered at h*0.3, TP10 at h*0.7 — symmetric within 80px canvas
+- [Phase 08-02]: Neural Calm summary section uses display:none toggle — hidden by default, shown when meanCalm != null
+- [Phase 08-02]: PPG source badge placed immediately after h2 title in both Practice summary and Discovery comparison
 
 ### Decisions
 
@@ -102,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04
-Stopped at: Completed 08-01-PLAN.md — Neural Calm gauge + PPG session wiring, Practice and Discovery sessions work with Muse-S PPG-only
-Resume: Run `/gsd:execute-phase 8` for Phase 8 Plan 2 (remaining session integration)
+Last session: 2026-04-03
+Stopped at: Checkpoint 08-02-PLAN.md Task 3 — human-verify of complete Muse-S session integration
+Resume: Run `/gsd:execute-phase 8` after verifying EEG waveform + Neural Calm summary in browser

@@ -38,8 +38,8 @@ Requirements for Muse-S Neurocardiac Integration. Each maps to roadmap phases.
 ### Session Integration
 
 - [x] **SESS-01**: Neural Calm score displays as a live metric during practice and discovery sessions when Muse-S is connected
-- [ ] **SESS-02**: Live scrolling EEG waveform renders on Canvas during sessions when Muse-S is connected
-- [ ] **SESS-03**: Session summary includes mean Neural Calm, peak Neural Calm, and time in high calm when Muse-S was used
+- [x] **SESS-02**: Live scrolling EEG waveform renders on Canvas during sessions when Muse-S is connected
+- [x] **SESS-03**: Session summary includes mean Neural Calm, peak Neural Calm, and time in high calm when Muse-S was used
 
 ### Dashboard
 
@@ -90,8 +90,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EEG-02 | Phase 7 | Complete |
 | EEG-03 | Phase 8 | Complete (08-01) |
 | SESS-01 | Phase 8 | Complete (08-01) |
-| SESS-02 | Phase 8 | Pending |
-| SESS-03 | Phase 8 | Pending |
+| SESS-02 | Phase 8 | Complete |
+| SESS-03 | Phase 8 | Complete |
 | DASH-04 | Phase 9 | Pending |
 | DASH-05 | Phase 9 | Pending |
 
