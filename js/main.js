@@ -82,17 +82,17 @@ function updateDeviceChipUI(_deviceId, status, dot, text, btn) {
   text.textContent = labels[status] || 'Not connected';
 
   // Update button state
-  if (status === 'connected') {
+  if (status === 'connected' || status === 'streaming') {
     btn.classList.add('connected');
-    // Hide connection area after 2s when any device connects
+    // Hide connection area after 2s only when BOTH devices are connected
     setTimeout(() => {
-      if (AppState.connected) {
+      if (AppState.chestStrapConnected && AppState.museConnected) {
         connectionArea.classList.add('hidden');
       }
     }, 2000);
   } else {
     btn.classList.remove('connected');
-    // Show connection area when disconnected
+    // Show connection area when any device disconnects
     if (status === 'disconnected') {
       connectionArea.classList.remove('hidden');
     }
