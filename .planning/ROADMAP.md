@@ -137,7 +137,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — PPG standalone sessions, Neural Calm live gauge, PPG confidence badge, session provenance + Neural Calm trace collection
+- [x] 08-01-PLAN.md — PPG standalone sessions, Neural Calm live gauge, PPG confidence badge, session provenance + Neural Calm trace collection (completed 2026-04-04)
 - [ ] 08-02-PLAN.md — Scrolling EEG waveform renderer, Neural Calm session summary metrics, human verification
 
 #### Phase 9: Neural Calm Dashboard
@@ -168,5 +168,5 @@ v1.1: 6 → 7 → 8 → 9
 | 5. Oura + Recovery Dashboard | v1.0 | 2/2 | Complete | 2026-03-22 |
 | 6. Device Architecture | 2/2 | Complete   | 2026-04-03 | - |
 | 7. Muse-S Connection + Signal Processing | 3/3 | Complete   | 2026-04-03 | - |
-| 8. Session Integration | v1.1 | 0/2 | Not started | - |
+| 8. Session Integration | v1.1 | 1/2 | In Progress | - |
 | 9. Neural Calm Dashboard | v1.1 | 0/1 | Not started | - |

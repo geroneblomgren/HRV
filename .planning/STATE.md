@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 
 ## Current Position
 
-Phase: 7 of 9 (Muse-S Connection + Signal Processing) — COMPLETE
-Plan: 3 of 3 — 07-03 complete; all phase 7 plans done
-Status: Phase 7 complete — advance to Phase 8 (Session Integration)
-Last activity: 2026-04-03 — 07-03 complete: EEG FFT pipeline with Neural Calm scoring, hardware-verified on Muse-S (HR ~85 bpm accurate, Neural Calm responsive, blink rejection stable)
+Phase: 8 of 9 (Session Integration) — IN PROGRESS
+Plan: 1 of 2 — 08-01 complete
+Status: Phase 8 plan 1 complete — Neural Calm gauge + PPG session wiring done
+Last activity: 2026-04-04 — 08-01 complete: Neural Calm live gauge in Practice/Discovery sessions, PPG confidence badge on coherence gauge, hrSource provenance saved to IndexedDB
 
-Progress: [██████░░░░] 62% (v1.1) — 5 of 8 plans complete (phase 7 complete: 3/3)
+Progress: [███████░░░] 75% (v1.1) — 6 of 8 plans complete (phase 8: 1/2)
 
 ## Performance Metrics
 
@@ -41,7 +41,7 @@ Progress: [██████░░░░] 62% (v1.1) — 5 of 8 plans complete 
 |-------|-------|-------|----------|
 | 6. Device Architecture | 2/2 | 5 min | 2.5 min |
 | 7. Muse-S Connection + Signal Processing | 0/3 | - | - |
-| 8. Session Integration | 0/2 | - | - |
+| 8. Session Integration | 1/2 | 3 min | - |
 | 9. Neural Calm Dashboard | 0/1 | - | - |
 
 *Updated after each plan completion*
@@ -49,6 +49,7 @@ Progress: [██████░░░░] 62% (v1.1) — 5 of 8 plans complete 
 | Phase 07-muse-s-connection P01 | 2 | 2 tasks | 3 files |
 | Phase 07-muse-s-connection-signal-processing P03 | 3 | 2 tasks | 5 files |
 | Phase 07 P02 | 9 | 2 tasks | 5 files |
+| Phase 08-session-integration P01 | 3 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,10 @@ Progress: [██████░░░░] 62% (v1.1) — 5 of 8 plans complete 
 - [Phase 07-03]: BLE characteristic UUIDs corrected post hardware verification — initial implementation used wrong base UUID; fixed in a5b43c7
 - [Phase 07-03]: AppState exposed on window.AppState for live console debugging during hardware sessions
 - [Phase 07-03]: Forehead PPG polarity inverted vs wrist PPG — peak detection flipped; longer warmup and different decay tuning required
+- [Phase 08-01]: Neural Calm gauge uses bottom-left corner of session-pacer (coherence is bottom-right) — symmetric paired layout
+- [Phase 08-01]: PPG arc shifts to lighter teal #5eead4 — arc color indicates lower confidence; score number stays zone color for readability
+- [Phase 08-01]: neuralCalmCanvas passed as optional 7th arg to startRendering() with null guard — existing callers with 6 args still work
+- [Phase 08-01]: EEG calibrating window uses 20s (AppState.eegCalibrating baseline), not 120s HRV calibration window
 
 ### Decisions
 
@@ -97,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03
-Stopped at: Completed 07-03-PLAN.md — EEG FFT pipeline, Neural Calm scoring, hardware verified on Muse-S
-Resume: Run `/gsd:execute-phase 8` for Phase 8 (Session Integration)
+Last session: 2026-04-04
+Stopped at: Completed 08-01-PLAN.md — Neural Calm gauge + PPG session wiring, Practice and Discovery sessions work with Muse-S PPG-only
+Resume: Run `/gsd:execute-phase 8` for Phase 8 Plan 2 (remaining session integration)
