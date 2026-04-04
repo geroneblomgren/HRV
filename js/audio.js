@@ -1,13 +1,17 @@
-// js/audio.js — AudioEngine: lookahead scheduler + three tone synthesizers
+// js/audio.js — AudioEngine: lookahead scheduler + bowl tone with echo subdivisions
 // Drift-free breathing pacer audio using Web Audio API scheduled timing.
 // All audio param scheduling uses AudioContext.currentTime, never Date.now().
+//
+// Bowl strikes mark inhale/exhale transitions. Three quieter echoes subdivide
+// each half-breath into perfect fourths, so the user can track pace eyes-closed.
+// Example at 4.5 BPM (13.33s breath, 6.667s per half):
+//   Bowl - 1.667s - echo - 1.667s - echo - 1.667s - echo - 1.667s - Bowl
 
 import { AppState } from './state.js';
 
 // ---- Module state (no AudioContext created at module level) ----
 let _ctx = null;
 let _masterGain = null;
-let _currentStyle = 'bowl';    // 'pitch' | 'swell' | 'bowl'
 let _nextCueTime = 0;
 let _nextPhase = 'inhale';
 let _schedulerTimer = null;
@@ -15,6 +19,10 @@ let _schedulerTimer = null;
 // ---- Scheduler constants ----
 const LOOKAHEAD_MS = 25;         // setTimeout interval (ms)
 const SCHEDULE_AHEAD_SEC = 0.1;  // how far ahead to schedule audio events (sec)
+
+// ---- Echo configuration ----
+const ECHO_COUNT = 3;            // number of echo subdivisions per half-breath
+const ECHO_GAIN = 0.25;          // echo volume relative to main strike (0-1)
 
 // ---- Public API ----
 
@@ -60,14 +68,6 @@ export function stopPacer() {
 }
 
 /**
- * Set the audio tone style. Takes effect on the next scheduled cue.
- * @param {'pitch'|'swell'|'bowl'} style
- */
-export function setStyle(style) {
-  _currentStyle = style;
-}
-
-/**
  * Set master volume with click-free transition.
  * @param {number} value — 0.0 to 1.0
  */
@@ -84,6 +84,16 @@ export function getAudioTime() {
   return _ctx ? _ctx.currentTime : 0;
 }
 
+/**
+ * Play a single bowl strike immediately. Used by Discovery (inter-block)
+ * and Practice (session end) to signal transitions.
+ * No-op if AudioContext not initialized.
+ */
+export function playChime() {
+  if (!_ctx) return;
+  _scheduleBowlStrike(_ctx.currentTime + 0.05, 'inhale', 0.7);
+}
+
 // ---- Internal: Lookahead scheduler ----
 
 function _schedulerTick(halfPeriod) {
@@ -97,85 +107,38 @@ function _schedulerTick(halfPeriod) {
   _schedulerTimer = setTimeout(() => _schedulerTick(halfPeriod), LOOKAHEAD_MS);
 }
 
+/**
+ * Schedule a main bowl strike + 3 echo subdivisions for one half-breath.
+ * The main strike plays at 'time'. Echoes are spaced evenly across the
+ * half-period, dividing it into 4 equal parts (perfect fourths).
+ *
+ * @param {number} time - AudioContext time for the main strike
+ * @param {'inhale'|'exhale'} phase - current breath phase
+ * @param {number} halfPeriod - duration of one half-breath in seconds
+ */
 function _scheduleCue(time, phase, halfPeriod) {
-  switch (_currentStyle) {
-    case 'pitch':
-      _schedulePitchCue(time, phase, halfPeriod);
-      break;
-    case 'swell':
-      _scheduleSwellCue(time, phase, halfPeriod);
-      break;
-    case 'bowl':
-      _scheduleBowlCue(time, phase, halfPeriod);
-      break;
+  // Main bowl strike at the transition point
+  _scheduleBowlStrike(time, phase, 0.7);
+
+  // 3 echoes dividing the half-breath into perfect fourths
+  const interval = halfPeriod / (ECHO_COUNT + 1);
+  for (let i = 1; i <= ECHO_COUNT; i++) {
+    const echoTime = time + interval * i;
+    _scheduleBowlStrike(echoTime, phase, ECHO_GAIN);
   }
 }
 
-// ---- Style 1: Pitch (frequency sweep) ----
-
-function _schedulePitchCue(time, phase, halfPeriod) {
-  const osc = _ctx.createOscillator();
-  const gain = _ctx.createGain();
-
-  osc.type = 'sine';
-
-  // Frequency: inhale ramps 220->350 Hz, exhale ramps 350->220 Hz
-  const startFreq = phase === 'inhale' ? 220 : 350;
-  const endFreq = phase === 'inhale' ? 350 : 220;
-  osc.frequency.setValueAtTime(startFreq, time);
-  osc.frequency.exponentialRampToValueAtTime(endFreq, time + halfPeriod);
-
-  // Gain envelope: 200ms attack, fade to silence over halfPeriod
-  gain.gain.setValueAtTime(0, time);
-  gain.gain.linearRampToValueAtTime(0.6, time + 0.2);
-  gain.gain.linearRampToValueAtTime(0, time + halfPeriod);
-
-  osc.connect(gain);
-  gain.connect(_masterGain);
-
-  osc.start(time);
-  osc.stop(time + halfPeriod + 0.05);
-}
-
-// ---- Style 2: Swell (volume sweep) ----
-
-function _scheduleSwellCue(time, phase, halfPeriod) {
-  const osc = _ctx.createOscillator();
-  const gain = _ctx.createGain();
-
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(240, time);  // warmer, more audible than 180
-
-  const peak = phase === 'inhale' ? 0.8 : 0.5;
-  const mid = halfPeriod / 2;
-
-  // Gain: swell up to peak at midpoint, fade back down
-  // Use higher floor (0.05) so it's always audible
-  gain.gain.setValueAtTime(0.05, time);
-  gain.gain.linearRampToValueAtTime(peak, time + mid);
-  gain.gain.linearRampToValueAtTime(0.05, time + halfPeriod);
-
-  osc.connect(gain);
-  gain.connect(_masterGain);
-
-  osc.start(time);
-  osc.stop(time + halfPeriod + 0.05);
-}
+// ---- Bowl strike (main + echo) ----
 
 /**
- * Play a single bowl strike immediately. Used by Discovery (inter-block)
- * and Practice (session end) to signal transitions.
- * No-op if AudioContext not initialized.
+ * Schedule a single bowl strike at the given time and volume.
+ * Uses two slightly detuned sine oscillators for a rich, bell-like tone.
+ *
+ * @param {number} time - AudioContext time to play
+ * @param {'inhale'|'exhale'} phase - determines pitch (inhale=higher, exhale=lower)
+ * @param {number} peakGain - strike volume (0.7 for main, 0.25 for echoes)
  */
-export function playChime() {
-  if (!_ctx) return;
-  _scheduleBowlCue(_ctx.currentTime + 0.05, 'inhale', 1.5);
-}
-
-// ---- Style 3: Bowl (strike + decay) ----
-
-function _scheduleBowlCue(time, phase, halfPeriod) {
-  // Use two slightly detuned oscillators for a richer, more bowl-like tone
+function _scheduleBowlStrike(time, phase, peakGain) {
   const osc1 = _ctx.createOscillator();
   const osc2 = _ctx.createOscillator();
   const gain = _ctx.createGain();
@@ -183,15 +146,17 @@ function _scheduleBowlCue(time, phase, halfPeriod) {
   osc1.type = 'sine';
   osc2.type = 'sine';
 
-  // Different pitches for inhale/exhale — both clearly audible
+  // Different pitches for inhale/exhale
   const freq = phase === 'inhale' ? 280 : 220;
   osc1.frequency.setValueAtTime(freq, time);
   osc2.frequency.setValueAtTime(freq * 1.005, time); // slight detune for warmth
 
-  // Fast strike attack (30ms) then exponential decay (timeConstant=1.0s)
+  // Fast strike attack (30ms) then exponential decay
+  // Shorter decay for echoes (0.4s) vs main strikes (1.0s)
+  const decayTC = peakGain >= 0.5 ? 1.0 : 0.4;
   gain.gain.setValueAtTime(0, time);
-  gain.gain.linearRampToValueAtTime(0.7, time + 0.03);
-  gain.gain.setTargetAtTime(0.001, time + 0.03, 1.0);
+  gain.gain.linearRampToValueAtTime(peakGain, time + 0.03);
+  gain.gain.setTargetAtTime(0.001, time + 0.03, decayTC);
 
   osc1.connect(gain);
   osc2.connect(gain);

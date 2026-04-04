@@ -2,7 +2,7 @@
 import { AppState, subscribe } from './state.js';
 import { initStorage, getSetting } from './storage.js';
 import { init as initDeviceManager, connectChestStrap, connectMuse, disconnectAll } from './devices/DeviceManager.js';
-import { setStyle, setVolume } from './audio.js';
+import { setVolume } from './audio.js';
 import { startDiscovery, stopDiscovery, onDisconnect as discoveryDisconnect, _wireStartBtn, loadLastDiscoveryResults, initPacePicker } from './discovery.js';
 import { initPracticeUI, onDisconnect as practiceDisconnect } from './practice.js';
 import { initDashboard } from './dashboard.js';
@@ -311,14 +311,6 @@ reconnectBtn.addEventListener('click', async () => {
 });
 
 // ---- Pacer control event listeners ----
-
-document.querySelectorAll('.style-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    setStyle(btn.dataset.style);
-  });
-});
 
 document.getElementById('volume-slider').addEventListener('input', e => {
   setVolume(e.target.value / 100);

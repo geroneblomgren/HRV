@@ -58,6 +58,8 @@ let _neuralCalmCanvas = null, _neuralCalmCtx = null;
 let _eegCanvas = null, _eegCtx = null;
 let _displayedScore = 0;
 let _displayedCalm = 0;
+let _calmHistory = [];          // rolling window for Neural Calm smoothing
+const CALM_SMOOTH_WINDOW = 5;   // average last 5 raw values (~5 seconds at 1 update/sec)
 let _pulsePhase = 0;
 let _sessionStartTime = null;
 let _calibrationFadeAlpha = 0;
@@ -622,10 +624,21 @@ function drawNeuralCalmGauge() {
     return;
   }
 
-  // Smooth interpolation
-  _displayedCalm += (AppState.neuralCalm - _displayedCalm) * 0.08;
+  // Rolling average smoothing — collect raw Neural Calm values, average them
+  const rawCalm = AppState.neuralCalm;
+  if (_calmHistory.length === 0 || _calmHistory[_calmHistory.length - 1] !== rawCalm) {
+    // New value from the DSP tick (changes ~1/sec)
+    _calmHistory.push(rawCalm);
+    if (_calmHistory.length > CALM_SMOOTH_WINDOW) _calmHistory.shift();
+  }
+  const avgCalm = _calmHistory.length > 0
+    ? _calmHistory.reduce((a, b) => a + b, 0) / _calmHistory.length
+    : 0;
 
-  const zone = _getCalmZone(AppState.neuralCalm);
+  // Smooth visual interpolation toward the rolling average
+  _displayedCalm += (avgCalm - _displayedCalm) * 0.08;
+
+  const zone = _getCalmZone(avgCalm);
 
   // Background ring
   ctx.beginPath();
@@ -662,7 +675,11 @@ function drawNeuralCalmGauge() {
   ctx.fillText(CALM_LABELS[zone], cx, cy + radius * 0.3);
 }
 
-// ---- EEG Waveform Renderer ----
+// ---- EEG Alpha Power Bar ----
+// Replaces the raw scrolling waveform with a calm, slow-moving alpha power meter.
+// Shows current alpha power as a horizontal fill bar — serene to watch during breathing.
+
+let _displayedAlpha = 0; // smooth interpolation target
 
 function drawEEGWaveform() {
   if (!_eegCtx) return;
@@ -675,79 +692,53 @@ function drawEEGWaveform() {
 
   ctx.clearRect(0, 0, w, h);
 
-  // Subtle center line
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, h / 2);
-  ctx.lineTo(w, h / 2);
-  ctx.stroke();
-
-  // Channel labels
-  ctx.font = '10px monospace';
-  ctx.textBaseline = 'top';
-
-  ctx.fillStyle = TP9_COLOR;
-  ctx.textAlign = 'left';
-  ctx.fillText('TP9', 4, 2);
-
-  ctx.fillStyle = TP10_COLOR;
-  ctx.textAlign = 'right';
-  ctx.fillText('TP10', w - 4, 2);
-
-  // When Muse not connected: draw flat placeholder lines
+  // When Muse not connected: show placeholder
   if (!AppState.museConnected) {
-    ctx.strokeStyle = TP9_COLOR;
-    ctx.globalAlpha = 0.25;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, h * 0.3);
-    ctx.lineTo(w, h * 0.3);
-    ctx.stroke();
-
-    ctx.strokeStyle = TP10_COLOR;
-    ctx.beginPath();
-    ctx.moveTo(0, h * 0.7);
-    ctx.lineTo(w, h * 0.7);
-    ctx.stroke();
-    ctx.globalAlpha = 1.0;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Alpha power — connect Muse-S', w / 2, h / 2);
     return;
   }
 
-  const bufSize = EEG_DISPLAY_SAMPLES; // 512
-  const eegHead = AppState.eegHead;
-  const channels = [
-    { buf: AppState.eegBuffers[0], color: TP9_COLOR,  centerY: h * 0.3 },
-    { buf: AppState.eegBuffers[3], color: TP10_COLOR, centerY: h * 0.7 },
-  ];
+  // Use the Neural Calm score as proxy for alpha power level (0-100)
+  const target = Math.max(0, Math.min(100, AppState.neuralCalm || 0));
+  _displayedAlpha += (target - _displayedAlpha) * 0.03; // very slow interpolation
 
-  // Separator between two channel halves
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-  ctx.lineWidth = 1;
+  const barPad = 8;
+  const barH = Math.max(12, h - barPad * 2);
+  const barY = (h - barH) / 2;
+  const barW = w - barPad * 2;
+  const fillW = (_displayedAlpha / 100) * barW;
+
+  // Background track
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
   ctx.beginPath();
-  ctx.moveTo(0, h / 2);
-  ctx.lineTo(w, h / 2);
-  ctx.stroke();
+  ctx.roundRect(barPad, barY, barW, barH, 6);
+  ctx.fill();
 
-  const halfH = h / 2;
-
-  for (const ch of channels) {
-    ctx.strokeStyle = ch.color;
-    ctx.lineWidth = 1.5;
+  // Filled portion — gradient from dim blue to bright blue
+  if (fillW > 1) {
+    const grad = ctx.createLinearGradient(barPad, 0, barPad + fillW, 0);
+    grad.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+    grad.addColorStop(1, 'rgba(59, 130, 246, 0.7)');
+    ctx.fillStyle = grad;
     ctx.beginPath();
-
-    for (let i = 0; i < bufSize; i++) {
-      const bufIdx = (eegHead - bufSize + i + bufSize) % bufSize;
-      const sample = ch.buf[bufIdx];
-      const x = (i / (bufSize - 1)) * w;
-      // 80% of half-height leaves margin at edges of each channel's lane
-      const y = ch.centerY - (sample / EEG_UV_RANGE) * (halfH * 0.8 * 0.5);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-
-    ctx.stroke();
+    ctx.roundRect(barPad, barY, fillW, barH, 6);
+    ctx.fill();
   }
+
+  // Label
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Alpha', barPad + 6, h / 2);
+
+  // Value on right
+  ctx.textAlign = 'right';
+  ctx.fillText(Math.round(_displayedAlpha), w - barPad - 6, h / 2);
 }
 
 // ---- Breathing Circle Renderer ----
@@ -878,6 +869,8 @@ export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pace
 
   _displayedScore = 0;
   _displayedCalm = 0;
+  _calmHistory = [];
+  _displayedAlpha = 0;
   _pulsePhase = 0;
   _calibrationFadeAlpha = 0;
   _prevPhase = 'inhale';

@@ -4,7 +4,7 @@
 // shows summary, and saves the full session to IndexedDB.
 
 import { AppState, subscribe, unsubscribe } from './state.js';
-import { initAudio, startPacer, stopPacer, playChime, setStyle, setVolume } from './audio.js';
+import { initAudio, startPacer, stopPacer, playChime, setVolume } from './audio.js';
 import { initDSP, tick } from './dsp.js';
 import { startRendering, stopRendering } from './renderer.js';
 import { saveSession } from './storage.js';
@@ -227,15 +227,6 @@ export function initPracticeUI() {
   if (doneBtn) {
     doneBtn.addEventListener('click', () => _onDone());
   }
-
-  // Practice tab audio style buttons
-  document.querySelectorAll('#practice-style-buttons .style-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#practice-style-buttons .style-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      setStyle(btn.dataset.style);
-    });
-  });
 
   // Practice tab volume slider
   const practiceVolSlider = _getEl('practice-volume-slider');
