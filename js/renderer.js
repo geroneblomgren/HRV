@@ -24,6 +24,12 @@ const ZONE_COLORS = { low: '#ef4444', building: '#eab308', high: '#22c55e' };
 const ZONE_THRESHOLDS = { building: 31, high: 66 };
 const ZONE_LABELS = { low: 'Low', building: 'Building', high: 'Locked In' };
 
+// Neural Calm gauge constants
+const NEURAL_CALM_COLOR = '#3b82f6';
+const NEURAL_CALM_DIM = 'rgba(59, 130, 246, 0.15)';
+const CALM_THRESHOLDS = { building: 30, high: 75 };
+const CALM_LABELS = { low: 'Restless', building: 'Settling', high: 'Deep Calm' };
+
 // ---- Module state ----
 let _rAF = null;
 let _waveformCanvas = null, _waveformCtx = null;
@@ -40,7 +46,9 @@ let _smoothHR = 0;
 let _lastWaveformTime = 0;
 let _gaugeCanvas = null, _gaugeCtx = null;
 let _pacerCanvas = null, _pacerCtx = null;
+let _neuralCalmCanvas = null, _neuralCalmCtx = null;
 let _displayedScore = 0;
+let _displayedCalm = 0;
 let _pulsePhase = 0;
 let _sessionStartTime = null;
 let _calibrationFadeAlpha = 0;
@@ -477,14 +485,17 @@ function drawCoherenceGauge() {
     currentLineWidth = lineWidthBase + Math.sin(_pulsePhase) * 2.5;
   }
 
+  // Use lighter teal arc when PPG source (lower confidence indicator)
+  const arcColor = AppState.hrSourceLabel === 'Muse PPG' ? '#5eead4' : color;
+
   ctx.beginPath();
   ctx.arc(cx, cy, radius, startAngle, startAngle + sweep);
-  ctx.strokeStyle = color;
+  ctx.strokeStyle = arcColor;
   ctx.lineWidth = currentLineWidth;
   ctx.lineCap = 'round';
   ctx.stroke();
 
-  // Score number
+  // Score number uses zone color (not arc color) — PPG shifts arc only
   ctx.fillStyle = color;
   ctx.font = `bold ${Math.round(radius * 0.55)}px system-ui, sans-serif`;
   ctx.textAlign = 'center';
@@ -495,7 +506,151 @@ function drawCoherenceGauge() {
   ctx.font = `${Math.round(radius * 0.2)}px system-ui, sans-serif`;
   ctx.fillText(ZONE_LABELS[zone], cx, cy + radius * 0.3);
 
+  // PPG confidence badge — draw below zone label when Muse PPG is HR source
+  if (AppState.hrSourceLabel === 'Muse PPG') {
+    const badgeFontSize = Math.round(radius * 0.16);
+    const badgeText = 'PPG';
+    ctx.font = `bold ${badgeFontSize}px system-ui, sans-serif`;
+    const textW = ctx.measureText(badgeText).width;
+    const badgePadX = badgeFontSize * 0.6;
+    const badgePadY = badgeFontSize * 0.35;
+    const badgeW = textW + badgePadX * 2;
+    const badgeH = badgeFontSize + badgePadY * 2;
+    const badgeX = cx - badgeW / 2;
+    const badgeY = cy + radius * 0.3 + badgeFontSize * 0.8;
+
+    // Rounded rect background
+    const r = badgeH / 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.beginPath();
+    ctx.moveTo(badgeX + r, badgeY);
+    ctx.arcTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + badgeH, r);
+    ctx.arcTo(badgeX + badgeW, badgeY + badgeH, badgeX, badgeY + badgeH, r);
+    ctx.arcTo(badgeX, badgeY + badgeH, badgeX, badgeY, r);
+    ctx.arcTo(badgeX, badgeY, badgeX + badgeW, badgeY, r);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(badgeText, cx, badgeY + badgeH / 2);
+  }
+
   ctx.restore();
+}
+
+// ---- Neural Calm Gauge Renderer ----
+
+function _getCalmZone(score) {
+  if (score >= CALM_THRESHOLDS.high) return 'high';
+  if (score >= CALM_THRESHOLDS.building) return 'building';
+  return 'low';
+}
+
+function drawNeuralCalmGauge() {
+  if (!_neuralCalmCtx) return;
+
+  const canvas = _neuralCalmCanvas;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const ctx = _neuralCalmCtx;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const radius = Math.min(w, h) * 0.35;
+  const lineWidthBase = 12;
+
+  // Not connected placeholder
+  if (!AppState.museConnected) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = NEURAL_CALM_DIM;
+    ctx.lineWidth = lineWidthBase;
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    const fontSize = Math.round(radius * 0.2);
+    ctx.font = `${fontSize}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Connect', cx, cy - fontSize * 0.7);
+    ctx.fillText('Muse-S', cx, cy + fontSize * 0.7);
+    return;
+  }
+
+  // EEG calibrating state
+  if (AppState.eegCalibrating) {
+    const elapsed = _sessionStartTime ? (Date.now() - _sessionStartTime) / 1000 : 0;
+    const progress = Math.min(1, elapsed / 20);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = lineWidthBase;
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    const fontSize = Math.round(radius * 0.18);
+    ctx.font = `${fontSize}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('EEG', cx, cy - fontSize * 1.1);
+    ctx.fillText('Calibrating...', cx, cy + fontSize * 0.1);
+
+    // Progress bar
+    const barW = radius * 1.2;
+    const barH = 3;
+    const barX = cx - barW / 2;
+    const barY = cy + radius + 20;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = NEURAL_CALM_COLOR;
+    ctx.fillRect(barX, barY, barW * progress, barH);
+    return;
+  }
+
+  // Smooth interpolation
+  _displayedCalm += (AppState.neuralCalm - _displayedCalm) * 0.08;
+
+  const zone = _getCalmZone(AppState.neuralCalm);
+
+  // Background ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = lineWidthBase;
+  ctx.stroke();
+
+  // Filled arc
+  const sweep = (_displayedCalm / 100) * Math.PI * 2;
+  const startAngle = -Math.PI / 2;
+
+  let currentLineWidth = lineWidthBase;
+  if (zone === 'high') {
+    currentLineWidth = lineWidthBase + Math.sin(_pulsePhase) * 2.5;
+  }
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, startAngle, startAngle + sweep);
+  ctx.strokeStyle = NEURAL_CALM_COLOR;
+  ctx.lineWidth = currentLineWidth;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Score number
+  ctx.fillStyle = NEURAL_CALM_COLOR;
+  ctx.font = `bold ${Math.round(radius * 0.55)}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(Math.round(_displayedCalm), cx, cy - 6);
+
+  // Zone label
+  ctx.font = `${Math.round(radius * 0.2)}px system-ui, sans-serif`;
+  ctx.fillText(CALM_LABELS[zone], cx, cy + radius * 0.3);
 }
 
 // ---- Breathing Circle Renderer ----
@@ -597,6 +752,7 @@ function renderLoop() {
   drawWaveform();
   drawSpectrum();
   drawCoherenceGauge();
+  drawNeuralCalmGauge();
 }
 
 // ---- Public API ----
@@ -609,16 +765,19 @@ function renderLoop() {
  * @param {HTMLCanvasElement} pacerCanvas
  * @param {number} sessionStartTime - Date.now() when session started
  * @param {number} [sessionDuration=0] - Total session duration in seconds (0 = show elapsed)
+ * @param {HTMLCanvasElement} [neuralCalmCanvas] - Optional Neural Calm gauge canvas
  */
-export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas, sessionStartTime, sessionDuration = 0) {
+export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas, sessionStartTime, sessionDuration = 0, neuralCalmCanvas) {
   _waveformCanvas = waveformCanvas;
   _spectrumCanvas = spectrumCanvas;
   _gaugeCanvas = gaugeCanvas;
   _pacerCanvas = pacerCanvas;
+  _neuralCalmCanvas = neuralCalmCanvas || null;
   _sessionStartTime = sessionStartTime;
   _sessionDuration = sessionDuration;
 
   _displayedScore = 0;
+  _displayedCalm = 0;
   _pulsePhase = 0;
   _calibrationFadeAlpha = 0;
   _prevPhase = 'inhale';
@@ -648,6 +807,7 @@ function _setupAllCanvases() {
   _spectrumCtx = _spectrumCanvas ? setupCanvas(_spectrumCanvas) : null;
   _gaugeCtx = _gaugeCanvas ? setupCanvas(_gaugeCanvas) : null;
   if (_pacerCanvas) _pacerCtx = setupCanvas(_pacerCanvas);
+  _neuralCalmCtx = _neuralCalmCanvas ? setupCanvas(_neuralCalmCanvas) : null;
 }
 
 // Re-setup canvases on window resize
@@ -677,5 +837,8 @@ export function stopRendering() {
   }
   if (_pacerCtx && _pacerCanvas) {
     _pacerCtx.clearRect(0, 0, _pacerCanvas.width / dpr, _pacerCanvas.height / dpr);
+  }
+  if (_neuralCalmCtx && _neuralCalmCanvas) {
+    _neuralCalmCtx.clearRect(0, 0, _neuralCalmCanvas.width / dpr, _neuralCalmCanvas.height / dpr);
   }
 }
