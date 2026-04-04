@@ -30,6 +30,14 @@ const NEURAL_CALM_DIM = 'rgba(59, 130, 246, 0.15)';
 const CALM_THRESHOLDS = { building: 30, high: 75 };
 const CALM_LABELS = { low: 'Restless', building: 'Settling', high: 'Deep Calm' };
 
+// EEG waveform constants
+const EEG_SAMPLE_RATE = 256;
+const EEG_DISPLAY_SECONDS = 2;
+const EEG_DISPLAY_SAMPLES = EEG_SAMPLE_RATE * EEG_DISPLAY_SECONDS; // 512
+const EEG_UV_RANGE = 100;  // display range: -100 to +100 µV
+const TP9_COLOR = '#3b82f6';   // blue — matches Neural Calm
+const TP10_COLOR = '#8b5cf6';  // purple — distinct from TP9
+
 // ---- Module state ----
 let _rAF = null;
 let _waveformCanvas = null, _waveformCtx = null;
@@ -47,6 +55,7 @@ let _lastWaveformTime = 0;
 let _gaugeCanvas = null, _gaugeCtx = null;
 let _pacerCanvas = null, _pacerCtx = null;
 let _neuralCalmCanvas = null, _neuralCalmCtx = null;
+let _eegCanvas = null, _eegCtx = null;
 let _displayedScore = 0;
 let _displayedCalm = 0;
 let _pulsePhase = 0;
@@ -653,6 +662,94 @@ function drawNeuralCalmGauge() {
   ctx.fillText(CALM_LABELS[zone], cx, cy + radius * 0.3);
 }
 
+// ---- EEG Waveform Renderer ----
+
+function drawEEGWaveform() {
+  if (!_eegCtx) return;
+
+  const canvas = _eegCanvas;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const ctx = _eegCtx;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Subtle center line
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2);
+  ctx.lineTo(w, h / 2);
+  ctx.stroke();
+
+  // Channel labels
+  ctx.font = '10px monospace';
+  ctx.textBaseline = 'top';
+
+  ctx.fillStyle = TP9_COLOR;
+  ctx.textAlign = 'left';
+  ctx.fillText('TP9', 4, 2);
+
+  ctx.fillStyle = TP10_COLOR;
+  ctx.textAlign = 'right';
+  ctx.fillText('TP10', w - 4, 2);
+
+  // When Muse not connected: draw flat placeholder lines
+  if (!AppState.museConnected) {
+    ctx.strokeStyle = TP9_COLOR;
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.3);
+    ctx.lineTo(w, h * 0.3);
+    ctx.stroke();
+
+    ctx.strokeStyle = TP10_COLOR;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.7);
+    ctx.lineTo(w, h * 0.7);
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
+    return;
+  }
+
+  const bufSize = EEG_DISPLAY_SAMPLES; // 512
+  const eegHead = AppState.eegHead;
+  const channels = [
+    { buf: AppState.eegBuffers[0], color: TP9_COLOR,  centerY: h * 0.3 },
+    { buf: AppState.eegBuffers[3], color: TP10_COLOR, centerY: h * 0.7 },
+  ];
+
+  // Separator between two channel halves
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2);
+  ctx.lineTo(w, h / 2);
+  ctx.stroke();
+
+  const halfH = h / 2;
+
+  for (const ch of channels) {
+    ctx.strokeStyle = ch.color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+
+    for (let i = 0; i < bufSize; i++) {
+      const bufIdx = (eegHead - bufSize + i + bufSize) % bufSize;
+      const sample = ch.buf[bufIdx];
+      const x = (i / (bufSize - 1)) * w;
+      // 80% of half-height leaves margin at edges of each channel's lane
+      const y = ch.centerY - (sample / EEG_UV_RANGE) * (halfH * 0.8 * 0.5);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+
+    ctx.stroke();
+  }
+}
+
 // ---- Breathing Circle Renderer ----
 
 function drawBreathingCircle() {
@@ -753,6 +850,7 @@ function renderLoop() {
   drawSpectrum();
   drawCoherenceGauge();
   drawNeuralCalmGauge();
+  drawEEGWaveform();
 }
 
 // ---- Public API ----
@@ -766,13 +864,15 @@ function renderLoop() {
  * @param {number} sessionStartTime - Date.now() when session started
  * @param {number} [sessionDuration=0] - Total session duration in seconds (0 = show elapsed)
  * @param {HTMLCanvasElement} [neuralCalmCanvas] - Optional Neural Calm gauge canvas
+ * @param {HTMLCanvasElement} [eegCanvas] - Optional EEG waveform canvas
  */
-export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas, sessionStartTime, sessionDuration = 0, neuralCalmCanvas) {
+export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas, sessionStartTime, sessionDuration = 0, neuralCalmCanvas, eegCanvas) {
   _waveformCanvas = waveformCanvas;
   _spectrumCanvas = spectrumCanvas;
   _gaugeCanvas = gaugeCanvas;
   _pacerCanvas = pacerCanvas;
   _neuralCalmCanvas = neuralCalmCanvas || null;
+  _eegCanvas = eegCanvas || null;
   _sessionStartTime = sessionStartTime;
   _sessionDuration = sessionDuration;
 
@@ -808,6 +908,7 @@ function _setupAllCanvases() {
   _gaugeCtx = _gaugeCanvas ? setupCanvas(_gaugeCanvas) : null;
   if (_pacerCanvas) _pacerCtx = setupCanvas(_pacerCanvas);
   _neuralCalmCtx = _neuralCalmCanvas ? setupCanvas(_neuralCalmCanvas) : null;
+  _eegCtx = _eegCanvas ? setupCanvas(_eegCanvas) : null;
 }
 
 // Re-setup canvases on window resize
@@ -840,5 +941,8 @@ export function stopRendering() {
   }
   if (_neuralCalmCtx && _neuralCalmCanvas) {
     _neuralCalmCtx.clearRect(0, 0, _neuralCalmCanvas.width / dpr, _neuralCalmCanvas.height / dpr);
+  }
+  if (_eegCtx && _eegCanvas) {
+    _eegCtx.clearRect(0, 0, _eegCanvas.width / dpr, _eegCanvas.height / dpr);
   }
 }

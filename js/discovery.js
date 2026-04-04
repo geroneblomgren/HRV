@@ -336,10 +336,11 @@ export function startBlock(index) {
   const gaugeCanvas = _getEl('gauge-canvas');
   const pacerCanvas = _getEl('pacer-canvas');
   const neuralCalmCanvas = _getEl('neural-calm-gauge-canvas');
+  const eegCanvas = _getEl('eeg-waveform-canvas');
 
   startRendering(
     waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas,
-    _blockStartTime, BLOCK_DURATION_MS / 1000, neuralCalmCanvas
+    _blockStartTime, BLOCK_DURATION_MS / 1000, neuralCalmCanvas, eegCanvas
   );
 
   // Schedule end of this block

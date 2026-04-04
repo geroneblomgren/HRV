@@ -85,6 +85,7 @@ export function startPractice() {
   const gaugeCanvas = _getEl('practice-gauge-canvas');
   const pacerCanvas = _getEl('practice-pacer-canvas');
   const neuralCalmCanvas = _getEl('practice-neural-calm-gauge-canvas');
+  const eegCanvas = _getEl('practice-eeg-waveform-canvas');
 
   // Init audio and DSP
   initAudio();
@@ -98,7 +99,8 @@ export function startPractice() {
     pacerCanvas,
     _sessionStart,
     _selectedDuration * 60,
-    neuralCalmCanvas
+    neuralCalmCanvas,
+    eegCanvas
   );
 
   // Start pacer audio at saved resonance frequency
