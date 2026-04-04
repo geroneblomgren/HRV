@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 ## Current Position
 
 Phase: 8 of 9 (Session Integration) — IN PROGRESS
-Plan: 2 of 2 — 08-02 complete (awaiting human-verify checkpoint)
-Status: Phase 8 plan 2 complete — EEG waveform renderer + Neural Calm summary metrics done
-Last activity: 2026-04-03 — 08-02 complete: scrolling EEG waveform (TP9/TP10), Neural Calm summary section, PPG source badge in Practice and Discovery
+Plan: 2 of 2 — 08-02 COMPLETE (verified + post-checkpoint improvements done)
+Status: Phase 8 complete — all plans done; ready to begin Phase 9 (Neural Calm Dashboard)
+Last activity: 2026-04-03 — 08-02 verified: alpha power bar, smoothed Neural Calm gauge, session summary line graphs (HR, HRV-RMSSD, Neural Calm), bowl audio echo subdivisions
 
-Progress: [████████░░] 88% (v1.1) — 7 of 8 plans complete (phase 8: 2/2 pending verify)
+Progress: [█████████░] 94% (v1.1) — 8 of 9 plans complete (phase 8: 2/2 done)
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Progress: [████████░░] 88% (v1.1) — 7 of 8 plans complete 
 | Phase 07-muse-s-connection-signal-processing P03 | 3 | 2 tasks | 5 files |
 | Phase 07 P02 | 9 | 2 tasks | 5 files |
 | Phase 08-session-integration P01 | 3 | 2 tasks | 5 files |
+| Phase 08-session-integration P02 | ~60 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,11 @@ Progress: [████████░░] 88% (v1.1) — 7 of 8 plans complete 
 - [Phase 08-02]: EEG stacked layout: TP9 centered at h*0.3, TP10 at h*0.7 — symmetric within 80px canvas
 - [Phase 08-02]: Neural Calm summary section uses display:none toggle — hidden by default, shown when meanCalm != null
 - [Phase 08-02]: PPG source badge placed immediately after h2 title in both Practice summary and Discovery comparison
+- [Phase 08-02]: Alpha power bar replaced raw scrolling EEG waveform — calmer visual more appropriate for meditation context
+- [Phase 08-02]: Neural Calm gauge smoothed with 12-sec rolling average to reduce jitter during live sessions
+- [Phase 08-02]: Session summary provides 3 line graphs (HR, HRV-RMSSD, Neural Calm) with 7-point moving average for post-session trend review
+- [Phase 08-02]: Coherence graph replaced by RMSSD HRV graph in session summary — more clinically meaningful than redundant coherence
+- [Phase 08-02]: Bowl audio uses quarter-beat echo subdivisions — aids eyes-closed pacing; pitch/swell styles removed
 
 ### Decisions
 
@@ -106,5 +112,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-03
-Stopped at: Checkpoint 08-02-PLAN.md Task 3 — human-verify of complete Muse-S session integration
-Resume: Run `/gsd:execute-phase 8` after verifying EEG waveform + Neural Calm summary in browser
+Stopped at: Completed 08-02-PLAN.md — all tasks verified, SUMMARY created, Phase 8 fully done
+Resume: Run `/gsd:execute-phase 9` to begin Phase 9 (Neural Calm Dashboard)
