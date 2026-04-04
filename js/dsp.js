@@ -435,7 +435,7 @@ export function initDSP() {
  */
 export function tick(sessionElapsedSeconds) {
   // Phase lock has its own 25s calibration gate — runs independently of coherence
-  computePhaseLockScore(30, AppState.pacingFreq, sessionElapsedSeconds);
+  computePhaseLockScore(20, AppState.pacingFreq, sessionElapsedSeconds);
 
   // Coherence calibration gate: must accumulate MIN_WINDOW_SECONDS of data
   if (sessionElapsedSeconds < MIN_WINDOW_SECONDS) {

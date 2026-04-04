@@ -1,19 +1,21 @@
 // js/phaseLock.js — Phase Lock Score computation
-// Measures how strongly the user's HR oscillation is concentrated at the
-// pacer's breathing frequency versus spread across other frequencies.
+// Measures how strongly the user's heart rate oscillates at the pacer's
+// breathing frequency, using spectral RSA amplitude in BPM.
 //
-// Algorithm (power concentration ratio):
-//   1. Collect last windowSeconds of RR data from circular buffer
-//   2. Build evenly-spaced tachogram from ONLY that window
-//   3. Subtract mean, apply Hann window, FFT → PSD
-//   4. Integrate power in narrow band around pacing frequency (±0.015 Hz)
-//   5. Integrate total power in analysis range (0.04–0.26 Hz)
-//   6. Ratio = pacing_power / total_power
-//   7. Score = ratio mapped to 0-100 via scaling factor
+// Algorithm:
+//   1. Collect last 20s of RR data from circular buffer
+//   2. Build evenly-spaced tachogram, subtract mean, apply Hann window
+//   3. FFT → PSD → integrate power in ±0.02 Hz band around pacing freq
+//   4. Convert power to BPM peak-to-peak amplitude
+//   5. Map amplitude to 0-100 via exponential saturation curve
 //
-// Why not PLV: With 30s windows sliding 1s apart (97% overlap), phase
-// differences between consecutive windows are always nearly identical,
-// making PLV ≈ 1.0 regardless of actual breathing behavior.
+// Why amplitude, not ratio or PLV:
+//   - PLV with overlapping windows ≈ 1.0 always (97% data overlap)
+//   - Power ratio can't distinguish strong sync from tiny residual oscillation
+//     (breath holding: very low total power, but residual baroreceptor
+//     activity near pacing freq gives a misleadingly high ratio)
+//   - Absolute amplitude directly answers: "How much does HR oscillate
+//     at the breathing frequency?" Strong sync = 8-15 BPM, none = 1-2 BPM.
 //
 // Writes: AppState.phaseLockScore, AppState.phaseLockCalibrating
 // Called from: dsp.js tick() every second
@@ -25,14 +27,12 @@ import { cubicSplineInterpolate, FFT_SIZE, SAMPLE_RATE_HZ, hzToBin } from './dsp
 let _fft = null;
 
 // ---- Constants ----
-const MIN_WINDOW_MS = 25000;    // 25 seconds minimum accumulated RR data
-const PEAK_HALF_BAND = 0.015;   // Hz — ±0.015 Hz around pacing freq (HeartMath standard)
-const ANALYSIS_LOW_HZ = 0.04;   // LF band low edge
-const ANALYSIS_HIGH_HZ = 0.26;  // extends into HF to catch off-frequency breathing
-const SCORE_SCALE = 150;        // scale factor: ratio × 150, clamped to 100
-                                // perfect sync typically gives ratio ~0.6-0.8 → score 90-100
-                                // partial sync ~0.3-0.5 → score 45-75
-                                // no sync ~0.05-0.15 → score 8-22
+const MIN_WINDOW_MS = 20000;    // 20s minimum data before scoring
+const WINDOW_SECONDS = 20;      // 20s analysis window (faster response than 30s)
+const PEAK_HALF_BAND = 0.02;    // Hz — ±0.02 Hz around pacing freq
+const TAU_BPM = 5.0;            // exponential saturation constant
+                                // 1 BPM → score 18, 3 → 45, 5 → 63
+                                // 8 → 80, 10 → 86, 15 → 95
 
 /**
  * Initialize the phase lock module with a shared FFT instance.
@@ -104,35 +104,18 @@ function applyHannWindowPartial(signal, nSamples) {
 }
 
 /**
- * Integrate PSD power in a frequency band (local version using bin indices).
- * @param {Float32Array} psd
- * @param {number} lowHz
- * @param {number} highHz
- * @returns {number}
- */
-function integrateBandLocal(psd, lowHz, highHz) {
-  const lowBin = Math.max(0, hzToBin(lowHz));
-  const highBin = Math.min(psd.length - 1, hzToBin(highHz));
-  let sum = 0;
-  for (let i = lowBin; i <= highBin; i++) {
-    sum += psd[i];
-  }
-  return sum;
-}
-
-/**
  * Compute phase lock score between breathing pacer and HR oscillation.
  *
- * Uses power concentration ratio: what fraction of HR oscillation power
- * is at the pacing frequency? High ratio = user breathing in sync.
- * Low ratio = HR variability spread across other frequencies.
+ * Measures RSA amplitude at the pacing frequency, then maps to 0-100
+ * via exponential saturation. Strong sync breathing produces 8-15 BPM
+ * amplitude; breath holding or erratic breathing produces 1-2 BPM.
  *
- * @param {number} [windowSeconds=30] - seconds of RR history to analyze
+ * @param {number} [windowSeconds=20] - seconds of RR history to analyze
  * @param {number} [pacingFreqHz=0.0833] - current pacer frequency in Hz
  * @param {number} [sessionElapsedSec=0] - seconds since session started
  * @returns {number|null} phase lock score 0-100, or null if calibrating
  */
-export function computePhaseLockScore(windowSeconds = 30, pacingFreqHz = 0.0833, sessionElapsedSec = 0) {
+export function computePhaseLockScore(windowSeconds = WINDOW_SECONDS, pacingFreqHz = 0.0833, sessionElapsedSec = 0) {
   if (!_fft) return null;
 
   // Build tachogram from ONLY the requested time window
@@ -156,36 +139,34 @@ export function computePhaseLockScore(windowSeconds = 30, pacingFreqHz = 0.0833,
   // Apply Hann window over real samples only
   applyHannWindowPartial(tachogram, realSamples);
 
-  // FFT → PSD (power spectral density)
+  // FFT → PSD
   const fftOut = new Float32Array(_fft.size * 2);
   _fft.realTransform(fftOut, tachogram);
 
-  const halfSize = FFT_SIZE / 2;
-  const psd = new Float32Array(halfSize);
-  for (let i = 0; i < halfSize; i++) {
+  // Integrate power in ±0.02 Hz band around pacing frequency
+  const lowBin = Math.max(0, hzToBin(pacingFreqHz - PEAK_HALF_BAND));
+  const highBin = Math.min(FFT_SIZE / 2 - 1, hzToBin(pacingFreqHz + PEAK_HALF_BAND));
+  let power = 0;
+  for (let i = lowBin; i <= highBin; i++) {
     const re = fftOut[2 * i];
     const im = fftOut[2 * i + 1];
-    psd[i] = re * re + im * im;
+    power += re * re + im * im;
   }
 
-  // Power at pacing frequency (narrow band ±0.015 Hz)
-  const pacingPower = integrateBandLocal(psd,
-    pacingFreqHz - PEAK_HALF_BAND,
-    pacingFreqHz + PEAK_HALF_BAND
-  );
+  // Convert power to BPM peak-to-peak amplitude
+  // For a Hann-windowed sinusoid of amplitude A:
+  //   PSD power ≈ (A × N × 0.5)² / 2  where 0.5 is Hann coherent gain
+  //   A ≈ 2×sqrt(2×power) / (N × 0.5)
+  //   Peak-to-peak = 2A
+  const rmsAmplitude = Math.sqrt(2 * power) / (realSamples * 0.5);
+  const peakToPeakBPM = 2 * rmsAmplitude;
 
-  // Total power in analysis range (0.04–0.26 Hz)
-  const totalPower = integrateBandLocal(psd, ANALYSIS_LOW_HZ, ANALYSIS_HIGH_HZ);
-
-  // Guard against division by zero (no HRV at all)
-  if (totalPower < 1e-10) {
-    AppState.phaseLockScore = 0;
-    return 0;
-  }
-
-  // Power concentration ratio → score
-  const ratio = pacingPower / totalPower;
-  const score = Math.max(0, Math.min(100, Math.round(ratio * SCORE_SCALE)));
+  // Map amplitude to score via exponential saturation
+  // score = 100 × (1 - e^(-amplitude / TAU))
+  // TAU=5: 1 BPM→18, 3→45, 5→63, 8→80, 10→86, 15→95
+  const score = Math.max(0, Math.min(100,
+    Math.round(100 * (1 - Math.exp(-peakToPeakBPM / TAU_BPM)))
+  ));
 
   AppState.phaseLockScore = score;
   return score;
