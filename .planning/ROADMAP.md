@@ -4,6 +4,7 @@
 
 - ✅ **v1.0 Core HRV Biofeedback** - Phases 1-5 (shipped 2026-03-22)
 - ✅ **v1.1 Muse-S Neurocardiac Integration** - Phases 6-9 (shipped 2026-04-03)
+- 🔄 **v1.2 Adaptive Closed-Loop Biofeedback** - Phases 10-13 (in progress)
 
 ## Phases
 
@@ -88,11 +89,12 @@ Plans:
 
 </details>
 
-### ✅ v1.1 Muse-S Neurocardiac Integration (Shipped 2026-04-03)
+<details>
+<summary>✅ v1.1 Muse-S Neurocardiac Integration (Phases 6-9) - SHIPPED 2026-04-03</summary>
 
 **Milestone Goal:** Add Muse-S headband as a second biofeedback device, providing standalone PPG-derived HRV plus live EEG neural calm metrics during sessions, with trends tracked on the recovery dashboard.
 
-#### Phase 6: Device Architecture
+### Phase 6: Device Architecture
 **Goal**: The BLE layer is refactored into an adapter pattern so HRM 600 continues working and the app is ready to host any new device type — Muse-S and future devices require zero changes to core session logic.
 **Depends on**: Phase 5
 **Requirements**: DEV-01, DEV-02, DEV-03, DEV-04
@@ -101,13 +103,13 @@ Plans:
   2. When user connects a second device (simulated or real), both appear in an active devices panel with individual connection status indicators
   3. App correctly routes HR and RR data based on which device is connected; sessions using HRM 600 alone produce identical results to v1.0
   4. Session UI adapts based on connected device capabilities — coherence scoring is hidden when no RR-capable device is connected
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
 - [x] 06-01-PLAN.md — DeviceAdapter interface, HRMAdapter extracted from ble.js, DeviceManager orchestrator, multi-device AppState fields (completed 2026-04-03)
 - [x] 06-02-PLAN.md — Dual device picker UI, per-device status chips, main.js rewired to DeviceManager, capability-gated UI, HR source label (completed 2026-04-03)
 
-#### Phase 7: Muse-S Connection + Signal Processing
+### Phase 7: Muse-S Connection + Signal Processing
 **Goal**: The app connects to the Muse-S headband, receives live EEG and PPG data streams, and runs the full signal processing pipeline — PPG peak detection extracts RR intervals and the EEG alpha/beta FFT computes a Neural Calm score — all in real-time in the browser.
 **Depends on**: Phase 6
 **Requirements**: MUSE-01, MUSE-02, MUSE-03, MUSE-04, MUSE-05, PPG-01, PPG-02, EEG-01, EEG-02
@@ -117,14 +119,14 @@ Plans:
   3. App extracts beat-to-beat intervals from PPG via peak detection and artifact rejection; derived HR stays within ±5 bpm of chest strap reading during a side-by-side seated rest test
   4. Neural Calm score (alpha/beta power ratio from AF7/AF8) updates every 1-2 seconds and noticeably rises when the user closes their eyes and relaxes for 10 seconds
   5. EEG artifact rejection prevents eye blinks (100+ µV spikes on AF7/AF8) from corrupting the Neural Calm score — score remains stable during a deliberate blink sequence
-**Plans**: 3 plans
+**Plans**: 3/3 plans complete
 
 Plans:
 - [x] 07-01-PLAN.md — MuseAdapter BLE connection (service 0xfe8d, p50 preset, EEG/PPG data parsing), AppState Phase 7 fields, DeviceManager wiring (completed 2026-04-03)
 - [x] 07-02-PLAN.md — PPG pipeline: 4th-order Butterworth bandpass (0.5-3 Hz), peak detection, IBI extraction, artifact rejection, signal quality indicator, hidden debug view (completed 2026-04-03)
 - [x] 07-03-PLAN.md — EEG pipeline: sliding FFT on TP9/TP10, alpha/beta power, Neural Calm score (0-100), artifact rejection (100 µV), per-session baseline, eyes-open detection (completed 2026-04-03)
 
-#### Phase 8: Session Integration
+### Phase 8: Session Integration
 **Goal**: A Muse-S user can run a complete practice or discovery session using PPG-derived HRV with the Neural Calm score and live EEG waveform visible alongside the existing coherence display — and the session summary captures all Muse-S metrics.
 **Depends on**: Phase 7
 **Requirements**: PPG-03, PPG-04, EEG-03, SESS-01, SESS-02, SESS-03
@@ -134,13 +136,13 @@ Plans:
   3. A live scrolling EEG waveform renders on Canvas during sessions, showing real-time brain activity across at least 2 channels
   4. When PPG-derived data is used for HRV, the coherence display is visually marked to indicate lower confidence compared to chest strap data
   5. Session summary screen shows mean Neural Calm, peak Neural Calm, and time spent above a high-calm threshold when Muse-S was used
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
 - [x] 08-01-PLAN.md — PPG standalone sessions, Neural Calm live gauge, PPG confidence badge, session provenance + Neural Calm trace collection (completed 2026-04-04)
 - [x] 08-02-PLAN.md — Scrolling EEG waveform renderer, Neural Calm session summary metrics, human verification (completed 2026-04-03)
 
-#### Phase 9: Neural Calm Dashboard
+### Phase 9: Neural Calm Dashboard
 **Goal**: Neural Calm session averages are persisted and displayed on the recovery dashboard alongside coherence and Oura HRV, so the user can see how their brain-state metric trends over days and weeks of practice.
 **Depends on**: Phase 8
 **Requirements**: DASH-04, DASH-05
@@ -148,16 +150,72 @@ Plans:
   1. After completing a Muse-S session, the session's mean Neural Calm value is persisted to IndexedDB and appears on the recovery dashboard immediately on next page load
   2. Recovery dashboard displays a Neural Calm trend line alongside the existing coherence and Oura HRV trends — all three are visible on the same time axis with clearly labeled Y-axes
   3. Sessions recorded without Muse-S show no Neural Calm data point (gap in line) rather than a zero — the chart handles missing data gracefully
-**Plans**: 1 plan
+**Plans**: 1/1 plans complete
 
 Plans:
 - [x] 09-01-PLAN.md — Neural Calm data aggregation, blue trend line on Canvas chart, inline legend, enriched tooltips, gap handling, Avg Neural Calm 7d metric card (completed 2026-04-03)
+
+</details>
+
+### v1.2 Adaptive Closed-Loop Biofeedback
+
+**Milestone Goal:** Convert from open-loop breathing pacer to closed-loop autonomic training system. Auto-tune resonance frequency before each session and optimize breath-heart phase alignment in real-time.
+
+- [ ] **Phase 10: Resonance Tuning + Mapping** - Pre-session RF identification and longitudinal trend tracking
+- [ ] **Phase 11: Phase Lock Engine** - Hilbert transform phase computation and score replacing coherence
+- [ ] **Phase 12: Adaptive Pace Controller** - Closed-loop pace micro-adjustment driven by phase lock
+- [ ] **Phase 13: Dashboard Integration** - Phase lock and RF trends on recovery dashboard with legacy labeling
+
+## Phase Details
+
+### Phase 10: Resonance Tuning + Mapping
+**Goal**: Every practice session begins by identifying the user's current resonance frequency from live RSA data, and each session record captures that tuned frequency so the dashboard can show how RF shifts over weeks alongside Oura HRV recovery.
+**Depends on**: Phase 9
+**Requirements**: TUNE-01, TUNE-02, TUNE-03, TUNE-04, MAP-01, MAP-02, MAP-03
+**Success Criteria** (what must be TRUE):
+  1. When the user clicks "Start Session", a 60-second tuning phase begins automatically — the pacer cycles through candidate frequencies centered on their stored RF and the user sees a live "Tuning..." indicator with time remaining
+  2. After tuning completes, the user sees their result: "Today: 4.7 BPM" with comparison to the stored frequency, and the practice session starts at the newly identified frequency — not the stored one
+  3. When the tuned frequency differs from stored by more than 0.3 BPM, the app displays a celebratory message framing the shift as a sign of improved vagal tone, with a sparkline of RF over recent sessions
+  4. The recovery dashboard displays a resonance frequency trend line showing RF across all sessions on the same time axis as Oura overnight HRV
+**Plans**: TBD
+
+### Phase 11: Phase Lock Engine
+**Goal**: The app continuously computes the instantaneous phase alignment between the breathing pacer and HR oscillation via Hilbert transform, produces a phase lock score (0-100) that replaces coherence everywhere in the session UI, and stores phase lock data per session.
+**Depends on**: Phase 10
+**Requirements**: LOCK-01, LOCK-02, LOCK-03, LOCK-04
+**Success Criteria** (what must be TRUE):
+  1. During a practice session, a phase lock gauge (0-100) is visible where the coherence gauge was — it updates every 5-10 seconds and the label reads "Phase Lock", not "Coherence"
+  2. When the user breathes in steady rhythm with the pacer for 30+ seconds, the phase lock score rises above 70; when the user pauses or shifts attention, it drops noticeably within two breath cycles
+  3. At session end, the summary screen shows mean phase lock, peak phase lock, and time locked in (score above 66) — coherence metrics are absent from new sessions
+  4. The session record in IndexedDB contains phase lock fields (mean, peak, time locked) that can be queried by the dashboard
+**Plans**: TBD
+
+### Phase 12: Adaptive Pace Controller
+**Goal**: When phase alignment falls below threshold, the app smoothly micro-adjusts the breathing pace toward better phase lock — the adjustment is felt through natural shifts in bowl echo timing, never seen as an abrupt change, and never moves more than ±0.5 BPM from the tuned frequency.
+**Depends on**: Phase 11
+**Requirements**: PACE-01, PACE-02, PACE-03, PACE-04
+**Success Criteria** (what must be TRUE):
+  1. When phase lock stays below 50 for more than 10 seconds, the pacer begins drifting — the user can hear the bowl echo interval subtly shifting but does not see any visual pace indicator change abruptly
+  2. The pacer frequency never moves more than ±0.5 BPM from the tuned frequency established in the tuning phase — it cannot drift into a range where coherence would degrade significantly
+  3. When the user deliberately breathes slightly slower than the pacer for 60 seconds, the controller moves toward the user's rhythm rather than fighting it — phase lock score stabilizes or improves
+**Plans**: TBD
+
+### Phase 13: Dashboard Integration
+**Goal**: The recovery dashboard reflects the v1.2 metrics fully — phase lock replaces the coherence trend line, the RF trend line appears as an additional series alongside HRV, and all old coherence-based sessions remain visible with clear legacy labeling so historical data is never lost.
+**Depends on**: Phase 10, Phase 11
+**Requirements**: DASH-06, DASH-07, DASH-08
+**Success Criteria** (what must be TRUE):
+  1. The recovery dashboard displays a phase lock trend line where the coherence line was — new sessions show phase lock scores and old coherence sessions show their scores labeled "(legacy)" in a visually distinct style
+  2. A resonance frequency trend line appears on the dashboard alongside the HRV and phase lock lines — all three are legible on the same chart with a clear legend
+  3. Hovering over any data point shows a tooltip that correctly identifies the metric type — "Phase Lock: 78" for new sessions, "Coherence (legacy): 62" for old sessions
+**Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
 v1.0: 1 → 2 → 3 → 4 → 5 (complete)
-v1.1: 6 → 7 → 8 → 9
+v1.1: 6 → 7 → 8 → 9 (complete)
+v1.2: 10 → 11 → 12 → 13
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -166,7 +224,11 @@ v1.1: 6 → 7 → 8 → 9
 | 3. Breathing Pacer | v1.0 | 2/2 | Complete | 2026-03-22 |
 | 4. Session Modes | v1.0 | 2/2 | Complete | 2026-03-22 |
 | 5. Oura + Recovery Dashboard | v1.0 | 2/2 | Complete | 2026-03-22 |
-| 6. Device Architecture | 2/2 | Complete   | 2026-04-03 | - |
-| 7. Muse-S Connection + Signal Processing | 3/3 | Complete   | 2026-04-03 | - |
-| 8. Session Integration | 2/2 | Complete   | 2026-04-04 | - |
-| 9. Neural Calm Dashboard | 1/1 | Complete   | 2026-04-04 | - |
+| 6. Device Architecture | v1.1 | 2/2 | Complete | 2026-04-03 |
+| 7. Muse-S Connection + Signal Processing | v1.1 | 3/3 | Complete | 2026-04-03 |
+| 8. Session Integration | v1.1 | 2/2 | Complete | 2026-04-04 |
+| 9. Neural Calm Dashboard | v1.1 | 1/1 | Complete | 2026-04-04 |
+| 10. Resonance Tuning + Mapping | v1.2 | 0/? | Not started | - |
+| 11. Phase Lock Engine | v1.2 | 0/? | Not started | - |
+| 12. Adaptive Pace Controller | v1.2 | 0/? | Not started | - |
+| 13. Dashboard Integration | v1.2 | 0/? | Not started | - |

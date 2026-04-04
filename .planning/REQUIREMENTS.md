@@ -60,30 +60,30 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TUNE-01 | — | Pending |
-| TUNE-02 | — | Pending |
-| TUNE-03 | — | Pending |
-| TUNE-04 | — | Pending |
-| MAP-01 | — | Pending |
-| MAP-02 | — | Pending |
-| MAP-03 | — | Pending |
-| LOCK-01 | — | Pending |
-| LOCK-02 | — | Pending |
-| LOCK-03 | — | Pending |
-| LOCK-04 | — | Pending |
-| PACE-01 | — | Pending |
-| PACE-02 | — | Pending |
-| PACE-03 | — | Pending |
-| PACE-04 | — | Pending |
-| DASH-06 | — | Pending |
-| DASH-07 | — | Pending |
-| DASH-08 | — | Pending |
+| TUNE-01 | Phase 10 | Pending |
+| TUNE-02 | Phase 10 | Pending |
+| TUNE-03 | Phase 10 | Pending |
+| TUNE-04 | Phase 10 | Pending |
+| MAP-01 | Phase 10 | Pending |
+| MAP-02 | Phase 10 | Pending |
+| MAP-03 | Phase 10 | Pending |
+| LOCK-01 | Phase 11 | Pending |
+| LOCK-02 | Phase 11 | Pending |
+| LOCK-03 | Phase 11 | Pending |
+| LOCK-04 | Phase 11 | Pending |
+| PACE-01 | Phase 12 | Pending |
+| PACE-02 | Phase 12 | Pending |
+| PACE-03 | Phase 12 | Pending |
+| PACE-04 | Phase 12 | Pending |
+| DASH-06 | Phase 13 | Pending |
+| DASH-07 | Phase 13 | Pending |
+| DASH-08 | Phase 13 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-04*
-*Last updated: 2026-04-04 after initial definition*
+*Last updated: 2026-04-04 — traceability updated after v1.2 roadmap creation*
