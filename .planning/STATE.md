@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 12 (Adaptive Pace Controller) — IN PROGRESS
-Plan: 12-01 complete — dynamic frequency scheduler + Phase 12 AppState fields
-Status: Phase 12 active — Plan 01/03 complete (PACE-02, PACE-04 satisfied)
-Last activity: 2026-04-04 — 12-01 executed, audio scheduler reads AppState.pacingFreq live
+Plan: 12-02 complete — pace controller module + BPM badge + pace persistence
+Status: Phase 12 active — Plan 02/03 complete (PACE-01, PACE-03 satisfied)
+Last activity: 2026-04-04 — 12-02 executed, closed-loop pace controller wired into practice session
 
-Progress: [############] Phase 12 in progress (1/3 plans complete)
+Progress: [################] Phase 12 in progress (2/3 plans complete)
 
 ## Performance Metrics
 
@@ -71,6 +71,8 @@ Progress: [############] Phase 12 in progress (1/3 plans complete)
 - [Phase 11-phase-lock-engine]: PLV over 10 samples replaces single-snapshot phase error — stable under baroreflex delay
 - [Phase 12]: _schedulerTick reads AppState.pacingFreq live each 25ms — no closure, no restart needed for frequency changes
 - [Phase 12]: pacingFreqTuned anchors the tuned RF; pacingFreq drifts around it; no stopPacer/startPacer on tempo change
+- [Phase 12]: binToHz/hzToBin imported from dsp.js (already exported); findPeakBin inlined as _findPSDPeak in paceController.js per research recommendation
+- [Phase 12]: summary-pace reuses summary-hr-source CSS class — consistent styling with zero new CSS
 
 ### Roadmap Structure
 
@@ -97,5 +99,5 @@ Progress: [############] Phase 12 in progress (1/3 plans complete)
 ## Session Continuity
 
 Last session: 2026-04-04
-Stopped at: Completed 12-01-PLAN.md — dynamic audio scheduler + Phase 12 AppState fields
-Resume: Begin Phase 12 Plan 02 (Pace Controller logic)
+Stopped at: Completed 12-02-PLAN.md — pace controller module, BPM badge, pace persistence
+Resume: Begin Phase 12 Plan 03 (final plan in phase)
