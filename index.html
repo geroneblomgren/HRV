@@ -137,6 +137,7 @@
       <!-- Comparison section (shown after all blocks complete) -->
       <div id="discovery-comparison" class="discovery-comparison" style="display:none;">
         <h2 class="discovery-comparison-title">Your Results</h2>
+        <p id="discovery-hr-source" class="summary-hr-source" style="display:none;"></p>
         <p class="discovery-comparison-sub">Click a bar to select a different frequency</p>
         <canvas id="comparison-chart-canvas" class="comparison-chart-canvas"></canvas>
         <div class="discovery-comparison-actions">
@@ -206,6 +207,7 @@
       <!-- Summary: shown after session ends -->
       <div class="practice-summary" id="practice-summary" style="display:none;">
         <h2 class="practice-summary-title">Session Complete</h2>
+        <p id="summary-hr-source" class="summary-hr-source" style="display:none;"></p>
         <div class="summary-grid">
           <div class="summary-metric">
             <span class="metric-value" id="summary-duration">0:00</span>
@@ -222,6 +224,23 @@
           <div class="summary-metric">
             <span class="metric-value" id="summary-locked-in">0:00</span>
             <span class="metric-label">Time Locked In</span>
+          </div>
+        </div>
+        <div id="summary-neural-calm-section" class="summary-neural-calm-section" style="display:none;">
+          <div class="summary-section-label">Brain</div>
+          <div class="summary-grid summary-grid-neural">
+            <div class="summary-metric neural-calm-metric">
+              <span class="metric-value neural-calm-value" id="summary-mean-calm">0</span>
+              <span class="metric-label">Mean Neural Calm</span>
+            </div>
+            <div class="summary-metric neural-calm-metric">
+              <span class="metric-value neural-calm-value" id="summary-peak-calm">0</span>
+              <span class="metric-label">Peak Neural Calm</span>
+            </div>
+            <div class="summary-metric neural-calm-metric">
+              <span class="metric-value neural-calm-value" id="summary-time-calm">0:00</span>
+              <span class="metric-label">Time in Deep Calm</span>
+            </div>
           </div>
         </div>
         <button id="practice-done-btn" class="connect-button practice-done-btn">Done</button>

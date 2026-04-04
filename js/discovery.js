@@ -504,6 +504,18 @@ function _showComparison(results) {
   if (!compSection) return;
   compSection.style.display = 'flex';
 
+  // Show HR source when Muse PPG was used
+  const discHrSourceEl = _getEl('discovery-hr-source');
+  if (discHrSourceEl) {
+    const source = AppState.hrSourceLabel;
+    if (source === 'Muse PPG') {
+      discHrSourceEl.textContent = 'HR Source: Muse PPG';
+      discHrSourceEl.style.display = '';
+    } else {
+      discHrSourceEl.style.display = 'none';
+    }
+  }
+
   // Find best index (max RSA amplitude)
   let bestIndex = 0;
   let bestAmp = -Infinity;
@@ -668,6 +680,8 @@ async function _onConfirm(results) {
 
   // Hide comparison, show placeholder with success message + review button
   _hide(_getEl('discovery-comparison'));
+  const discHrSourceEl = _getEl('discovery-hr-source');
+  if (discHrSourceEl) discHrSourceEl.style.display = 'none';
   _showCompletePlaceholder(selectedBpm, results);
 }
 

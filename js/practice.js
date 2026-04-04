@@ -322,6 +322,32 @@ function _showSummary(summary) {
 
   const lockedInEl = _getEl('summary-locked-in');
   if (lockedInEl) lockedInEl.textContent = _formatTime(summary.timeInHigh);
+
+  // Neural Calm section (only when Muse was used)
+  const calmSection = _getEl('summary-neural-calm-section');
+  if (summary.meanCalm !== null && summary.meanCalm !== undefined) {
+    if (calmSection) calmSection.style.display = '';
+    const meanCalmEl = _getEl('summary-mean-calm');
+    if (meanCalmEl) meanCalmEl.textContent = summary.meanCalm;
+    const peakCalmEl = _getEl('summary-peak-calm');
+    if (peakCalmEl) peakCalmEl.textContent = summary.peakCalm;
+    const timeCalmEl = _getEl('summary-time-calm');
+    if (timeCalmEl) timeCalmEl.textContent = _formatTime(summary.timeInHighCalm);
+  } else {
+    if (calmSection) calmSection.style.display = 'none';
+  }
+
+  // HR source badge (only when Muse PPG was used)
+  const hrSourceEl = _getEl('summary-hr-source');
+  if (hrSourceEl) {
+    const source = AppState.hrSourceLabel;
+    if (source === 'Muse PPG') {
+      hrSourceEl.textContent = 'HR Source: Muse PPG';
+      hrSourceEl.style.display = '';
+    } else {
+      hrSourceEl.style.display = 'none';
+    }
+  }
 }
 
 /**
@@ -361,4 +387,10 @@ function _onDone() {
   _show(_getEl('practice-placeholder'));
   AppState.sessionPhase = 'idle';
   AppState.sessionStartTime = null;
+
+  // Reset Neural Calm section and HR source visibility
+  const calmSection = _getEl('summary-neural-calm-section');
+  if (calmSection) calmSection.style.display = 'none';
+  const hrSourceEl = _getEl('summary-hr-source');
+  if (hrSourceEl) hrSourceEl.style.display = 'none';
 }
