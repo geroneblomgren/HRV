@@ -177,7 +177,12 @@ Plans:
   2. After tuning completes, the user sees their result: "Today: 4.7 BPM" with comparison to the stored frequency, and the practice session starts at the newly identified frequency — not the stored one
   3. When the tuned frequency differs from stored by more than 0.3 BPM, the app displays a celebratory message framing the shift as a sign of improved vagal tone, with a sparkline of RF over recent sessions
   4. The recovery dashboard displays a resonance frequency trend line showing RF across all sessions on the same time axis as Oura overnight HRV
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Tuning engine module (js/tuning.js), AppState tuning fields, session schema
+- [ ] 10-02-PLAN.md — Practice.js tuning integration, scanning animation, result display, celebration UX
+- [ ] 10-03-PLAN.md — Dashboard RF trend line (purple dashed, BPM Y-axis, tooltips)
 
 ### Phase 11: Phase Lock Engine
 **Goal**: The app continuously computes the instantaneous phase alignment between the breathing pacer and HR oscillation via Hilbert transform, produces a phase lock score (0-100) that replaces coherence everywhere in the session UI, and stores phase lock data per session.
@@ -228,7 +233,7 @@ v1.2: 10 → 11 → 12 → 13
 | 7. Muse-S Connection + Signal Processing | v1.1 | 3/3 | Complete | 2026-04-03 |
 | 8. Session Integration | v1.1 | 2/2 | Complete | 2026-04-04 |
 | 9. Neural Calm Dashboard | v1.1 | 1/1 | Complete | 2026-04-04 |
-| 10. Resonance Tuning + Mapping | v1.2 | 0/? | Not started | - |
+| 10. Resonance Tuning + Mapping | v1.2 | 0/3 | Planned | - |
 | 11. Phase Lock Engine | v1.2 | 0/? | Not started | - |
 | 12. Adaptive Pace Controller | v1.2 | 0/? | Not started | - |
 | 13. Dashboard Integration | v1.2 | 0/? | Not started | - |
