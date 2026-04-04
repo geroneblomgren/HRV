@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Adaptive Closed-Loop Biofeedback
-status: roadmap_complete
-last_updated: "2026-04-04"
+status: unknown
+last_updated: "2026-04-04T04:38:33.154Z"
 progress:
-  total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 10
+  completed_phases: 9
+  total_plans: 21
+  completed_plans: 19
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 ## Current Position
 
-Phase: 10 (Resonance Tuning + Mapping) — not started
-Plan: —
-Status: Roadmap complete, ready to plan Phase 10
-Last activity: 2026-04-04 — v1.2 roadmap created (4 phases, 18 requirements mapped)
+Phase: 10 (Resonance Tuning + Mapping) — in progress
+Plan: 10-01 complete (tuning engine), 10-02 next
+Status: Active — executing Phase 10 plans
+Last activity: 2026-04-04 — 10-01 complete (js/tuning.js, AppState tuning fields, storage JSDoc)
 
-Progress: [----------] 0/4 phases complete
+Progress: [#---------] 1/4 phases in progress
 
 ## Performance Metrics
 
@@ -36,6 +36,7 @@ Progress: [----------] 0/4 phases complete
 | Phases | 5 | 4 | 4 |
 | Plans | 11 | 8 | TBD |
 | Milestones shipped | 2026-03-22 | 2026-04-03 | — |
+| Phase 10 P01 | 8 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -50,6 +51,8 @@ Progress: [----------] 0/4 phases complete
 - v1.2: New modules: js/tuning.js, js/phaseLock.js
 - v1.2: Hilbert transform added to dsp.js (or inline in phaseLock.js)
 - v1.2: Session schema additions: tuningFreqHz, tuningRsaAmplitude, phaseLock fields
+- [Phase 10]: Candidate generation: stored ±0.5 BPM in 0.25 BPM steps; first-session fallback to Discovery range [4.5-6.5 BPM]
+- [Phase 10]: RSA measurement uses computeSpectralRSA() directly — bypasses tick() calibration gate for tuning
 
 ### Roadmap Structure
 
@@ -76,5 +79,5 @@ Progress: [----------] 0/4 phases complete
 ## Session Continuity
 
 Last session: 2026-04-04
-Stopped at: v1.2 roadmap written — 4 phases, 18/18 requirements mapped
-Resume: Run `/gsd:plan-phase 10` to begin planning Phase 10 (Resonance Tuning + Mapping)
+Stopped at: Completed 10-01-PLAN.md — tuning engine created (js/tuning.js, state.js, storage.js)
+Resume: Execute 10-02 next (tuning UX integration in practice.js)

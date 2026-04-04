@@ -9,14 +9,14 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 
 ### Resonance Tuning
 
-- [ ] **TUNE-01**: User sees a 60-second tuning phase before each practice session that identifies their current resonance frequency
-- [ ] **TUNE-02**: Tuning phase cycles through candidate frequencies centered on stored RF and selects the one with highest RSA amplitude
+- [x] **TUNE-01**: User sees a 60-second tuning phase before each practice session that identifies their current resonance frequency
+- [x] **TUNE-02**: Tuning phase cycles through candidate frequencies centered on stored RF and selects the one with highest RSA amplitude
 - [ ] **TUNE-03**: User sees their tuned frequency with comparison to stored frequency ("Today: 4.7 BPM" vs stored 5.0)
 - [ ] **TUNE-04**: When RF has shifted significantly, app celebrates the change as a sign of improved vagal tone
 
 ### Resonance Mapping
 
-- [ ] **MAP-01**: Each session record includes the tuned frequency and peak RSA amplitude
+- [x] **MAP-01**: Each session record includes the tuned frequency and peak RSA amplitude
 - [ ] **MAP-02**: Dashboard displays RF trend over sessions on the recovery chart
 - [ ] **MAP-03**: RF trend correlates visually with Oura HRV recovery on same time axis
 
@@ -60,11 +60,11 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TUNE-01 | Phase 10 | Pending |
-| TUNE-02 | Phase 10 | Pending |
+| TUNE-01 | Phase 10 | Complete |
+| TUNE-02 | Phase 10 | Complete |
 | TUNE-03 | Phase 10 | Pending |
 | TUNE-04 | Phase 10 | Pending |
-| MAP-01 | Phase 10 | Pending |
+| MAP-01 | Phase 10 | Complete |
 | MAP-02 | Phase 10 | Pending |
 | MAP-03 | Phase 10 | Pending |
 | LOCK-01 | Phase 11 | Pending |
