@@ -50,11 +50,11 @@ export function initAudio() {
  */
 export function startPacer(pacingFreqHz) {
   if (!_ctx) return;
-  const halfPeriod = 1 / (pacingFreqHz * 2);
+  AppState.pacingFreq = pacingFreqHz;
   _nextCueTime = _ctx.currentTime + 0.1;
   _nextPhase = 'inhale';
   AppState.pacerEpoch = _nextCueTime;
-  _schedulerTick(halfPeriod);
+  _schedulerTick();
 }
 
 /**
@@ -96,7 +96,8 @@ export function playChime() {
 
 // ---- Internal: Lookahead scheduler ----
 
-function _schedulerTick(halfPeriod) {
+function _schedulerTick() {
+  const halfPeriod = 1 / (AppState.pacingFreq * 2);
   while (_nextCueTime < _ctx.currentTime + SCHEDULE_AHEAD_SEC) {
     _scheduleCue(_nextCueTime, _nextPhase, halfPeriod);
     AppState.nextCueTime = _nextCueTime;
@@ -104,7 +105,7 @@ function _schedulerTick(halfPeriod) {
     _nextCueTime += halfPeriod;
     _nextPhase = _nextPhase === 'inhale' ? 'exhale' : 'inhale';
   }
-  _schedulerTimer = setTimeout(() => _schedulerTick(halfPeriod), LOOKAHEAD_MS);
+  _schedulerTimer = setTimeout(_schedulerTick, LOOKAHEAD_MS);
 }
 
 /**
