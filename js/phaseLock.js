@@ -110,6 +110,11 @@ export function computePhaseLockScore(windowSeconds = 20, pacingFreqHz = 0.0833,
   const rawScore = coherence * amplitudeFactor * frequencyFactor;
   const score = Math.max(0, Math.min(100, Math.round(rawScore)));
 
+  // Diagnostic: log components every 10 seconds for debugging
+  if (Math.round(sessionElapsedSec) % 10 === 0) {
+    console.log(`[PhaseLock] coh=${coherence} amp=${peakToPeakBPM.toFixed(1)}BPM(f=${amplitudeFactor.toFixed(2)}) peak=${(peakFreq*60).toFixed(1)}BPM(f=${frequencyFactor.toFixed(2)}) → ${score}`);
+  }
+
   AppState.phaseLockScore = score;
   return score;
 }
