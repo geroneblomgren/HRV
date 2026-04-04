@@ -148,10 +148,10 @@ Plans:
   1. After completing a Muse-S session, the session's mean Neural Calm value is persisted to IndexedDB and appears on the recovery dashboard immediately on next page load
   2. Recovery dashboard displays a Neural Calm trend line alongside the existing coherence and Oura HRV trends — all three are visible on the same time axis with clearly labeled Y-axes
   3. Sessions recorded without Muse-S show no Neural Calm data point (gap in line) rather than a zero — the chart handles missing data gracefully
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 09-01: IndexedDB schema update for Neural Calm session averages; dashboard Neural Calm trend line on existing Canvas chart with gap handling for HRM-only sessions
+- [ ] 09-01-PLAN.md — Neural Calm data aggregation, blue trend line on Canvas chart, inline legend, enriched tooltips, gap handling, Avg Neural Calm 7d metric card
 
 ## Progress
 
