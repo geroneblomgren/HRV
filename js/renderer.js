@@ -433,7 +433,7 @@ function drawPhaseLockGauge() {
   // Calibration state — 25s phase lock warmup
   if (AppState.phaseLockCalibrating) {
     const elapsed = _sessionStartTime ? (Date.now() - _sessionStartTime) / 1000 : 0;
-    const remaining = Math.max(0, Math.ceil(20 - elapsed));
+    const remaining = Math.max(0, Math.ceil(120 - elapsed));
 
     // Grey background ring
     ctx.beginPath();
@@ -451,7 +451,7 @@ function drawPhaseLockGauge() {
     ctx.fillText(`${remaining}s`, cx, cy + 14);
 
     // Progress bar below ring
-    const progress = Math.min(1, elapsed / 20);
+    const progress = Math.min(1, elapsed / 120);
     const barW = radius * 1.2;
     const barH = 3;
     const barX = cx - barW / 2;
