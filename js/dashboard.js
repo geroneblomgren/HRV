@@ -242,6 +242,19 @@ function _computeMetrics() {
     }
     trendEl.textContent = label;
   }
+
+  // ---- Avg Neural Calm 7d ----
+  const calm7dEl = el('dash-calm-7d');
+  if (calm7dEl) {
+    const cutoff7 = _daysAgoIso(7);
+    const calmSessions = _sessionData.filter(s => s.day >= cutoff7 && s.meanNeuralCalm !== null);
+    if (calmSessions.length > 0) {
+      const avg = calmSessions.reduce((sum, s) => sum + s.meanNeuralCalm, 0) / calmSessions.length;
+      calm7dEl.textContent = avg.toFixed(1);
+    } else {
+      calm7dEl.textContent = '--';
+    }
+  }
 }
 
 /** Average HRV over the last N days. Returns null if no data. */
@@ -297,7 +310,7 @@ async function _getSessionsByDay(rangeDays) {
   const raw = await querySessions({ limit: rangeDays * 3 });
   const cutoff = _daysAgoIso(rangeDays);
 
-  /** @type {Object.<string, {total: number, count: number, durationSeconds: number}>} */
+  /** @type {Object.<string, {total: number, count: number, durationSeconds: number, calmTotal: number, calmCount: number}>} */
   const byDay = {};
 
   for (const s of raw) {
@@ -305,16 +318,23 @@ async function _getSessionsByDay(rangeDays) {
     const day = typeof s.date === 'string' ? s.date.slice(0, 10) : new Date(s.timestamp).toISOString().slice(0, 10);
     if (day < cutoff) continue;
 
-    if (!byDay[day]) byDay[day] = { total: 0, count: 0, durationSeconds: 0 };
+    if (!byDay[day]) byDay[day] = { total: 0, count: 0, durationSeconds: 0, calmTotal: 0, calmCount: 0 };
     byDay[day].total           += s.meanCoherence ?? 0;
     byDay[day].count           += 1;
     byDay[day].durationSeconds += s.durationSeconds ?? 0;
+
+    // Neural Calm — only accumulate when a valid Muse-S value is present
+    if (typeof s.meanNeuralCalm === 'number' && !isNaN(s.meanNeuralCalm)) {
+      byDay[day].calmTotal += s.meanNeuralCalm;
+      byDay[day].calmCount += 1;
+    }
   }
 
   return Object.entries(byDay).map(([day, v]) => ({
     day,
     meanCoherence: v.count ? v.total / v.count : 0,
-    durationSeconds: v.durationSeconds
+    durationSeconds: v.durationSeconds,
+    meanNeuralCalm: v.calmCount ? v.calmTotal / v.calmCount : null
   })).sort((a, b) => a.day.localeCompare(b.day));
 }
 
@@ -478,16 +498,52 @@ function _drawChart() {
   _ctx.restore();
 
   _ctx.save();
-  _ctx.fillStyle = '#fb923c';
+  _ctx.fillStyle = '#aaa';
   _ctx.font      = '11px system-ui, sans-serif';
   _ctx.textAlign = 'center';
   _ctx.translate(_canvasW - 12, chartTop + chartH / 2);
   _ctx.rotate(Math.PI / 2);
-  _ctx.fillText('Coherence', 0, 0);
+  _ctx.fillText('Score (0-100)', 0, 0);
   _ctx.restore();
 
-  // ---- HRV teal line (smooth via quadratic curves through midpoints) ----
+  // ---- Inline legend (top of chart area, centered) ----
   _hitTargets = [];
+
+  {
+    const legendItems = [
+      { color: '#14b8a6', label: 'HRV' },
+      { color: '#fb923c', label: 'Coherence' },
+      { color: '#3b82f6', label: 'Neural Calm' }
+    ];
+    const squareSize = 8;
+    const gapSq      = 4;   // gap between square and label
+    const gapItem    = 20;  // gap between items
+
+    _ctx.font     = '11px system-ui, sans-serif';
+    _ctx.textAlign = 'left';
+
+    // Measure total width
+    let totalW = 0;
+    for (let i = 0; i < legendItems.length; i++) {
+      const tw = _ctx.measureText(legendItems[i].label).width;
+      totalW += squareSize + gapSq + tw;
+      if (i < legendItems.length - 1) totalW += gapItem;
+    }
+
+    let lx = (chartLeft + chartRight) / 2 - totalW / 2;
+    const ly = PAD.top - 10;
+
+    for (const item of legendItems) {
+      _ctx.fillStyle = item.color;
+      _ctx.fillRect(lx, ly - squareSize + 1, squareSize, squareSize);
+      lx += squareSize + gapSq;
+      _ctx.fillStyle = '#ccc';
+      _ctx.fillText(item.label, lx, ly);
+      lx += _ctx.measureText(item.label).width + gapItem;
+    }
+  }
+
+  // ---- HRV teal line (smooth via quadratic curves through midpoints) ----
 
   if (hrvSlice.length > 0) {
     _ctx.strokeStyle = '#14b8a6';
@@ -536,6 +592,66 @@ function _drawChart() {
       _ctx.stroke();
 
       _hitTargets.push({ x, y, type: 'coherence', data: s });
+    }
+  }
+
+  // ---- Neural Calm blue trend line (broken where no Muse-S data) ----
+  const calmSlice = sessSlice.filter(s => s.meanNeuralCalm !== null);
+
+  if (calmSlice.length > 0) {
+    _ctx.globalAlpha = 0.85;
+    _ctx.strokeStyle = '#3b82f6';
+    _ctx.lineWidth   = 1.5;
+    _ctx.lineJoin    = 'round';
+
+    const calmPts = calmSlice.map(s => ({
+      x: xPx(s.day),
+      y: cohYPx(s.meanNeuralCalm),
+      data: s
+    }));
+
+    // Draw broken line: start new sub-path whenever there is a gap between days
+    _ctx.beginPath();
+    let pathOpen = false;
+    for (let i = 0; i < calmPts.length; i++) {
+      const pt = calmPts[i];
+      if (!pathOpen) {
+        _ctx.moveTo(pt.x, pt.y);
+        pathOpen = true;
+      } else {
+        const prev = calmPts[i - 1];
+        // Check for a day gap between consecutive calm points
+        const prevDay = new Date(prev.data.day).getTime();
+        const currDay = new Date(pt.data.day).getTime();
+        const dayGap  = (currDay - prevDay) / (24 * 60 * 60 * 1000);
+        if (dayGap > 1) {
+          // Gap — start new sub-path
+          _ctx.stroke();
+          _ctx.beginPath();
+          _ctx.moveTo(pt.x, pt.y);
+        } else {
+          // Consecutive — smooth quadratic through midpoint
+          const mx = (prev.x + pt.x) / 2;
+          const my = (prev.y + pt.y) / 2;
+          _ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+        }
+      }
+    }
+    // Draw to last point
+    const lastCalm = calmPts[calmPts.length - 1];
+    _ctx.lineTo(lastCalm.x, lastCalm.y);
+    _ctx.stroke();
+
+    _ctx.globalAlpha = 1.0;
+
+    // Small circle markers + hit targets
+    for (const pt of calmPts) {
+      if (pt.x < chartLeft || pt.x > chartRight) continue;
+      _ctx.beginPath();
+      _ctx.fillStyle = '#3b82f6';
+      _ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+      _ctx.fill();
+      _hitTargets.push({ x: pt.x, y: pt.y, type: 'calm', data: pt.data });
     }
   }
 
@@ -597,10 +713,18 @@ function _tooltipHtml(hit) {
   if (hit.type === 'hrv') {
     return `<strong>${dateLabel}</strong><br>HRV: ${Math.round(hit.data.hrv)} ms`;
   }
+  if (hit.type === 'calm') {
+    return `<strong>${dateLabel}</strong><br>Neural Calm: ${hit.data.meanNeuralCalm.toFixed(1)}`;
+  }
+  // Coherence tooltip
   const mins = hit.data.durationSeconds > 0
     ? ` &bull; ${Math.round(hit.data.durationSeconds / 60)} min`
     : '';
-  return `<strong>${dateLabel}</strong><br>Coherence: ${hit.data.meanCoherence.toFixed(1)}${mins}`;
+  let html = `<strong>${dateLabel}</strong><br>Coherence: ${hit.data.meanCoherence.toFixed(1)}${mins}`;
+  if (hit.data.meanNeuralCalm !== null) {
+    html += `<br>Neural Calm: ${hit.data.meanNeuralCalm.toFixed(1)}`;
+  }
+  return html;
 }
 
 function _formatDate(iso) {
