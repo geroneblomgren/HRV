@@ -9,6 +9,7 @@ import { initDSP, tick } from './dsp.js';
 import { startRendering, stopRendering, startTuningRenderer, stopTuningRenderer } from './renderer.js';
 import { saveSession } from './storage.js';
 import { startTuning, stopTuning } from './tuning.js';
+import { initPaceController, paceControllerTick } from './paceController.js';
 
 // ---- Module state ----
 
@@ -19,6 +20,7 @@ let _phaseLockTrace = [];        // array of phase lock scores (1 per second)
 let _neuralCalmTrace = [];       // array of Neural Calm scores (1 per second, Muse-S only)
 let _hrTrace = [];               // array of HR values (1 per second)
 let _hrvTrace = [];              // array of RMSSD values (1 per second)
+let _paceTrace = [];             // array of pacingFreq values in Hz (1 per second)
 let _lastRRCount = 0;            // tracks rrCount to detect new beats for RMSSD
 let _chimePlayed = false;        // prevents double chime
 let _pausedForReconnect = false; // true when BLE disconnects mid-session
@@ -62,6 +64,7 @@ export async function startPractice() {
   _neuralCalmTrace = [];
   _hrTrace = [];
   _hrvTrace = [];
+  _paceTrace = [];
 
   // ---- Tuning phase ----
 
@@ -156,6 +159,10 @@ export async function startPractice() {
   AppState.savedResonanceFreq = result.freqHz;
   AppState.sessionStartTime = _sessionStart;
 
+  // Initialize pace controller with tuned resonance frequency as anchor
+  AppState.pacingFreqTuned = result.freqHz;
+  initPaceController(result.freqHz);
+
   // Show session viz
   const sessionViz = _getEl('practice-session-viz');
   if (sessionViz) {
@@ -196,10 +203,12 @@ export async function startPractice() {
   _dspInterval = setInterval(() => {
     const elapsed = (Date.now() - _sessionStart) / 1000;
     tick(elapsed);
+    paceControllerTick(elapsed);
     _phaseLockTrace.push(AppState.phaseLockScore);
     _hrTrace.push(AppState.currentHR);
     _hrvTrace.push(_computeCurrentRMSSD());
     if (AppState.museConnected) _neuralCalmTrace.push(AppState.neuralCalm);
+    _paceTrace.push(AppState.pacingFreq);
 
     // When timer reaches zero, play chime then auto-end session
     if (elapsed >= _selectedDuration * 60 && !_chimePlayed) {
@@ -390,7 +399,14 @@ function _computeSummary() {
 
   const hrTraceOut = _hrTrace.slice();
   const hrvTraceOut = _hrvTrace.slice();
-  return { durationSeconds, mean, peak, timeInHigh, trace, meanCalm, peakCalm, timeInHighCalm, calmTrace, hrTrace: hrTraceOut, hrvTrace: hrvTraceOut };
+
+  // Pace summary data
+  const tunedBPM = AppState.tuningSelectedFreqBPM || (AppState.pacingFreqTuned * 60);
+  const settledBPM = _paceTrace.length > 0
+    ? _paceTrace[_paceTrace.length - 1] * 60
+    : AppState.pacingFreq * 60;
+
+  return { durationSeconds, mean, peak, timeInHigh, trace, meanCalm, peakCalm, timeInHighCalm, calmTrace, hrTrace: hrTraceOut, hrvTrace: hrvTraceOut, tunedBPM, settledBPM, paceTrace: _paceTrace.slice() };
 }
 
 /**
@@ -474,6 +490,17 @@ function _showSummary(summary) {
     if (timeCalmEl) timeCalmEl.textContent = _formatTime(summary.timeInHighCalm);
   } else {
     if (calmSection) calmSection.style.display = 'none';
+  }
+
+  // Pace summary (only shown if pace actually drifted ≥0.05 BPM from tuned)
+  const paceEl = _getEl('summary-pace');
+  if (paceEl && summary.tunedBPM && summary.settledBPM) {
+    if (Math.abs(summary.settledBPM - summary.tunedBPM) >= 0.05) {
+      paceEl.textContent = `Pace: ${summary.tunedBPM.toFixed(1)} \u2192 ${summary.settledBPM.toFixed(1)} BPM`;
+      paceEl.style.display = '';
+    } else {
+      paceEl.style.display = 'none';
+    }
   }
 
   // HR source badge (only when Muse PPG was used)
@@ -648,6 +675,10 @@ async function _saveSession(summary) {
         tuningFreqHz: AppState.tuningSelectedFreqBPM / 60,
         tuningRsaAmplitude: AppState.tuningSelectedRSA > 0 ? AppState.tuningSelectedRSA : undefined,
       } : {}),
+      // Adaptive pace controller data (Phase 12)
+      tunedBPM: summary.tunedBPM,
+      settledBPM: summary.settledBPM,
+      paceTrace: summary.paceTrace,
       ...(summary.meanCalm !== null ? {
         meanNeuralCalm: summary.meanCalm,
         peakNeuralCalm: summary.peakCalm,
