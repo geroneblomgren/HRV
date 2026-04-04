@@ -455,7 +455,30 @@ export function tick(sessionElapsedSeconds) {
   );
   if (!tachogram) return;
 
-  // Apply Hann window (mandatory — prevents spectral leakage)
+  // Find actual number of real (non-zero-padded) samples for detrending
+  let realSamples = FFT_SIZE;
+  for (let i = FFT_SIZE - 1; i >= 0; i--) {
+    if (tachogram[i] !== 0) { realSamples = i + 1; break; }
+  }
+
+  // Remove linear trend — prevents slow HR drift from creating a dominant
+  // VLF peak that overshadows the respiratory peak at the pacing frequency.
+  // Without this, the spectrum is dominated by a ~2-3 BPM artifact from
+  // gradual HR changes, making coherence always ~100 at the wrong frequency.
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  for (let i = 0; i < realSamples; i++) {
+    sumX += i;
+    sumY += tachogram[i];
+    sumXY += i * tachogram[i];
+    sumXX += i * i;
+  }
+  const slope = (realSamples * sumXY - sumX * sumY) / (realSamples * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / realSamples;
+  for (let i = 0; i < realSamples; i++) {
+    tachogram[i] -= (intercept + slope * i);
+  }
+
+  // Apply Hann window (prevents spectral leakage at window edges)
   applyHannWindow(tachogram);
 
   // Compute PSD via FFT
