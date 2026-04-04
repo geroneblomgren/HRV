@@ -1,34 +1,29 @@
 // js/phaseLock.js — Phase Lock Score computation
-// Measures how dominantly the user's HR oscillation peaks at the pacer's
-// breathing frequency, using a pacing-targeted coherence ratio computed
-// from the full-resolution PSD already produced by dsp.js each tick.
+// Phase lock = coherence score when breathing AT the pacer rate.
 //
-// This is the HeartMath coherence formula but locked to the PACING
-// frequency instead of wherever the spectral peak happens to be.
-// Standard coherence: "is there a dominant peak?" (anywhere)
-// Phase lock: "is there a dominant peak AT THE PACER RATE?" (specific)
+// Rather than reimplementing spectral math (which failed 4 times due to
+// resolution, windowing, and normalization issues), this piggybacks on
+// the proven computeCoherenceScore from dsp.js — same formula that worked
+// for 9+ phases — and adds one check: is the dominant spectral peak at
+// the pacing frequency?
 //
-// Uses AppState.spectralBuffer (full accumulated PSD from dsp.js tick),
-// which provides excellent frequency resolution (~0.008 Hz with 128s of
-// data). Previous attempts using short windowed tachograms (20-30s)
-// failed because poor resolution (~0.05 Hz) smeared peaks and broke
-// the coherence ratio math.
+// - Peak at pacing freq → score = coherence (proven to work)
+// - Peak elsewhere → score attenuated (breathing at wrong rate)
+// - No dominant peak → coherence already low → score low
 //
 // Writes: AppState.phaseLockScore, AppState.phaseLockCalibrating
 // Called from: dsp.js tick() every second
 
 import { AppState } from './state.js';
-import { integrateBand, binToHz, hzToBin } from './dsp.js';
-
-// ---- Shared FFT instance (set by initPhaseLock) ----
-let _fft = null;
+import { binToHz, hzToBin } from './dsp.js';
 
 // ---- Constants ----
-const PEAK_HALF_BAND = 0.015;   // Hz — ±0.015 Hz around pacing freq (HeartMath standard)
-const ANALYSIS_LOW_HZ = 0.04;   // LF band low edge
-const ANALYSIS_HIGH_HZ = 0.26;  // extends into HF
-const CS_DIVISOR = 3.0;         // HeartMath scaling
-const FLOOR_POWER = 0.001;      // prevent division by zero
+const ANALYSIS_LOW_HZ = 0.04;
+const ANALYSIS_HIGH_HZ = 0.26;
+const FREQ_TOLERANCE_HZ = 0.02;  // peak must be within ±0.02 Hz of pacing freq
+
+// ---- Shared FFT instance (unused but kept for initPhaseLock signature) ----
+let _fft = null;
 
 /**
  * Initialize the phase lock module with a shared FFT instance.
@@ -39,14 +34,11 @@ export function initPhaseLock(fftInstance) {
 }
 
 /**
- * Compute phase lock score between breathing pacer and HR oscillation.
+ * Compute phase lock score.
  *
- * Uses the full-resolution PSD from dsp.js (AppState.spectralBuffer)
- * with the HeartMath coherence formula targeted at the pacing frequency.
- *
- * Before dsp.js calibration completes (120s), returns null (calibrating).
- * After calibration, spectralBuffer is updated every tick with excellent
- * frequency resolution from the full accumulated RR buffer.
+ * Reads AppState.coherenceScore (already computed by dsp.js from the
+ * full-resolution PSD) and checks whether the dominant spectral peak
+ * is at the pacing frequency.
  *
  * @param {number} [windowSeconds] - unused, kept for call signature compat
  * @param {number} [pacingFreqHz=0.0833] - current pacer frequency in Hz
@@ -54,7 +46,6 @@ export function initPhaseLock(fftInstance) {
  * @returns {number|null} phase lock score 0-100, or null if calibrating
  */
 export function computePhaseLockScore(windowSeconds = 20, pacingFreqHz = 0.0833, sessionElapsedSec = 0) {
-  // Use the full-resolution PSD from dsp.js — available after 120s calibration
   const psd = AppState.spectralBuffer;
   if (!psd) {
     AppState.phaseLockCalibrating = true;
@@ -64,31 +55,35 @@ export function computePhaseLockScore(windowSeconds = 20, pacingFreqHz = 0.0833,
 
   AppState.phaseLockCalibrating = false;
 
-  // Total power in analysis range
-  const totalPower = integrateBand(psd, ANALYSIS_LOW_HZ, ANALYSIS_HIGH_HZ);
-  if (totalPower === 0) {
-    AppState.phaseLockScore = 0;
-    return 0;
+  // Use the already-computed coherence score (proven formula, same PSD)
+  const coherence = AppState.coherenceScore;
+
+  // Find the dominant spectral peak in the analysis band
+  const lowBin = Math.max(0, hzToBin(ANALYSIS_LOW_HZ));
+  const highBin = Math.min(psd.length - 1, hzToBin(ANALYSIS_HIGH_HZ));
+  let maxVal = -1;
+  let peakBin = lowBin;
+  for (let i = lowBin; i <= highBin; i++) {
+    if (psd[i] > maxVal) {
+      maxVal = psd[i];
+      peakBin = i;
+    }
   }
+  const peakFreq = binToHz(peakBin);
 
-  // Power at PACING frequency (not at whatever peak exists)
-  const pacingLow = pacingFreqHz - PEAK_HALF_BAND;
-  const pacingHigh = pacingFreqHz + PEAK_HALF_BAND;
-  const pacingPower = integrateBand(psd, pacingLow, pacingHigh);
+  // How close is the peak to the pacing frequency?
+  const freqError = Math.abs(peakFreq - pacingFreqHz);
 
-  // Power below and above pacing window
-  const powerBelow = integrateBand(psd, ANALYSIS_LOW_HZ, pacingLow);
-  const powerAbove = integrateBand(psd, pacingHigh, ANALYSIS_HIGH_HZ);
-
-  // Coherence Ratio at pacing frequency
-  // High CR = sharp dominant peak at pacing freq (breathing in sync)
-  // Low CR = no dominant peak at pacing freq (natural HRV, erratic, breath hold)
-  const cr = (pacingPower / Math.max(powerBelow, FLOOR_POWER)) *
-             (pacingPower / Math.max(powerAbove, FLOOR_POWER));
-
-  // Natural log transform + scale to 0-100 (HeartMath formula)
-  const cs = Math.log(cr + 1);
-  const score = Math.max(0, Math.min(100, Math.round((cs / CS_DIVISOR) * 100)));
+  let score;
+  if (freqError <= FREQ_TOLERANCE_HZ) {
+    // Peak IS at the pacing frequency → full coherence score
+    score = coherence;
+  } else {
+    // Peak is elsewhere → attenuate based on distance
+    // At 0.04 Hz error: 60% penalty. At 0.08+ Hz: 80% penalty.
+    const penalty = Math.min(0.8, freqError * 15);
+    score = Math.round(coherence * (1 - penalty));
+  }
 
   AppState.phaseLockScore = score;
   return score;

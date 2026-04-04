@@ -440,12 +440,10 @@ export function initDSP() {
  * @param {number} sessionElapsedSeconds - seconds since session started
  */
 export function tick(sessionElapsedSeconds) {
-  // Phase lock has its own 25s calibration gate — runs independently of coherence
-  computePhaseLockScore(20, AppState.pacingFreq, sessionElapsedSeconds);
-
-  // Coherence calibration gate: must accumulate MIN_WINDOW_SECONDS of data
+  // Calibration gate: must accumulate MIN_WINDOW_SECONDS of data
   if (sessionElapsedSeconds < MIN_WINDOW_SECONDS) {
     AppState.calibrating = true;
+    AppState.phaseLockCalibrating = true;
     return;
   }
 
@@ -467,4 +465,7 @@ export function tick(sessionElapsedSeconds) {
   AppState.spectralBuffer = psd;
   AppState.lfPower = integrateBand(psd, LF_LOW_HZ, LF_HIGH_HZ);
   AppState.coherenceScore = computeCoherenceScore(psd);
+
+  // Phase lock score — MUST run after spectralBuffer and coherenceScore are written
+  computePhaseLockScore(20, AppState.pacingFreq, sessionElapsedSeconds);
 }

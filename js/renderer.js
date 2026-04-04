@@ -430,7 +430,7 @@ function drawPhaseLockGauge() {
   const radius = Math.min(w, h) * 0.35;
   const lineWidthBase = 12;
 
-  // Calibration state — 25s phase lock warmup
+  // Calibration state — 120s warmup (needs full-resolution PSD from dsp.js)
   if (AppState.phaseLockCalibrating) {
     const elapsed = _sessionStartTime ? (Date.now() - _sessionStartTime) / 1000 : 0;
     const remaining = Math.max(0, Math.ceil(120 - elapsed));
