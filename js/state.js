@@ -26,6 +26,8 @@ export const AppState = new Proxy({
 
   // DSP results (populated by Phase 2)
   coherenceScore: 0,
+  phaseLockScore: 0,           // 0-100 phase lock score (replaces coherenceScore in display)
+  phaseLockCalibrating: true,  // true until 25s of RR data accumulated for phase lock
   lfPower: 0,
   spectralBuffer: null,
   calibrating: true,
