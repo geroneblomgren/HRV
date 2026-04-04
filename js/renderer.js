@@ -59,7 +59,7 @@ let _eegCanvas = null, _eegCtx = null;
 let _displayedScore = 0;
 let _displayedCalm = 0;
 let _calmHistory = [];          // rolling window for Neural Calm smoothing
-const CALM_SMOOTH_WINDOW = 5;   // average last 5 raw values (~5 seconds at 1 update/sec)
+const CALM_SMOOTH_WINDOW = 12;  // average last 12 raw values (~12 seconds at 1 update/sec)
 let _pulsePhase = 0;
 let _sessionStartTime = null;
 let _calibrationFadeAlpha = 0;
@@ -635,8 +635,8 @@ function drawNeuralCalmGauge() {
     ? _calmHistory.reduce((a, b) => a + b, 0) / _calmHistory.length
     : 0;
 
-  // Smooth visual interpolation toward the rolling average
-  _displayedCalm += (avgCalm - _displayedCalm) * 0.08;
+  // Very slow visual interpolation toward the rolling average
+  _displayedCalm += (avgCalm - _displayedCalm) * 0.015;
 
   const zone = _getCalmZone(avgCalm);
 
@@ -704,7 +704,7 @@ function drawEEGWaveform() {
 
   // Use the Neural Calm score as proxy for alpha power level (0-100)
   const target = Math.max(0, Math.min(100, AppState.neuralCalm || 0));
-  _displayedAlpha += (target - _displayedAlpha) * 0.03; // very slow interpolation
+  _displayedAlpha += (target - _displayedAlpha) * 0.005; // glacial interpolation — moves like a tide
 
   const barPad = 8;
   const barH = Math.max(12, h - barPad * 2);
@@ -938,4 +938,104 @@ export function stopRendering() {
   if (_eegCtx && _eegCanvas) {
     _eegCtx.clearRect(0, 0, _eegCanvas.width / dpr, _eegCanvas.height / dpr);
   }
+}
+
+// ---- Tuning Ring Renderer (Phase 10) ----
+
+let _tuningRAF = null;
+let _tuningCanvas = null;
+let _tuningCtx = null;
+
+/**
+ * Draw a single frame of the tuning scanning animation.
+ * Shows a progress ring filling clockwise in orange, with candidate counter inside.
+ */
+function _drawTuningRing() {
+  if (!_tuningCanvas || !_tuningCtx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const w = _tuningCanvas.width / dpr;
+  const h = _tuningCanvas.height / dpr;
+  const ctx = _tuningCtx;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const radius = 110;  // ~240px diameter ring
+  const lineWidth = 6;
+
+  // Background track
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+
+  // Progress arc (clockwise from top)
+  const progress = Math.max(0, Math.min(1, AppState.tuningProgress));
+  if (progress > 0) {
+    const startAngle = -Math.PI / 2;
+    const endAngle = startAngle + progress * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, endAngle);
+    ctx.strokeStyle = '#fb923c';
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // Candidate counter text inside ring
+  const idx = AppState.tuningCandidateIndex;
+  const count = AppState.tuningCandidateCount;
+  const label = idx >= 0 ? `${idx + 1} / ${count}` : '— / —';
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = `bold 22px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, cx, cy);
+}
+
+/**
+ * Start the tuning scanning ring animation loop.
+ * Uses a separate rAF handle from the main session renderer.
+ * @param {HTMLCanvasElement} canvas - The tuning ring canvas element
+ */
+export function startTuningRenderer(canvas) {
+  if (_tuningRAF) {
+    cancelAnimationFrame(_tuningRAF);
+    _tuningRAF = null;
+  }
+
+  _tuningCanvas = canvas;
+
+  // Set up canvas with DPR scaling
+  const dpr = window.devicePixelRatio || 1;
+  _tuningCanvas.width = _tuningCanvas.clientWidth * dpr || 280 * dpr;
+  _tuningCanvas.height = _tuningCanvas.clientHeight * dpr || 280 * dpr;
+  _tuningCtx = _tuningCanvas.getContext('2d');
+  _tuningCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  function loop() {
+    _drawTuningRing();
+    _tuningRAF = requestAnimationFrame(loop);
+  }
+  _tuningRAF = requestAnimationFrame(loop);
+}
+
+/**
+ * Stop the tuning scanning ring animation loop.
+ */
+export function stopTuningRenderer() {
+  if (_tuningRAF) {
+    cancelAnimationFrame(_tuningRAF);
+    _tuningRAF = null;
+  }
+  if (_tuningCtx && _tuningCanvas) {
+    const dpr = window.devicePixelRatio || 1;
+    _tuningCtx.clearRect(0, 0, _tuningCanvas.width / dpr, _tuningCanvas.height / dpr);
+  }
+  _tuningCanvas = null;
+  _tuningCtx = null;
 }

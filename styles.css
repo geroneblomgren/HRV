@@ -1228,3 +1228,63 @@ body {
   color: var(--text-secondary);
   font-size: 0.7rem;
 }
+
+
+/* ---- Tuning Phase Overlay (Phase 10) ---- */
+
+.tuning-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+}
+
+.tuning-label {
+  font-size: 18px;
+  color: #fb923c;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.tuning-freq {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tuning-time {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+.tuning-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+}
+
+.tuning-result-freq {
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.tuning-result-comparison {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tuning-result-celebration {
+  font-size: 14px;
+  color: #22c55e;
+  font-weight: 500;
+  margin-top: 4px;
+  text-align: center;
+  max-width: 300px;
+}

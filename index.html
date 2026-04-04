@@ -161,6 +161,21 @@
       </div>
     </section>
     <section id="tab-practice" class="tab-panel">
+      <!-- Tuning phase overlay (Phase 10) -->
+      <div id="tuning-overlay" style="display: none;" class="tuning-overlay">
+        <canvas id="tuning-ring-canvas" width="280" height="280"></canvas>
+        <div class="tuning-label">Tuning...</div>
+        <div class="tuning-freq" id="tuning-current-freq"></div>
+        <div class="tuning-time" id="tuning-time-remaining"></div>
+      </div>
+
+      <!-- Tuning result display (shown briefly after tuning completes) -->
+      <div id="tuning-result" style="display: none;" class="tuning-result">
+        <div class="tuning-result-freq" id="tuning-result-freq"></div>
+        <div class="tuning-result-comparison" id="tuning-result-comparison"></div>
+        <div class="tuning-result-celebration" id="tuning-result-celebration" style="display: none;"></div>
+      </div>
+
       <!-- Session viz: shown while session is active -->
       <div class="session-viz" id="practice-session-viz" style="display:none; flex-direction:column;">
         <!-- Pacer hero area -->
