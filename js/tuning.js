@@ -1,7 +1,8 @@
 // js/tuning.js — Resonance Frequency Tuning Engine (Phase 10)
 // Cycles through 5 candidate breathing frequencies, measures spectral RSA
 // amplitude at each via the existing DSP pipeline, and selects the optimal
-// frequency. Designed to run as a 60-second pre-session tuning phase.
+// frequency. Each candidate runs for 2 full breath cycles at its frequency,
+// so total duration varies (~90-130s depending on candidate frequencies).
 //
 // Usage:
 //   const result = await startTuning(AppState.savedResonanceFreq);
@@ -24,7 +25,7 @@ let _result = null;            // final result object after tuning completes
 
 // ---- Constants ----
 
-const CANDIDATE_DURATION_SEC = 12;   // seconds each candidate frequency is tested
+const BREATHS_PER_CANDIDATE = 2;     // full breath cycles per candidate (ensures clean RSA measurement)
 const CANDIDATE_COUNT = 5;           // number of candidates
 
 // Discovery range: used when no prior resonance frequency is saved
@@ -141,16 +142,21 @@ function _startCandidate(index) {
   const freqHz = _candidates[index];
   const freqBPM = freqHz * 60;
 
+  // Duration = 2 full breath cycles at this candidate's frequency
+  // e.g., at 4.5 BPM: 60/4.5 = 13.33s per breath × 2 = 26.67s
+  const breathDurationSec = 60 / freqBPM;
+  const candidateDurationSec = breathDurationSec * BREATHS_PER_CANDIDATE;
+
   AppState.tuningCandidateIndex = index;
   AppState.tuningCurrentFreqBPM = freqBPM;
 
   // Start bowl echo pacer at this candidate frequency
   startPacer(freqHz);
 
-  // Schedule end of this candidate block
+  // Schedule end of this candidate block after full breath cycles complete
   _candidateTimer = setTimeout(() => {
-    _endCandidate(index);
-  }, CANDIDATE_DURATION_SEC * 1000);
+    _endCandidate(index, candidateDurationSec);
+  }, candidateDurationSec * 1000);
 }
 
 /**
@@ -158,7 +164,7 @@ function _startCandidate(index) {
  *
  * @param {number} index - 0-based index of the candidate that just completed
  */
-function _endCandidate(index) {
+function _endCandidate(index, candidateDurationSec) {
   if (!_active) return;
   _candidateTimer = null;
 
@@ -168,8 +174,8 @@ function _endCandidate(index) {
   // Stop pacer for this candidate
   stopPacer();
 
-  // Measure spectral RSA amplitude over the candidate window
-  const rsaAmplitude = computeSpectralRSA(CANDIDATE_DURATION_SEC, freqHz);
+  // Measure spectral RSA amplitude over the candidate's full breath cycles
+  const rsaAmplitude = computeSpectralRSA(candidateDurationSec, freqHz);
 
   // Record result
   const results = AppState.tuningResults;

@@ -80,16 +80,17 @@ export async function startPractice() {
   const tuningRingCanvas = _getEl('tuning-ring-canvas');
   startTuningRenderer(tuningRingCanvas);
 
-  // Update UI countdown and current candidate freq every second
-  const tuningStartEpoch = Date.now();
+  // Update UI with candidate counter and current freq every second
   let _tuningUIInterval = setInterval(() => {
-    const elapsed = Math.round((Date.now() - tuningStartEpoch) / 1000);
-    const remaining = Math.max(0, 60 - elapsed);
     const timeEl = _getEl('tuning-time-remaining');
-    if (timeEl) timeEl.textContent = `${remaining}s remaining`;
+    const idx = AppState.tuningCandidateIndex;
+    const count = AppState.tuningCandidateCount;
+    if (timeEl && idx >= 0) {
+      timeEl.textContent = `Candidate ${idx + 1} of ${count}`;
+    }
     const freqEl = _getEl('tuning-current-freq');
     if (freqEl && AppState.tuningCurrentFreqBPM > 0) {
-      freqEl.textContent = `${AppState.tuningCurrentFreqBPM.toFixed(2)} BPM`;
+      freqEl.textContent = `${AppState.tuningCurrentFreqBPM.toFixed(1)} BPM`;
     }
   }, 1000);
 
