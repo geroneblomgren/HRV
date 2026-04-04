@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Adaptive Closed-Loop Biofeedback
 status: unknown
-last_updated: "2026-04-04T12:08:32.133Z"
+last_updated: "2026-04-04T12:59:05.862Z"
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 10
-  total_plans: 21
-  completed_plans: 21
+  total_plans: 24
+  completed_plans: 23
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 ## Current Position
 
-Phase: 10 (Resonance Tuning + Mapping) — COMPLETE
-Plan: All 3 plans complete — 10-01 (tuning engine), 10-02 (tuning UX + verified), 10-03 (RF dashboard trend + verified)
-Status: Phase 10 done — all checkpoints approved — ready for Phase 11
-Last activity: 2026-04-03 — 10-02 and 10-03 human-verify checkpoints approved by user
+Phase: 11 (Phase Lock Engine) — IN PROGRESS
+Plan: 11-01 complete — phase lock computation engine (phaseLock.js + state.js + dsp.js wiring)
+Status: 11-01 done — ready for 11-02 (UI swap: replace coherence gauge with phase lock gauge)
+Last activity: 2026-04-04 — 11-01 executed, 2 tasks committed
 
-Progress: [##########] Phase 10 complete (4/4 phases in v1.2 scope)
+Progress: [##########-] Phase 11 in progress (1/3 plans complete)
 
 ## Performance Metrics
 
@@ -39,6 +39,7 @@ Progress: [##########] Phase 10 complete (4/4 phases in v1.2 scope)
 | Phase 10 P01 | 8 | 2 tasks | 3 files |
 | Phase 10 P02 | 18 | 3 tasks | 4 files |
 | Phase 10 P03 | 15 | 2 tasks | 1 files |
+| Phase 11-phase-lock-engine P01 | 15 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -59,6 +60,9 @@ Progress: [##########] Phase 10 complete (4/4 phases in v1.2 scope)
 - [10-03]: RF line dashed [6,3] with diamond markers; gap >2 days produces broken segment
 - [Phase 10]: 10-02: startPractice() is async — tuning is mandatory before every session, no skip path
 - [Phase 10]: 10-02: Start button requires only connected (tuning handles null savedResonanceFreq — first-session capable)
+- [Phase 11-phase-lock-engine]: FFT bin extraction (Pattern 2) chosen for phase lock — reuses _fft instance, no IFFT needed
+- [Phase 11-phase-lock-engine]: Pacer phase computed relative to window center — avoids AudioContext epoch dependency
+- [Phase 11-phase-lock-engine]: MIN_POWER_THRESHOLD=0 (amplitude gate disabled) — tune after first real session
 
 ### Roadmap Structure
 
@@ -84,6 +88,6 @@ Progress: [##########] Phase 10 complete (4/4 phases in v1.2 scope)
 
 ## Session Continuity
 
-Last session: 2026-04-03
-Stopped at: Phase 10 complete — both 10-02 and 10-03 human-verify checkpoints approved
-Resume: Start Phase 11 (Phase Lock Engine)
+Last session: 2026-04-04
+Stopped at: Completed 11-01-PLAN.md — phase lock computation engine (phaseLock.js, state.js, dsp.js)
+Resume: Execute 11-02 (UI swap — replace coherence gauge with phase lock gauge)
