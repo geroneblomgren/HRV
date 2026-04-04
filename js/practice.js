@@ -1,6 +1,6 @@
 // js/practice.js — Practice Mode controller
 // Guided breathing sessions at the user's saved resonance frequency.
-// Collects a per-second coherence trace, chimes at timer zero,
+// Collects a per-second phase lock trace, chimes at timer zero,
 // shows summary, and saves the full session to IndexedDB.
 
 import { AppState, subscribe, unsubscribe } from './state.js';
@@ -15,7 +15,7 @@ import { startTuning, stopTuning } from './tuning.js';
 let _sessionStart = 0;           // Date.now() at session start
 let _sessionDurationMs = 0;      // selected duration in ms
 let _dspInterval = null;         // setInterval handle (1s DSP tick)
-let _coherenceTrace = [];        // array of coherence scores (1 per second)
+let _phaseLockTrace = [];        // array of phase lock scores (1 per second)
 let _neuralCalmTrace = [];       // array of Neural Calm scores (1 per second, Muse-S only)
 let _hrTrace = [];               // array of HR values (1 per second)
 let _hrvTrace = [];              // array of RMSSD values (1 per second)
@@ -58,7 +58,7 @@ export async function startPractice() {
   _active = true;
   _chimePlayed = false;
   _pausedForReconnect = false;
-  _coherenceTrace = [];
+  _phaseLockTrace = [];
   _neuralCalmTrace = [];
   _hrTrace = [];
   _hrvTrace = [];
@@ -196,7 +196,7 @@ export async function startPractice() {
   _dspInterval = setInterval(() => {
     const elapsed = (Date.now() - _sessionStart) / 1000;
     tick(elapsed);
-    _coherenceTrace.push(AppState.coherenceScore);
+    _phaseLockTrace.push(AppState.phaseLockScore);
     _hrTrace.push(AppState.currentHR);
     _hrvTrace.push(_computeCurrentRMSSD());
     if (AppState.museConnected) _neuralCalmTrace.push(AppState.neuralCalm);
@@ -362,11 +362,11 @@ function _updateStartBtn() {
 }
 
 /**
- * Compute session summary metrics from the coherence trace.
+ * Compute session summary metrics from the phase lock trace.
  * @returns {{durationSeconds: number, mean: number, peak: number, timeInHigh: number, trace: number[]}}
  */
 function _computeSummary() {
-  const trace = _coherenceTrace.slice();
+  const trace = _phaseLockTrace.slice();
   const durationSeconds = trace.length > 0
     ? trace.length
     : Math.round((Date.now() - _sessionStart) / 1000);
@@ -376,7 +376,7 @@ function _computeSummary() {
     const sum = trace.reduce((acc, v) => acc + v, 0);
     mean = Math.round(sum / trace.length);
     peak = Math.round(Math.max(...trace));
-    timeInHigh = trace.filter(v => v >= 66).length; // seconds in "Locked In" zone
+    timeInHigh = trace.filter(v => v >= 70).length; // seconds in "Locked" zone (phase lock threshold)
   }
 
   // Neural Calm summary (only when Muse-S was connected during session)
@@ -628,7 +628,7 @@ function _drawTraceGraph(canvasId, data, color, label, autoRange = false, fixedM
 }
 
 /**
- * Persist session data to IndexedDB with full coherence trace.
+ * Persist session data to IndexedDB with full phase lock trace.
  * @param {{durationSeconds: number, mean: number, peak: number, timeInHigh: number, trace: number[]}} summary
  */
 async function _saveSession(summary) {
@@ -638,10 +638,10 @@ async function _saveSession(summary) {
       date: new Date().toISOString(),
       durationSeconds: summary.durationSeconds,
       frequencyHz: AppState.pacingFreq,
-      meanCoherence: summary.mean,
-      peakCoherence: summary.peak,
-      timeInHighSeconds: summary.timeInHigh,
-      coherenceTrace: summary.trace,
+      meanPhaseLock: summary.mean,
+      peakPhaseLock: summary.peak,
+      timeLockedIn: summary.timeInHigh,
+      phaseLockTrace: summary.trace,
       hrSource: AppState.hrSourceLabel || 'unknown',
       // Tuning data (Phase 10)
       ...(AppState.tuningSelectedFreqBPM > 0 ? {
