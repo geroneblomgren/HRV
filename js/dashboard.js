@@ -21,9 +21,9 @@ let _ctx          = null;
 let _canvasW      = 0;   // logical width (CSS px)
 let _canvasH      = 0;   // logical height (CSS px)
 let _hrvData      = [];  // [{day: 'YYYY-MM-DD', hrv: number}]
-let _sessionData  = [];  // [{day: 'YYYY-MM-DD', meanCoherence: number, durationSeconds: number}]
+let _sessionData  = [];  // [{day: 'YYYY-MM-DD', meanCoherence: number|null, meanPhaseLock: number|null, durationSeconds: number, meanNeuralCalm: number|null, meanRfBPM: number|null}]
 let _rangeDays    = 30;  // currently selected range
-let _hitTargets   = [];  // [{x, y, type: 'hrv'|'coherence', data: {...}}] for tooltip hit detection
+let _hitTargets   = [];  // [{x, y, type: 'hrv'|'coherence'|'coherence-legacy'|'phaseLock'|'calm'|'rf', data: {...}}] for tooltip hit detection
 
 // ---------------------------------------------------------------------------
 // DOM helpers
@@ -255,6 +255,19 @@ function _computeMetrics() {
       calm7dEl.textContent = '--';
     }
   }
+
+  // ---- Avg Phase Lock 7d ----
+  const pl7dEl = el('dash-pl-7d');
+  if (pl7dEl) {
+    const cutoff7 = _daysAgoIso(7);
+    const plSessions = _sessionData.filter(s => s.day >= cutoff7 && s.meanPhaseLock !== null);
+    if (plSessions.length > 0) {
+      const avg = plSessions.reduce((sum, s) => sum + s.meanPhaseLock, 0) / plSessions.length;
+      pl7dEl.textContent = avg.toFixed(1);
+    } else {
+      pl7dEl.textContent = '--';
+    }
+  }
 }
 
 /** Average HRV over the last N days. Returns null if no data. */
@@ -266,10 +279,10 @@ function _avgHrv(data, days) {
   return slice.reduce((s, d) => s + d.hrv, 0) / slice.length;
 }
 
-/** Average meanCoherence over the last 7 days of sessions. Returns null if no sessions. */
+/** Average meanCoherence over the last 7 days of sessions. Returns null if no sessions with valid coherence. */
 function _avgCoherence7d() {
   const cutoff   = _daysAgoIso(7);
-  const sessions = _sessionData.filter(s => s.day >= cutoff);
+  const sessions = _sessionData.filter(s => s.day >= cutoff && s.meanCoherence !== null);
   if (!sessions.length) return null;
   return sessions.reduce((s, d) => s + d.meanCoherence, 0) / sessions.length;
 }
@@ -310,7 +323,7 @@ async function _getSessionsByDay(rangeDays) {
   const raw = await querySessions({ limit: rangeDays * 3 });
   const cutoff = _daysAgoIso(rangeDays);
 
-  /** @type {Object.<string, {total: number, count: number, durationSeconds: number, calmTotal: number, calmCount: number, rfTotal: number, rfCount: number}>} */
+  /** @type {Object.<string, {cohTotal: number, cohCount: number, durationSeconds: number, calmTotal: number, calmCount: number, rfTotal: number, rfCount: number, plTotal: number, plCount: number}>} */
   const byDay = {};
 
   for (const s of raw) {
@@ -318,10 +331,14 @@ async function _getSessionsByDay(rangeDays) {
     const day = typeof s.date === 'string' ? s.date.slice(0, 10) : new Date(s.timestamp).toISOString().slice(0, 10);
     if (day < cutoff) continue;
 
-    if (!byDay[day]) byDay[day] = { total: 0, count: 0, durationSeconds: 0, calmTotal: 0, calmCount: 0, rfTotal: 0, rfCount: 0 };
-    byDay[day].total           += s.meanCoherence ?? 0;
-    byDay[day].count           += 1;
+    if (!byDay[day]) byDay[day] = { cohTotal: 0, cohCount: 0, durationSeconds: 0, calmTotal: 0, calmCount: 0, rfTotal: 0, rfCount: 0, plTotal: 0, plCount: 0 };
     byDay[day].durationSeconds += s.durationSeconds ?? 0;
+
+    // Coherence — only accumulate when a valid number is present
+    if (typeof s.meanCoherence === 'number' && !isNaN(s.meanCoherence)) {
+      byDay[day].cohTotal += s.meanCoherence;
+      byDay[day].cohCount += 1;
+    }
 
     // Neural Calm — only accumulate when a valid Muse-S value is present
     if (typeof s.meanNeuralCalm === 'number' && !isNaN(s.meanNeuralCalm)) {
@@ -334,14 +351,21 @@ async function _getSessionsByDay(rangeDays) {
       byDay[day].rfTotal += s.tuningFreqHz * 60; // convert Hz to BPM for display
       byDay[day].rfCount += 1;
     }
+
+    // Phase Lock — only accumulate when a valid v1.2 value is present
+    if (typeof s.meanPhaseLock === 'number' && !isNaN(s.meanPhaseLock)) {
+      byDay[day].plTotal += s.meanPhaseLock;
+      byDay[day].plCount += 1;
+    }
   }
 
   return Object.entries(byDay).map(([day, v]) => ({
     day,
-    meanCoherence: v.count ? v.total / v.count : 0,
+    meanCoherence: v.cohCount ? v.cohTotal / v.cohCount : null,
     durationSeconds: v.durationSeconds,
     meanNeuralCalm: v.calmCount ? v.calmTotal / v.calmCount : null,
-    meanRfBPM: v.rfCount ? v.rfTotal / v.rfCount : null
+    meanRfBPM: v.rfCount ? v.rfTotal / v.rfCount : null,
+    meanPhaseLock: v.plCount ? v.plTotal / v.plCount : null,
   })).sort((a, b) => a.day.localeCompare(b.day));
 }
 
@@ -817,11 +841,23 @@ function _tooltipHtml(hit) {
   if (hit.type === 'rf') {
     return `<strong>${dateLabel}</strong><br>Resonance Freq: ${hit.data.meanRfBPM.toFixed(1)} BPM`;
   }
-  // Coherence tooltip
+  if (hit.type === 'phaseLock') {
+    return `<strong>${dateLabel}</strong><br>Phase Lock: ${hit.data.meanPhaseLock.toFixed(1)}`;
+  }
+  if (hit.type === 'coherence-legacy') {
+    const mins = hit.data.durationSeconds > 0
+      ? ` &bull; ${Math.round(hit.data.durationSeconds / 60)} min`
+      : '';
+    return `<strong>${dateLabel}</strong><br>Coherence (legacy): ${hit.data.meanCoherence.toFixed(1)}${mins}`;
+  }
+  // v1.2 coherence tooltip
   const mins = hit.data.durationSeconds > 0
     ? ` &bull; ${Math.round(hit.data.durationSeconds / 60)} min`
     : '';
   let html = `<strong>${dateLabel}</strong><br>Coherence: ${hit.data.meanCoherence.toFixed(1)}${mins}`;
+  if (hit.data.meanPhaseLock !== null) {
+    html += `<br>Phase Lock: ${hit.data.meanPhaseLock.toFixed(1)}`;
+  }
   if (hit.data.meanNeuralCalm !== null) {
     html += `<br>Neural Calm: ${hit.data.meanNeuralCalm.toFixed(1)}`;
   }
