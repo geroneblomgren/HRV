@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Adaptive Closed-Loop Biofeedback
-status: unknown
-last_updated: "2026-04-04T13:36:54.528Z"
+status: in_progress
+last_updated: "2026-04-04T22:15:00.000Z"
 progress:
-  total_phases: 11
-  completed_phases: 11
-  total_plans: 24
-  completed_plans: 24
+  total_phases: 12
+  completed_phases: 12
+  total_plans: 27
+  completed_plans: 27
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 ## Current Position
 
-Phase: 12 (Adaptive Pace Controller) — IN PROGRESS
-Plan: 12-02 complete — pace controller module + BPM badge + pace persistence
-Status: Phase 12 active — Plan 02/03 complete (PACE-01, PACE-03 satisfied)
-Last activity: 2026-04-04 — 12-02 executed, closed-loop pace controller wired into practice session
+Phase: 12 (Adaptive Pace Controller) — COMPLETE
+Plan: 12-03 complete — human verification passed (all 4 PACE requirements verified)
+Status: Phase 12 complete — all PACE requirements satisfied, ready for Phase 13
+Last activity: 2026-04-04 — Live 10-min session verified pace drift (4.8→4.6 BPM), smooth audio, bound clamping
 
-Progress: [################] Phase 12 in progress (2/3 plans complete)
+Progress: [####################] Phase 12 complete (3/3 plans)
 
 ## Performance Metrics
 
@@ -47,7 +47,7 @@ Progress: [################] Phase 12 in progress (2/3 plans complete)
 
 ### Decisions
 
-- v1.2: Phase lock replaces coherence everywhere (live gauge, summary, dashboard)
+- v1.2: Phase lock ADDED alongside coherence — three live gauges (coherence, phase lock, neural calm), both series on dashboard
 - v1.2: 60s pre-session tuning phase with quick prompt UX (5 candidates at ±0.5 BPM, ~12s each)
 - v1.2: RF shifts > 0.3 BPM celebrated as progress ("improved vagal tone")
 - v1.2: Adaptive pace uses smooth drift (max ±0.01 Hz per 30s, bounded ±0.5 BPM from tuned freq)
@@ -99,5 +99,6 @@ Progress: [################] Phase 12 in progress (2/3 plans complete)
 ## Session Continuity
 
 Last session: 2026-04-04
-Stopped at: Completed 12-02-PLAN.md — pace controller module, BPM badge, pace persistence
-Resume: Begin Phase 12 Plan 03 (final plan in phase)
+Stopped at: Phase 13 context gathered — three gauges, dashboard integration decisions captured
+Resume: /gsd:plan-phase 13 — plan then execute
+Resume file: .planning/phases/13-dashboard-integration/13-CONTEXT.md
