@@ -1,66 +1,105 @@
 // js/phaseLock.js — Phase Lock Score computation
-// Combines two signals to determine if the user is breathing in sync
-// with the pacer:
+// Uses time-domain covariance between a synthetic pacer signal and the
+// actual HR tachogram over a 30-second sliding window.
 //
-// 1. Coherence (proven HeartMath formula from dsp.js) — measures whether
-//    the HR spectrum has a dominant peak. High when breathing is organized.
-//    Problem: also high during breath holding (Mayer wave dominates an
-//    otherwise empty spectrum).
+// Why covariance (not correlation or spectral methods):
+//   - Correlation normalizes away amplitude → 3 BPM Mayer wave scores
+//     the same as 12 BPM sync breathing if the shape matches
+//   - Spectral methods need long windows (128s) for frequency resolution
+//     → too slow to respond to behavior changes
+//   - Covariance preserves amplitude AND responds in 30 seconds
 //
-// 2. Amplitude factor — absolute RSA amplitude at the pacing frequency.
-//    Strong sync breathing = 10-20+ BPM. Natural HRV = 3-8 BPM.
-//    Breath holding = 1-3 BPM. This is the differentiator.
-//
-// 3. Frequency check — is the dominant peak AT the pacing frequency?
-//    Penalizes breathing at a different rate than the pacer.
-//
-// Score = coherence × amplitudeFactor × frequencyFactor
-//
-// This guarantees:
-//   Sync breathing: high coherence × high amplitude × peak at pacing = HIGH
-//   Breath holding: high coherence × LOW amplitude × peak near pacing = LOW
-//   Hyperventilating: low coherence × low amplitude × peak elsewhere = LOW
-//   Ignoring pacer: moderate coherence × moderate amplitude × peak elsewhere = LOW-MODERATE
+// Algorithm:
+//   1. Build 30s windowed tachogram from recent RR data
+//   2. Mean-subtract the tachogram
+//   3. Generate synthetic pacer sine wave at pacing frequency
+//   4. Compute covariance at lags 0-6s (baroreflex delay range)
+//   5. Best covariance estimates RSA amplitude at pacing frequency
+//   6. Score = min(100, amplitude / threshold × 100)
 //
 // Writes: AppState.phaseLockScore, AppState.phaseLockCalibrating
-// Called from: dsp.js tick() every second, AFTER spectralBuffer and coherenceScore
+// Called from: dsp.js tick() every second
 
 import { AppState } from './state.js';
-import { integrateBand, binToHz, hzToBin, FFT_SIZE, SAMPLE_RATE_HZ } from './dsp.js';
+import { cubicSplineInterpolate, SAMPLE_RATE_HZ } from './dsp.js';
 
 // ---- Constants ----
-const PEAK_HALF_BAND = 0.015;    // Hz — ±0.015 Hz around pacing freq
-const ANALYSIS_LOW_HZ = 0.04;
-const ANALYSIS_HIGH_HZ = 0.26;
-const FREQ_TOLERANCE_HZ = 0.015; // peak must be within ±0.015 Hz of pacing freq
-const AMP_THRESHOLD_BPM = 8.0;   // BPM peak-to-peak required for full amplitude factor
-                                  // Below this: factor < 1, penalizing low-amplitude states
-                                  // Natural HRV ~3-5 BPM → factor 0.38-0.63
-                                  // Sync breathing ~12-20 BPM → factor 1.0
-                                  // Breath holding ~1-3 BPM → factor 0.13-0.38
-
-// ---- Shared FFT instance (unused but kept for initPhaseLock signature) ----
-let _fft = null;
+const MIN_WINDOW_MS = 25000;    // 25s minimum data before scoring
+const WINDOW_SECONDS = 30;      // 30s analysis window
+const MAX_LAG_SEC = 6;          // check lags 0-6s for baroreflex delay
+const AMP_THRESHOLD_BPM = 8.0;  // BPM amplitude for score=100
+                                // Sync breathing: 10-20 BPM → score 100
+                                // Weak sync: 5 BPM → score 63
+                                // Mayer wave (breath hold): 1.5-3.5 BPM → score 19-44
+                                // Hyperventilating: ~0 BPM → score 0-2
 
 /**
- * Initialize the phase lock module with a shared FFT instance.
- * @param {FFT} fftInstance - the same FFT instance used by dsp.js
+ * Initialize the phase lock module.
+ * @param {FFT} fftInstance - unused, kept for call signature compat
  */
 export function initPhaseLock(fftInstance) {
-  _fft = fftInstance;
+  // No FFT needed for covariance approach
 }
 
 /**
- * Compute phase lock score.
+ * Build a windowed tachogram from the LAST windowSeconds of RR data.
+ * Returns evenly-sampled HR values (BPM) at SAMPLE_RATE_HZ.
  *
- * @param {number} [windowSeconds] - unused, kept for call signature compat
- * @param {number} [pacingFreqHz=0.0833] - current pacer frequency in Hz
- * @param {number} [sessionElapsedSec=0] - seconds since session started
- * @returns {number|null} phase lock score 0-100, or null if calibrating
+ * @param {number} windowSeconds
+ * @returns {{ samples: Float32Array, count: number }|null}
  */
-export function computePhaseLockScore(windowSeconds = 20, pacingFreqHz = 0.0833, sessionElapsedSec = 0) {
-  const psd = AppState.spectralBuffer;
-  if (!psd) {
+function buildWindowedHR(windowSeconds) {
+  const rrCount = Math.min(AppState.rrCount, 512);
+  if (rrCount < 10) return null;
+
+  const rrBuf = AppState.rrBuffer;
+  const head = AppState.rrHead;
+
+  const rrValues = [];
+  let accMs = 0;
+  for (let i = 0; i < rrCount; i++) {
+    const idx = (head - 1 - i + 512) % 512;
+    const rr = rrBuf[idx];
+    accMs += rr;
+    if (accMs > windowSeconds * 1000) break;
+    rrValues.unshift(rr);
+  }
+
+  if (accMs < MIN_WINDOW_MS || rrValues.length < 10) return null;
+
+  const n = rrValues.length;
+  const times = new Float64Array(n);
+  const hr = new Float64Array(n);
+  let t = 0;
+  for (let i = 0; i < n; i++) {
+    times[i] = t;
+    hr[i] = 60000 / rrValues[i];
+    t += rrValues[i] / 1000;
+  }
+
+  const duration = times[n - 1];
+  const sampleCount = Math.floor(duration * SAMPLE_RATE_HZ);
+  if (sampleCount < 40) return null;
+
+  const samples = new Float32Array(sampleCount);
+  for (let i = 0; i < sampleCount; i++) {
+    samples[i] = cubicSplineInterpolate(times, hr, i / SAMPLE_RATE_HZ);
+  }
+
+  return { samples, count: sampleCount };
+}
+
+/**
+ * Compute phase lock score via covariance with synthetic pacer.
+ *
+ * @param {number} [windowSeconds=30]
+ * @param {number} [pacingFreqHz=0.0833]
+ * @param {number} [sessionElapsedSec=0]
+ * @returns {number|null} 0-100, or null if calibrating
+ */
+export function computePhaseLockScore(windowSeconds = WINDOW_SECONDS, pacingFreqHz = 0.0833, sessionElapsedSec = 0) {
+  const result = buildWindowedHR(windowSeconds);
+  if (!result) {
     AppState.phaseLockCalibrating = true;
     AppState.phaseLockScore = 0;
     return null;
@@ -68,51 +107,55 @@ export function computePhaseLockScore(windowSeconds = 20, pacingFreqHz = 0.0833,
 
   AppState.phaseLockCalibrating = false;
 
-  // --- Component 1: Coherence (proven HeartMath formula, already computed) ---
-  const coherence = AppState.coherenceScore;
+  const { samples, count } = result;
 
-  // --- Component 2: Amplitude factor at pacing frequency ---
-  // Compute RSA amplitude (BPM peak-to-peak) from the PSD at the pacing freq.
-  // This is the same math as computeSpectralRSA but using the full-res PSD.
-  const pacingPower = integrateBand(psd, pacingFreqHz - PEAK_HALF_BAND, pacingFreqHz + PEAK_HALF_BAND);
-  const effectiveSamples = Math.min(FFT_SIZE, Math.floor(Math.min(sessionElapsedSec, 128) * SAMPLE_RATE_HZ));
-  const hannGain = 0.5;
-  const rmsAmplitude = Math.sqrt(2 * pacingPower) / (effectiveSamples * hannGain);
-  const peakToPeakBPM = 2 * rmsAmplitude;
+  // Mean-subtract the HR signal
+  let mean = 0;
+  for (let i = 0; i < count; i++) mean += samples[i];
+  mean /= count;
+  for (let i = 0; i < count; i++) samples[i] -= mean;
 
-  // Amplitude factor: linear ramp from 0 at 0 BPM to 1 at AMP_THRESHOLD_BPM
-  const amplitudeFactor = Math.min(1, peakToPeakBPM / AMP_THRESHOLD_BPM);
+  // Generate synthetic pacer signal
+  const pacer = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    pacer[i] = Math.sin(2 * Math.PI * pacingFreqHz * i / SAMPLE_RATE_HZ);
+  }
 
-  // --- Component 3: Frequency proximity check ---
-  // Is the dominant spectral peak at the pacing frequency?
-  const lowBin = Math.max(0, hzToBin(ANALYSIS_LOW_HZ));
-  const highBin = Math.min(psd.length - 1, hzToBin(ANALYSIS_HIGH_HZ));
-  let maxVal = -1;
-  let peakBin = lowBin;
-  for (let i = lowBin; i <= highBin; i++) {
-    if (psd[i] > maxVal) {
-      maxVal = psd[i];
-      peakBin = i;
+  // Compute covariance at lags 0 to MAX_LAG_SEC
+  // Covariance preserves amplitude (unlike correlation which normalizes it away)
+  const maxLagSamples = Math.ceil(MAX_LAG_SEC * SAMPLE_RATE_HZ);
+  const usableLength = count - maxLagSamples;
+  if (usableLength < 40) {
+    AppState.phaseLockScore = 0;
+    return 0;
+  }
+
+  let bestCov = 0;
+  let bestLag = 0;
+
+  for (let lag = 0; lag <= maxLagSamples; lag++) {
+    let cov = 0;
+    for (let i = 0; i < usableLength; i++) {
+      cov += pacer[i] * samples[i + lag];
+    }
+    cov /= usableLength;
+
+    if (Math.abs(cov) > bestCov) {
+      bestCov = Math.abs(cov);
+      bestLag = lag;
     }
   }
-  const peakFreq = binToHz(peakBin);
-  const freqError = Math.abs(peakFreq - pacingFreqHz);
 
-  let frequencyFactor;
-  if (freqError <= FREQ_TOLERANCE_HZ) {
-    frequencyFactor = 1.0;
-  } else {
-    // Linear penalty: at 0.03 Hz error → 0.55, at 0.06 Hz → 0.1, at 0.07+ Hz → 0
-    frequencyFactor = Math.max(0, 1 - (freqError - FREQ_TOLERANCE_HZ) * 18);
-  }
+  // bestCov ≈ amplitude/2 for matched frequency (from sinusoidal identity)
+  // So estimated RSA amplitude at pacing frequency = 2 × bestCov
+  const ampEstimate = 2 * bestCov;
 
-  // --- Combined score ---
-  const rawScore = coherence * amplitudeFactor * frequencyFactor;
-  const score = Math.max(0, Math.min(100, Math.round(rawScore)));
+  // Map amplitude to score: linear ramp to 100 at threshold
+  const score = Math.max(0, Math.min(100, Math.round(ampEstimate / AMP_THRESHOLD_BPM * 100)));
 
-  // Diagnostic: log components every 10 seconds for debugging
+  // Diagnostic log every 10 seconds
   if (Math.round(sessionElapsedSec) % 10 === 0) {
-    console.log(`[PhaseLock] coh=${coherence} amp=${peakToPeakBPM.toFixed(1)}BPM(f=${amplitudeFactor.toFixed(2)}) peak=${(peakFreq*60).toFixed(1)}BPM(f=${frequencyFactor.toFixed(2)}) → ${score}`);
+    console.log(`[PhaseLock] amp=${ampEstimate.toFixed(1)}BPM lag=${(bestLag/SAMPLE_RATE_HZ).toFixed(1)}s → ${score}`);
   }
 
   AppState.phaseLockScore = score;
