@@ -55,9 +55,11 @@ let _lastWaveformTime = 0;
 let _gaugeCanvas = null, _gaugeCtx = null;
 let _pacerCanvas = null, _pacerCtx = null;
 let _neuralCalmCanvas = null, _neuralCalmCtx = null;
+let _coherenceCanvas = null, _coherenceCtx = null;
 let _eegCanvas = null, _eegCtx = null;
 let _displayedScore = 0;
 let _displayedCalm = 0;
+let _displayedCoherence = 0;
 let _calmHistory = [];          // rolling window for Neural Calm smoothing
 const CALM_SMOOTH_WINDOW = 12;  // average last 12 raw values (~12 seconds at 1 update/sec)
 let _pulsePhase = 0;
@@ -430,10 +432,10 @@ function drawPhaseLockGauge() {
   const radius = Math.min(w, h) * 0.35;
   const lineWidthBase = 12;
 
-  // Calibration state — 25s warmup (needs 25s of RR data for 30s window)
+  // Calibration state — 80s warmup (needs 80s of RR data for 90s Hann window)
   if (AppState.phaseLockCalibrating) {
     const elapsed = _sessionStartTime ? (Date.now() - _sessionStartTime) / 1000 : 0;
-    const remaining = Math.max(0, Math.ceil(25 - elapsed));
+    const remaining = Math.max(0, Math.ceil(80 - elapsed));
 
     // Grey background ring
     ctx.beginPath();
@@ -451,7 +453,7 @@ function drawPhaseLockGauge() {
     ctx.fillText(`${remaining}s`, cx, cy + 14);
 
     // Progress bar below ring
-    const progress = Math.min(1, elapsed / 25);
+    const progress = Math.min(1, elapsed / 80);
     const barW = radius * 1.2;
     const barH = 3;
     const barX = cx - barW / 2;
@@ -675,6 +677,107 @@ function drawNeuralCalmGauge() {
   ctx.fillText(CALM_LABELS[zone], cx, cy + radius * 0.3);
 }
 
+// ---- Coherence Gauge Renderer ----
+
+const COHERENCE_COLOR = '#fb923c';
+const COHERENCE_DIM = 'rgba(251, 146, 60, 0.15)';
+
+function drawCoherenceGauge() {
+  if (!_coherenceCtx) return;
+
+  const canvas = _coherenceCanvas;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const ctx = _coherenceCtx;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const radius = Math.min(w, h) * 0.35;
+  const lineWidthBase = 12;
+
+  // Calibration state — mirrors phase lock calibration display (80s warmup)
+  if (AppState.calibrating) {
+    const elapsed = _sessionStartTime ? (Date.now() - _sessionStartTime) / 1000 : 0;
+    const remaining = Math.max(0, Math.ceil(80 - elapsed));
+
+    // Grey background ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = lineWidthBase;
+    ctx.stroke();
+
+    // Calibrating text
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.font = `${Math.round(radius * 0.22)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Calibrating...', cx, cy - 10);
+    ctx.fillText(`${remaining}s`, cx, cy + 14);
+
+    // Progress bar below ring
+    const progress = Math.min(1, elapsed / 80);
+    const barW = radius * 1.2;
+    const barH = 3;
+    const barX = cx - barW / 2;
+    const barY = cy + radius + 20;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = COHERENCE_COLOR;
+    ctx.fillRect(barX, barY, barW * progress, barH);
+
+    return;
+  }
+
+  // Smooth interpolation at 0.08 alpha (matching original coherence gauge)
+  _displayedCoherence += (AppState.coherenceScore - _displayedCoherence) * 0.08;
+
+  const zone = getZone(AppState.coherenceScore);
+
+  // Background ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = COHERENCE_DIM;
+  ctx.lineWidth = lineWidthBase;
+  ctx.stroke();
+
+  // Filled arc (sweep from -PI/2, clockwise)
+  const sweep = (_displayedCoherence / 100) * Math.PI * 2;
+  const startAngle = -Math.PI / 2;
+
+  // Pulse animation in locked zone
+  let currentLineWidth = lineWidthBase;
+  if (zone === 'locked') {
+    currentLineWidth = lineWidthBase + Math.sin(_pulsePhase) * 2.5;
+  }
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, startAngle, startAngle + sweep);
+  ctx.strokeStyle = COHERENCE_COLOR;
+  ctx.lineWidth = currentLineWidth;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Score number
+  ctx.fillStyle = COHERENCE_COLOR;
+  ctx.font = `bold ${Math.round(radius * 0.55)}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(Math.round(_displayedCoherence), cx, cy - 6);
+
+  // Zone label
+  ctx.font = `${Math.round(radius * 0.2)}px system-ui, sans-serif`;
+  ctx.fillText(ZONE_LABELS[zone], cx, cy + radius * 0.3);
+
+  // "Coherence" label below zone
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.font = `${Math.round(radius * 0.18)}px system-ui, sans-serif`;
+  ctx.fillText('Coherence', cx, cy + radius * 0.3 + Math.round(radius * 0.22));
+}
+
 // ---- EEG Alpha Power Bar ----
 // Replaces the raw scrolling waveform with a calm, slow-moving alpha power meter.
 // Shows current alpha power as a horizontal fill bar — serene to watch during breathing.
@@ -804,7 +907,7 @@ function drawBreathingCircle() {
   _labelOpacity = Math.min(1.0, _labelOpacity + 0.04);
 
   ctx.fillStyle = `rgba(232, 232, 232, ${_labelOpacity})`;
-  ctx.font = `${Math.round(dim * 0.05)}px system-ui, sans-serif`;
+  ctx.font = `${Math.round(dim * 0.04)}px system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(isInhale ? 'Inhale' : 'Exhale', cx, cy - dim * 0.03);
@@ -826,7 +929,7 @@ function drawBreathingCircle() {
   const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
 
   ctx.fillStyle = 'rgba(232, 232, 232, 0.7)';
-  ctx.font = `${Math.round(dim * 0.04)}px monospace`;
+  ctx.font = `${Math.round(dim * 0.03)}px monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(timeStr, cx, cy + dim * 0.04);
@@ -836,13 +939,13 @@ function drawBreathingCircle() {
     const bpm = (AppState.pacingFreq * 60).toFixed(1);
     const isAtBound = AppState.pacerAtBound;
     const badgeColor = isAtBound ? '#f59e0b' : '#14b8a6';  // amber when clamped, teal normally
-    const badgeFontSize = Math.round(dim * 0.055);
+    const badgeFontSize = Math.round(dim * 0.04);
 
     ctx.font = `bold ${badgeFontSize}px monospace`;
     ctx.fillStyle = badgeColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${bpm}`, cx, cy + dim * 0.13);
+    ctx.fillText(`${bpm}`, cx, cy + dim * 0.08);
   }
 }
 
@@ -855,6 +958,7 @@ function renderLoop() {
   drawSpectrum();
   drawPhaseLockGauge();
   drawNeuralCalmGauge();
+  drawCoherenceGauge();
   drawEEGWaveform();
 }
 
@@ -871,18 +975,20 @@ function renderLoop() {
  * @param {HTMLCanvasElement} [neuralCalmCanvas] - Optional Neural Calm gauge canvas
  * @param {HTMLCanvasElement} [eegCanvas] - Optional EEG waveform canvas
  */
-export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas, sessionStartTime, sessionDuration = 0, neuralCalmCanvas, eegCanvas) {
+export function startRendering(waveformCanvas, spectrumCanvas, gaugeCanvas, pacerCanvas, sessionStartTime, sessionDuration = 0, neuralCalmCanvas, eegCanvas, coherenceCanvas) {
   _waveformCanvas = waveformCanvas;
   _spectrumCanvas = spectrumCanvas;
   _gaugeCanvas = gaugeCanvas;
   _pacerCanvas = pacerCanvas;
   _neuralCalmCanvas = neuralCalmCanvas || null;
   _eegCanvas = eegCanvas || null;
+  _coherenceCanvas = coherenceCanvas || null;
   _sessionStartTime = sessionStartTime;
   _sessionDuration = sessionDuration;
 
   _displayedScore = 0;
   _displayedCalm = 0;
+  _displayedCoherence = 0;
   _calmHistory = [];
   _displayedAlpha = 0;
   _pulsePhase = 0;
@@ -916,6 +1022,7 @@ function _setupAllCanvases() {
   if (_pacerCanvas) _pacerCtx = setupCanvas(_pacerCanvas);
   _neuralCalmCtx = _neuralCalmCanvas ? setupCanvas(_neuralCalmCanvas) : null;
   _eegCtx = _eegCanvas ? setupCanvas(_eegCanvas) : null;
+  _coherenceCtx = _coherenceCanvas ? setupCanvas(_coherenceCanvas) : null;
 }
 
 // Re-setup canvases on window resize
@@ -952,6 +1059,11 @@ export function stopRendering() {
   if (_eegCtx && _eegCanvas) {
     _eegCtx.clearRect(0, 0, _eegCanvas.width / dpr, _eegCanvas.height / dpr);
   }
+  if (_coherenceCtx && _coherenceCanvas) {
+    _coherenceCtx.clearRect(0, 0, _coherenceCanvas.width / dpr, _coherenceCanvas.height / dpr);
+  }
+  _coherenceCtx = null;
+  _coherenceCanvas = null;
 }
 
 // ---- Tuning Ring Renderer (Phase 10) ----
