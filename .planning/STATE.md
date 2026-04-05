@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 
 ## Current Position
 
-Phase: 12 (Adaptive Pace Controller) — COMPLETE
-Plan: 12-03 complete — human verification passed (all 4 PACE requirements verified)
-Status: Phase 12 complete — all PACE requirements satisfied, ready for Phase 13
-Last activity: 2026-04-04 — Live 10-min session verified pace drift (4.8→4.6 BPM), smooth audio, bound clamping
+Phase: 13 (Dashboard Integration) — IN PROGRESS
+Plan: 13-01 complete — coherence ring gauge + meanCoherence persistence to IndexedDB
+Status: 13-01 done — 1/3 plans complete in Phase 13
+Last activity: 2026-04-04 — Coherence gauge live in practice sessions, meanCoherence saved to every v1.2 session
 
-Progress: [####################] Phase 12 complete (3/3 plans)
+Progress: [####################] Phase 13 in progress (1/3 plans)
 
 ## Performance Metrics
 
@@ -73,6 +73,9 @@ Progress: [####################] Phase 12 complete (3/3 plans)
 - [Phase 12]: pacingFreqTuned anchors the tuned RF; pacingFreq drifts around it; no stopPacer/startPacer on tempo change
 - [Phase 12]: binToHz/hzToBin imported from dsp.js (already exported); findPeakBin inlined as _findPSDPeak in paceController.js per research recommendation
 - [Phase 12]: summary-pace reuses summary-hr-source CSS class — consistent styling with zero new CSS
+- [13-01]: Coherence gauge has no "Connect Muse-S" placeholder — coherence derives from RR data, always available
+- [13-01]: meanCoherence saved unconditionally (null if no data) — uniform session schema for all v1.2 records
+- [13-01]: Three-gauge layout: neural calm (left), coherence (center-bottom), phase lock (right)
 
 ### Roadmap Structure
 
@@ -99,6 +102,6 @@ Progress: [####################] Phase 12 complete (3/3 plans)
 ## Session Continuity
 
 Last session: 2026-04-04
-Stopped at: Phase 13 context gathered — three gauges, dashboard integration decisions captured
-Resume: /gsd:plan-phase 13 — plan then execute
-Resume file: .planning/phases/13-dashboard-integration/13-CONTEXT.md
+Stopped at: Completed 13-01-PLAN.md — coherence gauge + meanCoherence persistence
+Resume: /gsd:execute-phase 13 — execute 13-02 (phase lock dashboard series)
+Resume file: .planning/phases/13-dashboard-integration/13-02-PLAN.md
