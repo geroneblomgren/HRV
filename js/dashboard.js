@@ -24,6 +24,8 @@ let _hrvData      = [];  // [{day: 'YYYY-MM-DD', hrv: number}]
 let _sessionData  = [];  // [{day: 'YYYY-MM-DD', meanCoherence: number|null, meanPhaseLock: number|null, durationSeconds: number, meanNeuralCalm: number|null, meanRfBPM: number|null}]
 let _rangeDays    = 30;  // currently selected range
 let _hitTargets   = [];  // [{x, y, type: 'hrv'|'coherence'|'coherence-legacy'|'phaseLock'|'calm'|'rf', data: {...}}] for tooltip hit detection
+const _seriesVisible = { hrv: true, coherence: true, phaseLock: true, calm: true, rf: true };
+let _legendBounds = [];  // [{key, x, y, w, h}] for legend click hit detection
 
 // ---------------------------------------------------------------------------
 // DOM helpers
@@ -542,10 +544,11 @@ function _drawChart() {
 
   {
     const legendItems = [
-      { color: '#14b8a6', label: 'HRV' },
-      { color: '#fb923c', label: 'Coherence' },
-      { color: '#3b82f6', label: 'Neural Calm' },
-      { color: '#a855f7', label: 'Resonance Freq' }
+      { color: '#14b8a6', label: 'HRV',           key: 'hrv' },
+      { color: '#fb923c', label: 'Coherence',      key: 'coherence' },
+      { color: '#22c55e', label: 'Phase Lock',     key: 'phaseLock' },
+      { color: '#3b82f6', label: 'Neural Calm',    key: 'calm' },
+      { color: '#a855f7', label: 'Resonance Freq', key: 'rf' }
     ];
     const squareSize = 8;
     const gapSq      = 4;   // gap between square and label
@@ -565,19 +568,27 @@ function _drawChart() {
     let lx = (chartLeft + chartRight) / 2 - totalW / 2;
     const ly = PAD.top - 10;
 
+    _legendBounds = [];
     for (const item of legendItems) {
+      const itemStartX = lx;
+      const alpha = _seriesVisible[item.key] ? 1.0 : 0.35;
+      _ctx.globalAlpha = alpha;
       _ctx.fillStyle = item.color;
       _ctx.fillRect(lx, ly - squareSize + 1, squareSize, squareSize);
       lx += squareSize + gapSq;
       _ctx.fillStyle = '#ccc';
+      const labelW = _ctx.measureText(item.label).width;
       _ctx.fillText(item.label, lx, ly);
-      lx += _ctx.measureText(item.label).width + gapItem;
+      _ctx.globalAlpha = 1.0;
+      const itemW = squareSize + gapSq + labelW;
+      _legendBounds.push({ key: item.key, x: itemStartX, y: ly - squareSize, w: itemW, h: squareSize + 4 });
+      lx += labelW + gapItem;
     }
   }
 
   // ---- HRV teal line (smooth via quadratic curves through midpoints) ----
 
-  if (hrvSlice.length > 0) {
+  if (_seriesVisible.hrv && hrvSlice.length > 0) {
     _ctx.strokeStyle = '#14b8a6';
     _ctx.lineWidth   = 2;
     _ctx.lineJoin    = 'round';
@@ -604,93 +615,166 @@ function _drawChart() {
     }
   }
 
-  // ---- Coherence dots (purple, practice days only) ----
-  if (sessSlice.length > 0) {
-    for (const s of sessSlice) {
+  // ---- Coherence dots: two-pass legacy/v1.2 split ----
+  if (_seriesVisible.coherence) {
+    // Pass 1 — Legacy sessions (no meanPhaseLock): hollow dimmed circles
+    const legacySess = sessSlice.filter(s => s.meanPhaseLock === null && s.meanCoherence !== null);
+    _ctx.globalAlpha = 0.45;
+    for (const s of legacySess) {
       const x = xPx(s.day);
       const y = cohYPx(s.meanCoherence);
-
-      // Clip to chart area
       if (x < chartLeft || x > chartRight) continue;
+      _ctx.beginPath();
+      _ctx.arc(x, y, 5, 0, Math.PI * 2);
+      _ctx.strokeStyle = '#fb923c';
+      _ctx.lineWidth = 1.5;
+      _ctx.stroke();  // hollow — no fill
+      _hitTargets.push({ x, y, type: 'coherence-legacy', data: s });
+    }
+    _ctx.globalAlpha = 1.0;
 
+    // Pass 2 — v1.2 sessions (has meanPhaseLock): solid filled circles
+    const v12Sess = sessSlice.filter(s => s.meanPhaseLock !== null && s.meanCoherence !== null);
+    for (const s of v12Sess) {
+      const x = xPx(s.day);
+      const y = cohYPx(s.meanCoherence);
+      if (x < chartLeft || x > chartRight) continue;
       _ctx.beginPath();
       _ctx.fillStyle = '#fb923c';
       _ctx.arc(x, y, 5, 0, Math.PI * 2);
       _ctx.fill();
-
-      // Outline for visibility
       _ctx.strokeStyle = '#ea580c';
-      _ctx.lineWidth   = 1;
+      _ctx.lineWidth = 1;
       _ctx.stroke();
-
       _hitTargets.push({ x, y, type: 'coherence', data: s });
     }
   }
 
   // ---- Neural Calm blue trend line (broken where no Muse-S data) ----
-  const calmSlice = sessSlice.filter(s => s.meanNeuralCalm !== null);
+  if (_seriesVisible.calm) {
+    const calmSlice = sessSlice.filter(s => s.meanNeuralCalm !== null);
 
-  if (calmSlice.length > 0) {
-    _ctx.globalAlpha = 0.85;
-    _ctx.strokeStyle = '#3b82f6';
-    _ctx.lineWidth   = 1.5;
-    _ctx.lineJoin    = 'round';
+    if (calmSlice.length > 0) {
+      _ctx.globalAlpha = 0.85;
+      _ctx.strokeStyle = '#3b82f6';
+      _ctx.lineWidth   = 1.5;
+      _ctx.lineJoin    = 'round';
 
-    const calmPts = calmSlice.map(s => ({
-      x: xPx(s.day),
-      y: cohYPx(s.meanNeuralCalm),
-      data: s
-    }));
+      const calmPts = calmSlice.map(s => ({
+        x: xPx(s.day),
+        y: cohYPx(s.meanNeuralCalm),
+        data: s
+      }));
 
-    // Draw broken line: start new sub-path whenever there is a gap between days
-    _ctx.beginPath();
-    let pathOpen = false;
-    for (let i = 0; i < calmPts.length; i++) {
-      const pt = calmPts[i];
-      if (!pathOpen) {
-        _ctx.moveTo(pt.x, pt.y);
-        pathOpen = true;
-      } else {
-        const prev = calmPts[i - 1];
-        // Check for a day gap between consecutive calm points
-        const prevDay = new Date(prev.data.day).getTime();
-        const currDay = new Date(pt.data.day).getTime();
-        const dayGap  = (currDay - prevDay) / (24 * 60 * 60 * 1000);
-        if (dayGap > 1) {
-          // Gap — start new sub-path
-          _ctx.stroke();
-          _ctx.beginPath();
+      // Draw broken line: start new sub-path whenever there is a gap between days
+      _ctx.beginPath();
+      let pathOpen = false;
+      for (let i = 0; i < calmPts.length; i++) {
+        const pt = calmPts[i];
+        if (!pathOpen) {
           _ctx.moveTo(pt.x, pt.y);
+          pathOpen = true;
         } else {
-          // Consecutive — smooth quadratic through midpoint
-          const mx = (prev.x + pt.x) / 2;
-          const my = (prev.y + pt.y) / 2;
-          _ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+          const prev = calmPts[i - 1];
+          // Check for a day gap between consecutive calm points
+          const prevDay = new Date(prev.data.day).getTime();
+          const currDay = new Date(pt.data.day).getTime();
+          const dayGap  = (currDay - prevDay) / (24 * 60 * 60 * 1000);
+          if (dayGap > 1) {
+            // Gap — start new sub-path
+            _ctx.stroke();
+            _ctx.beginPath();
+            _ctx.moveTo(pt.x, pt.y);
+          } else {
+            // Consecutive — smooth quadratic through midpoint
+            const mx = (prev.x + pt.x) / 2;
+            const my = (prev.y + pt.y) / 2;
+            _ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+          }
         }
       }
+      // Draw to last point
+      const lastCalm = calmPts[calmPts.length - 1];
+      _ctx.lineTo(lastCalm.x, lastCalm.y);
+      _ctx.stroke();
+
+      _ctx.globalAlpha = 1.0;
+
+      // Small circle markers + hit targets
+      for (const pt of calmPts) {
+        if (pt.x < chartLeft || pt.x > chartRight) continue;
+        _ctx.beginPath();
+        _ctx.fillStyle = '#3b82f6';
+        _ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        _ctx.fill();
+        _hitTargets.push({ x: pt.x, y: pt.y, type: 'calm', data: pt.data });
+      }
     }
-    // Draw to last point
-    const lastCalm = calmPts[calmPts.length - 1];
-    _ctx.lineTo(lastCalm.x, lastCalm.y);
-    _ctx.stroke();
+  }
 
-    _ctx.globalAlpha = 1.0;
+  // ---- Phase Lock green trend line (broken where no v1.2 data) ----
+  if (_seriesVisible.phaseLock) {
+    const plSlice = sessSlice.filter(s => s.meanPhaseLock !== null);
 
-    // Small circle markers + hit targets
-    for (const pt of calmPts) {
-      if (pt.x < chartLeft || pt.x > chartRight) continue;
+    if (plSlice.length > 0) {
+      _ctx.globalAlpha = 0.9;
+      _ctx.strokeStyle = '#22c55e';
+      _ctx.lineWidth   = 2;
+      _ctx.lineJoin    = 'round';
+
+      const plPts = plSlice.map(s => ({
+        x: xPx(s.day),
+        y: cohYPx(s.meanPhaseLock),
+        data: s
+      }));
+
+      // Draw broken line: start new sub-path whenever there is a gap > 1 day
       _ctx.beginPath();
-      _ctx.fillStyle = '#3b82f6';
-      _ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
-      _ctx.fill();
-      _hitTargets.push({ x: pt.x, y: pt.y, type: 'calm', data: pt.data });
+      let plPathOpen = false;
+      for (let i = 0; i < plPts.length; i++) {
+        const pt = plPts[i];
+        if (!plPathOpen) {
+          _ctx.moveTo(pt.x, pt.y);
+          plPathOpen = true;
+        } else {
+          const prev = plPts[i - 1];
+          const prevDay = new Date(prev.data.day).getTime();
+          const currDay = new Date(pt.data.day).getTime();
+          const dayGap  = (currDay - prevDay) / (24 * 60 * 60 * 1000);
+          if (dayGap > 1) {
+            _ctx.stroke();
+            _ctx.beginPath();
+            _ctx.moveTo(pt.x, pt.y);
+          } else {
+            const mx = (prev.x + pt.x) / 2;
+            const my = (prev.y + pt.y) / 2;
+            _ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
+          }
+        }
+      }
+      // Draw to last point
+      const lastPl = plPts[plPts.length - 1];
+      _ctx.lineTo(lastPl.x, lastPl.y);
+      _ctx.stroke();
+
+      _ctx.globalAlpha = 1.0;
+
+      // Small circle markers + hit targets
+      for (const pt of plPts) {
+        if (pt.x < chartLeft || pt.x > chartRight) continue;
+        _ctx.beginPath();
+        _ctx.fillStyle = '#22c55e';
+        _ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+        _ctx.fill();
+        _hitTargets.push({ x: pt.x, y: pt.y, type: 'phaseLock', data: pt.data });
+      }
     }
   }
 
   // ---- RF (Resonance Frequency) purple dashed trend line ----
   const rfSlice = sessSlice.filter(s => s.meanRfBPM !== null);
 
-  if (rfSlice.length > 0) {
+  if (_seriesVisible.rf && rfSlice.length > 0) {
     // Compute RF Y-axis range
     const rfValues = rfSlice.map(s => s.meanRfBPM);
     let rfMin = Math.min(...rfValues);
@@ -777,8 +861,9 @@ function _drawChart() {
     }
   }
 
-  // ---- Wire tooltip (only once) ----
+  // ---- Wire tooltip and legend (only once each) ----
   _wireTooltip();
+  _wireLegend();
 }
 
 // ---------------------------------------------------------------------------
@@ -799,6 +884,10 @@ function _wireTooltip() {
     const mx   = e.clientX - rect.left;
     const my   = e.clientY - rect.top;
 
+    // Check if hovering over legend item — change cursor to pointer
+    const overLegend = _legendBounds.some(b => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h);
+    _canvas.style.cursor = overLegend ? 'pointer' : 'default';
+
     const hit = _findNearest(mx, my, 15);
     if (hit) {
       tooltip.style.display = 'block';
@@ -812,6 +901,31 @@ function _wireTooltip() {
 
   _canvas.addEventListener('mouseleave', () => {
     if (tooltip) tooltip.style.display = 'none';
+    _canvas.style.cursor = 'default';
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Legend click toggle
+// ---------------------------------------------------------------------------
+
+let _legendWired = false;
+
+function _wireLegend() {
+  if (_legendWired || !_canvas) return;
+  _legendWired = true;
+
+  _canvas.addEventListener('click', (e) => {
+    const rect = _canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    for (const b of _legendBounds) {
+      if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+        _seriesVisible[b.key] = !_seriesVisible[b.key];
+        _drawChart();
+        break;
+      }
+    }
   });
 }
 
