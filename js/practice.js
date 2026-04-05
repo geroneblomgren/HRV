@@ -5,7 +5,7 @@
 
 import { AppState, subscribe, unsubscribe } from './state.js';
 import { initAudio, startPacer, stopPacer, playChime, setVolume } from './audio.js';
-import { initDSP, tick } from './dsp.js';
+import { initDSP, tick, computeSpectralRSA } from './dsp.js';
 import { startRendering, stopRendering, startTuningRenderer, stopTuningRenderer } from './renderer.js';
 import { saveSession } from './storage.js';
 import { startTuning, stopTuning } from './tuning.js';
@@ -18,6 +18,7 @@ let _sessionDurationMs = 0;      // selected duration in ms
 let _dspInterval = null;         // setInterval handle (1s DSP tick)
 let _phaseLockTrace = [];        // array of phase lock scores (1 per second)
 let _neuralCalmTrace = [];       // array of Neural Calm scores (1 per second, Muse-S only)
+let _coherenceTrace = [];        // array of coherence scores (1 per second, always computed)
 let _hrTrace = [];               // array of HR values (1 per second)
 let _hrvTrace = [];              // array of RMSSD values (1 per second)
 let _paceTrace = [];             // array of pacingFreq values in Hz (1 per second)
@@ -62,6 +63,7 @@ export async function startPractice() {
   _pausedForReconnect = false;
   _phaseLockTrace = [];
   _neuralCalmTrace = [];
+  _coherenceTrace = [];
   _hrTrace = [];
   _hrvTrace = [];
   _paceTrace = [];
@@ -183,6 +185,7 @@ export async function startPractice() {
   const pacerCanvas = _getEl('practice-pacer-canvas');
   const neuralCalmCanvas = _getEl('practice-neural-calm-gauge-canvas');
   const eegCanvas = _getEl('practice-eeg-waveform-canvas');
+  const coherenceCanvas = _getEl('practice-coherence-gauge-canvas');
 
   // Start renderer in countdown mode (sessionDuration > 0)
   startRendering(
@@ -193,7 +196,8 @@ export async function startPractice() {
     _sessionStart,
     _selectedDuration * 60,
     neuralCalmCanvas,
-    eegCanvas
+    eegCanvas,
+    coherenceCanvas
   );
 
   // Start pacer audio at tuned resonance frequency
@@ -205,6 +209,7 @@ export async function startPractice() {
     tick(elapsed);
     paceControllerTick(elapsed);
     _phaseLockTrace.push(AppState.phaseLockScore);
+    _coherenceTrace.push(AppState.coherenceScore);
     _hrTrace.push(AppState.currentHR);
     _hrvTrace.push(_computeCurrentRMSSD());
     if (AppState.museConnected) _neuralCalmTrace.push(AppState.neuralCalm);
@@ -397,6 +402,13 @@ function _computeSummary() {
     timeInHighCalm = calmTrace.filter(v => v >= 75).length; // seconds above threshold
   }
 
+  // Coherence summary (always computed from RR data, no Muse-S required)
+  const cohTrace = _coherenceTrace.slice();
+  let meanCoherence = null;
+  if (cohTrace.length > 0) {
+    meanCoherence = Math.round(cohTrace.reduce((a, v) => a + v, 0) / cohTrace.length);
+  }
+
   const hrTraceOut = _hrTrace.slice();
   const hrvTraceOut = _hrvTrace.slice();
 
@@ -406,7 +418,12 @@ function _computeSummary() {
     ? _paceTrace[_paceTrace.length - 1] * 60
     : AppState.pacingFreq * 60;
 
-  return { durationSeconds, mean, peak, timeInHigh, trace, meanCalm, peakCalm, timeInHighCalm, calmTrace, hrTrace: hrTraceOut, hrvTrace: hrvTraceOut, tunedBPM, settledBPM, paceTrace: _paceTrace.slice() };
+  // RSA amplitude — spectral measure of how strongly the heart responds to
+  // breathing at the pacing frequency. Tracks training adaptation over weeks.
+  // Uses the full session duration (up to 128s) for best spectral resolution.
+  const rsaAmplitude = computeSpectralRSA(Math.min(durationSeconds, 128), AppState.pacingFreq);
+
+  return { durationSeconds, mean, peak, timeInHigh, trace, meanCalm, peakCalm, timeInHighCalm, calmTrace, meanCoherence, hrTrace: hrTraceOut, hrvTrace: hrvTraceOut, tunedBPM, settledBPM, paceTrace: _paceTrace.slice(), rsaAmplitude };
 }
 
 /**
@@ -477,6 +494,16 @@ function _showSummary(summary) {
 
   const lockedInEl = _getEl('summary-locked-in');
   if (lockedInEl) lockedInEl.textContent = _formatTime(summary.timeInHigh);
+
+  // RSA amplitude (training adaptation metric)
+  const rsaSection = _getEl('summary-rsa-section');
+  if (rsaSection && summary.rsaAmplitude > 0) {
+    rsaSection.style.display = '';
+    const rsaEl = _getEl('summary-rsa');
+    if (rsaEl) rsaEl.textContent = summary.rsaAmplitude.toFixed(1);
+  } else if (rsaSection) {
+    rsaSection.style.display = 'none';
+  }
 
   // Neural Calm section (only when Muse was used)
   const calmSection = _getEl('summary-neural-calm-section');
@@ -670,6 +697,7 @@ async function _saveSession(summary) {
       timeLockedIn: summary.timeInHigh,
       phaseLockTrace: summary.trace,
       hrSource: AppState.hrSourceLabel || 'unknown',
+      rsaAmplitude: summary.rsaAmplitude,
       // Tuning data (Phase 10)
       ...(AppState.tuningSelectedFreqBPM > 0 ? {
         tuningFreqHz: AppState.tuningSelectedFreqBPM / 60,
@@ -679,6 +707,7 @@ async function _saveSession(summary) {
       tunedBPM: summary.tunedBPM,
       settledBPM: summary.settledBPM,
       paceTrace: summary.paceTrace,
+      meanCoherence: summary.meanCoherence,
       ...(summary.meanCalm !== null ? {
         meanNeuralCalm: summary.meanCalm,
         peakNeuralCalm: summary.peakCalm,
