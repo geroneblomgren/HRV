@@ -164,7 +164,7 @@ Plans:
 - [x] **Phase 10: Resonance Tuning + Mapping** - Pre-session RF identification and longitudinal trend tracking (completed 2026-04-04)
 - [x] **Phase 11: Phase Lock Engine** - Hilbert transform phase computation and score replacing coherence (completed 2026-04-04)
 - [ ] **Phase 12: Adaptive Pace Controller** - Closed-loop pace micro-adjustment driven by phase lock
-- [ ] **Phase 13: Dashboard Integration** - Phase lock and RF trends on recovery dashboard with legacy labeling
+- [ ] **Phase 13: Dashboard Integration** - Restore coherence gauge to live session, add phase lock + RF trends to dashboard, legacy labeling
 
 ## Phase Details
 
@@ -206,13 +206,14 @@ Plans:
 **Plans**: TBD
 
 ### Phase 13: Dashboard Integration
-**Goal**: The recovery dashboard reflects the v1.2 metrics fully — phase lock replaces the coherence trend line, the RF trend line appears as an additional series alongside HRV, and all old coherence-based sessions remain visible with clear legacy labeling so historical data is never lost.
+**Goal**: The live session UI shows three ring gauges (coherence, phase lock, neural calm) so all biofeedback metrics are visible during practice. The recovery dashboard reflects v1.2 metrics fully — phase lock and coherence appear as separate trend series alongside HRV and RF, old coherence-only sessions are labeled as legacy, and historical data is never lost.
 **Depends on**: Phase 10, Phase 11
 **Requirements**: DASH-06, DASH-07, DASH-08
 **Success Criteria** (what must be TRUE):
-  1. The recovery dashboard displays a phase lock trend line where the coherence line was — new sessions show phase lock scores and old coherence sessions show their scores labeled "(legacy)" in a visually distinct style
-  2. A resonance frequency trend line appears on the dashboard alongside the HRV and phase lock lines — all three are legible on the same chart with a clear legend
-  3. Hovering over any data point shows a tooltip that correctly identifies the metric type — "Phase Lock: 78" for new sessions, "Coherence (legacy): 62" for old sessions
+  1. During a live practice session, three ring gauges are visible: Phase Lock (primary), Coherence (restored from v1.0), and Neural Calm (when Muse-S connected) — each with its own label, color, and zone thresholds
+  2. The recovery dashboard displays both a phase lock trend line and a coherence trend line as separate series — new v1.2 sessions show both metrics, old sessions show coherence only with a dimmed/hollow style and "(legacy)" label
+  3. A resonance frequency trend line appears on the dashboard alongside HRV, phase lock, and coherence — all series are legible on the same chart with a clear legend
+  4. Hovering over any data point shows a tooltip that correctly identifies the metric type — "Phase Lock: 78", "Coherence: 62", or "Coherence (legacy): 62" for old sessions
 **Plans**: TBD
 
 ## Progress
