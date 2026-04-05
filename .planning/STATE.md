@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-04-04)
 ## Current Position
 
 Phase: 13 (Dashboard Integration) — IN PROGRESS
-Plan: 13-01 complete — coherence ring gauge + meanCoherence persistence to IndexedDB
-Status: 13-01 done — 1/3 plans complete in Phase 13
-Last activity: 2026-04-04 — Coherence gauge live in practice sessions, meanCoherence saved to every v1.2 session
+Plan: 13-02 complete — phase lock dashboard series, legacy coherence split, clickable legend
+Status: 13-02 done — 2/3 plans complete in Phase 13
+Last activity: 2026-04-05 — Phase lock green trend line on dashboard, 6 metric cards, legacy coherence distinction
 
-Progress: [####################] Phase 13 in progress (1/3 plans)
+Progress: [####################] Phase 13 in progress (2/3 plans)
 
 ## Performance Metrics
 
@@ -76,6 +76,9 @@ Progress: [####################] Phase 13 in progress (1/3 plans)
 - [13-01]: Coherence gauge has no "Connect Muse-S" placeholder — coherence derives from RR data, always available
 - [13-01]: meanCoherence saved unconditionally (null if no data) — uniform session schema for all v1.2 records
 - [13-01]: Three-gauge layout: neural calm (left), coherence (center-bottom), phase lock (right)
+- [13-02]: _seriesVisible const object at module level — persists across redraws, toggled by legend clicks
+- [13-02]: Legacy session detection uses meanPhaseLock === null — aggregation normalizes to null, not undefined
+- [13-02]: Phase lock Y-axis reuses cohYPx() (shared 0-100 right axis) — same scale as coherence
 
 ### Roadmap Structure
 
@@ -101,7 +104,7 @@ Progress: [####################] Phase 13 in progress (1/3 plans)
 
 ## Session Continuity
 
-Last session: 2026-04-04
-Stopped at: Completed 13-01-PLAN.md — coherence gauge + meanCoherence persistence
-Resume: /gsd:execute-phase 13 — execute 13-02 (phase lock dashboard series)
-Resume file: .planning/phases/13-dashboard-integration/13-02-PLAN.md
+Last session: 2026-04-05
+Stopped at: Completed 13-02-PLAN.md — phase lock dashboard series + clickable legend
+Resume: /gsd:execute-phase 13 — execute 13-03 (RF trend / remaining dashboard plans)
+Resume file: .planning/phases/13-dashboard-integration/13-03-PLAN.md

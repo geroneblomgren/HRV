@@ -37,8 +37,8 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 ### Dashboard Integration
 
 - [x] **DASH-06**: Phase lock trend replaces coherence trend on recovery dashboard
-- [ ] **DASH-07**: Old coherence data points display with legacy labeling
-- [ ] **DASH-08**: RF trend line appears on dashboard alongside HRV and phase lock
+- [x] **DASH-07**: Old coherence data points display with legacy labeling
+- [x] **DASH-08**: RF trend line appears on dashboard alongside HRV and phase lock
 
 ## Future Requirements
 
@@ -76,8 +76,8 @@ Requirements for Adaptive Closed-Loop Biofeedback. Each maps to roadmap phases.
 | PACE-03 | Phase 12 | Complete |
 | PACE-04 | Phase 12 | Complete |
 | DASH-06 | Phase 13 | Complete |
-| DASH-07 | Phase 13 | Pending |
-| DASH-08 | Phase 13 | Pending |
+| DASH-07 | Phase 13 | Complete |
+| DASH-08 | Phase 13 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 18 total
