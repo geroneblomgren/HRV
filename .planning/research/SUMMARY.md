@@ -1,226 +1,208 @@
 # Project Research Summary
 
-**Project:** ResonanceHRV — Real-Time HRV Biofeedback Breathing Trainer
-**Domain:** HRV biofeedback web app — Web Bluetooth, real-time spectral analysis, Web Audio API, Oura API
-**Researched:** 2026-03-21
-**Confidence:** MEDIUM-HIGH
+**Project:** ResonanceHRV v1.3 — Session Modes and Eyes-Closed Training
+**Domain:** Real-time HRV biofeedback web app (Vanilla JS, Desktop Chrome, Garmin + Muse-S BLE)
+**Researched:** 2026-04-06
+**Confidence:** HIGH for stack and architecture (direct codebase analysis + MDN verified); MEDIUM for features (competitor analysis + peer-reviewed literature); MEDIUM for some pitfall edge cases
 
 ## Executive Summary
 
-ResonanceHRV is a single-user, browser-based HRV biofeedback trainer that guides the user to discover their personal resonance frequency (the breathing rate that maximizes heart rate variability amplitude) and then trains at that frequency. The expert approach is a vanilla JS, no-build-toolchain web app using Web Bluetooth to stream RR intervals from a Garmin HRM 600 chest strap, Lomb-Scargle or FFT-based spectral analysis for real-time coherence scoring, Web Audio API for breathing pace cues, Canvas 2D for waveform rendering, and IndexedDB for session persistence. No framework, no backend, no cloud — this is the correct scope for a personal tool of this complexity.
+ResonanceHRV v1.3 adds three new capability areas to an already-working biofeedback app: a pre-sleep mode with adjustable I:E ratio breathing, a meditation mode with guided audio playback and passive HRV/EEG monitoring, and phase lock audio sonification for eyes-closed biofeedback across all modes. The existing stack (Vanilla JS, Web Audio API, Canvas, Web Bluetooth, IndexedDB, fft.js, idb) covers 90% of what v1.3 needs — no new libraries, no build tooling changes. All new capabilities are purely additive extensions of the existing architecture.
 
-The recommended build order follows strict data dependencies: AppState foundation first, then the BLE data pipeline, then signal processing (DSP engine with artifact rejection), then visualization and audio, then session logic that integrates all layers, and finally Oura API integration and the historical dashboard as a standalone module. The most important architectural decision is using Lomb-Scargle periodogram rather than FFT with resampled RR intervals — this choice prevents systematic spectral errors that would produce false coherence scores and cannot be easily swapped post-launch. The second critical decision is using the LF band power ratio (0.04–0.15 Hz) as the live coherence metric, not RMSSD, which decreases during successful resonance frequency biofeedback despite the user doing everything right.
+The recommended approach is to build v1.3 in strict dependency order: establish the session mode selector with a global session lock first, then refactor the audio routing layer to add independent GainNodes for pacer, meditation, and sonification, then implement pre-sleep mode, then meditation mode file management, then meditation mode itself, then sonification. This order matters because every new audio feature depends on the routing refactor, and every mode depends on the session mode selector's global lock. Skipping the upfront groundwork and building features in parallel will produce audio routing conflicts and session state corruption that are expensive to unwind.
 
-The key risks are front-loaded in the BLE and DSP layers: hung GATT promises during reconnect, incorrect multi-RR-interval parsing from BLE notifications, inadequate artifact rejection during large RSA swings, and insufficient spectral window length for valid LF power estimation. These are all preventable with explicit implementation strategies documented in the pitfalls research, and all of them must be solved before any coherence-dependent UI is built on top.
-
----
+The primary risks are architectural, not algorithmic. The existing audio system has a single `_masterGain` that must be refactored to support independent volume control before any new audio feature ships. The IndexedDB schema must be migrated to version 2 to add the `audioFiles` store, and this migration must preserve existing session data. The meditation mode DSP tick must branch away from phase lock computation and pace controller calls — running them during unguided breathing produces meaningless data that corrupts the session history. All three are solved problems with known approaches; the risk is execution discipline, not technical uncertainty.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The stack is lean and dependency-minimal by design: Vanilla JS ES2022+, four native browser APIs (Web Bluetooth, Web Audio, Canvas 2D, IndexedDB), and two small libraries (fft.js 4.0.4 via CDN, idb 8.0.3 via CDN). No build toolchain is needed; the app serves from `python -m http.server 8080` or `npx serve`. The most important stack constraint is Chrome desktop only — Web Bluetooth is unsupported on iOS/Safari by Apple's policy, which eliminates mobile and makes this a deliberate desktop-focused tool. See `.planning/research/STACK.md` for full details.
+The v1.3 additions require zero new libraries. The existing Web Audio API covers everything: `AudioBufferSourceNode` + `decodeAudioData` for meditation audio playback, `FileReader.readAsArrayBuffer` for user file uploads, and a persistent `OscillatorNode` with `exponentialRampToValueAtTime` for phase lock sonification. The `idb` library already in the stack handles audio blob persistence in IndexedDB. The only structural addition is exposing `getAudioContext()` from `audio.js` so `meditationAudio.js` can share the single AudioContext — a one-line change.
 
 **Core technologies:**
-- Vanilla HTML/CSS/JS (ES2022+): Application shell and all logic — no framework overhead at ~1000 lines scope
-- Web Bluetooth API (Chrome 130+): RR interval streaming from Garmin HRM 600 via GATT Heart Rate Service 0x180D/0x2A37
-- Web Audio API (Chrome 130+): Breathing pace tone synthesis with lookahead scheduler — hardware-clock precision required
-- Canvas 2D API (Chrome 130+): Real-time scrolling HR waveform at 60fps via requestAnimationFrame
-- IndexedDB (via idb 8.0.3): Session persistence — async, no size cap, stores typed arrays natively
-- fft.js 4.0.4: Radix-4 FFT for LF/HF spectral band power when FFT approach is used
+- Web Audio API (existing, extend): Three independent `GainNode` instances (bowl pacer, meditation, sonification); `AudioBufferSourceNode` for meditation playback; persistent `OscillatorNode` for sonification; `exponentialRampToValueAtTime` for click-free pitch transitions
+- File API / FileReader (browser built-in): `readAsArrayBuffer()` → `decodeAudioData()` — canonical browser pattern for user audio upload; no library needed
+- IndexedDB / idb v8.0.3 (existing, extend): Bump `DB_VERSION` to 2; add `audioFiles` object store for user-uploaded audio blobs; existing `sessions` store untouched
+- Canvas 2D API (existing, modify): Pacer circle animation must read `AppState.currentPhaseDuration` (asymmetric phases) instead of computing a symmetric half-period
 
-**Critical version/auth note:** Oura Personal Access Tokens are deprecated (removal targeted end of 2025). OAuth2 PKCE flow is mandatory from day one.
+**Critical API constraints:**
+- `AudioBufferSourceNode` is single-use — cache the decoded `AudioBuffer`, create a new source node per play
+- `decodeAudioData()` detaches its `ArrayBuffer` argument — store a copy in IndexedDB before decoding
+- `exponentialRampToValueAtTime` is mandatory for pitch transitions — linear ramps sound unnatural because hearing is logarithmic
+- `navigator.storage.persist()` must be called on first audio upload to prevent LRU eviction of the entire IndexedDB origin
+- One `AudioContext` per page is a hard browser constraint — never create a second context for meditation audio
 
 ### Expected Features
 
-The core feature set is well-established from peer-reviewed biofeedback literature and competitor analysis. The differentiating combination no existing app offers: Web Bluetooth chest-strap biofeedback + Oura overnight HRV overlay + browser-based no-install + multi-style audio pacers + resonance frequency discovery protocol. See `.planning/research/FEATURES.md` for full analysis.
+The three new modes are well-differentiated from all known competitors. No consumer or clinical app currently combines adaptive pace control with extended I:E ratios (pre-sleep), HRV + EEG passive monitoring during guided meditation in a single browser tool (meditation mode), or trend-based audio biofeedback for eyes-closed training (sonification). These are genuine market gaps.
 
-**Must have (table stakes — v1):**
-- Web Bluetooth connection to Garmin HRM 600 with status indicator and reconnection
-- RR-interval artifact rejection with biofeedback-safe thresholds (not standard HRV thresholds)
-- Real-time scrolling HR waveform (~60s window)
-- Visual breathing pacer (expanding circle, sine-wave animation)
-- Audio breathing pacer (at minimum: rising/falling pitch style)
-- Live coherence score (LF spectral ratio, rolling 120s window)
-- Discovery mode: 5 frequency blocks (6.5, 6.0, 5.5, 5.0, 4.5 BPM), 2 min each, with RSA amplitude comparison
-- Resonance frequency selection and save
-- Practice mode: 20-min guided session at saved frequency with live coherence
-- Session history: date, duration, mode, mean coherence stored in IndexedDB
+**Must have (table stakes — v1.3 launch):**
+- Session mode selector (standard / pre-sleep / meditation) with global session lock — prerequisite for all other features
+- Pre-sleep mode: adjustable I:E ratio (default 1:2), asymmetric pacer audio with correctly scaled echo subdivisions, elapsed timer only (no countdown), mode label in session record
+- Pre-sleep mode: adaptive pace controller preserves I:E ratio during period adjustments
+- Meditation mode: built-in audio playback (minimum one script — body scan), passive HRV + neural calm monitoring, post-session physiological report, bowl pacer suppressed during audio
+- Meditation mode: user-uploaded audio via File API (load from file, no caching required for MVP)
+- Phase lock sonification: trend-based tone (pitch direction encodes improving vs. degrading phase lock, updated every 5–10s), on/off toggle per session
 
-**Should have (v1.x — after core validated):**
-- Remaining audio pacer styles (volume swell, soft chimes)
-- Spectral RSA display (power spectrum chart) during Discovery mode
-- Oura Ring API integration (OAuth2 PKCE, overnight HRV pull)
-- Recovery dashboard: session coherence trend + Oura overnight HRV overlay
-- Session history view with coherence time-series chart
+**Should have (competitive differentiators):**
+- Pre-sleep adaptive controller combined with 1:2 I:E — no competitor offers this combination
+- Yoga nidra / body scan scripts purpose-built for injury recovery and sleep difficulty — unique content angle vs. generic mindfulness
+- Trend-based sonification (pitch encodes direction of change, not raw score) — per Audio Mostly 2024 research, more effective than direct mapping; no consumer app implements this
 
-**Defer (v2+):**
-- JSON/CSV data export
-- Multiple resonance frequency profiles
-- Adjustable inhale/exhale ratio (currently fixed 1:1)
+**Defer to v1.3.x / v2+:**
+- Additional built-in meditation scripts (yoga nidra, loving-kindness) — trigger: body scan validated
+- Dashboard mode-filtered trend view — trigger: enough pre-sleep sessions accumulated
+- Persistent user audio via IndexedDB ArrayBuffer caching — trigger: user re-uploads the same file repeatedly
+- Multiple I:E ratio presets (4:7:8 with pause, cyclic sigh) — trigger: clinical protocol requires it
+- Sonification volume control slider — trigger: default level found intrusive
 
-**Anti-features to deliberately exclude:** gamification, cloud sync, iOS/mobile support, camera PPG fallback, social features, RMSSD morning readiness mode.
+**Anti-features to reject regardless of user requests:**
+- Continuous raw phase lock sonification (raw score is too noisy; produces anxiety-inducing rapid pitch changes — confirmed by Audio Mostly 2024)
+- Bowl pacer active during guided meditation audio (audio collision; both streams become unusable)
+- Loading meditation audio from external URLs (CORS blocks cross-origin audio fetch; contradicts local-only architecture)
+- Second `AudioContext` for meditation audio (cannot mix audio across contexts — hard browser constraint)
+- Storing audio blobs in localStorage (5–10MB quota; a 20-minute MP3 is ~18MB)
 
 ### Architecture Approach
 
-The architecture is a flat module graph coordinated through a single Proxy-based AppState object that acts as both reactive state store and pub/sub event bus. Seven modules (ble.js, dsp.js, audio.js, renderer.js, oura.js, storage.js, state.js) plus main.js as the wiring layer — no module imports siblings directly, all communication flows through AppState. This keeps the dependency graph acyclic and makes each module independently testable with AppState stubs. See `.planning/research/ARCHITECTURE.md` for full diagram, data flow, and code patterns.
+The app follows a session-controller-as-mode-monolith pattern: each session mode is a self-contained module owning its full lifecycle (start, DSP tick, audio, rendering, summary, save). Shared services (`audio.js`, `dsp.js`, `renderer.js`, `storage.js`) are called via public APIs. v1.3 adds two new controller files (`preSleep.js`, `meditation.js`), one new audio engine (`meditationAudio.js`), and one config file (`meditationLibrary.js`). The existing `practice.js`, `discovery.js`, `dsp.js`, `phaseLock.js`, `paceController.js`, and device adapters are entirely untouched.
 
-**Major components:**
-1. AppState (state.js) — Proxy-based reactive store and pub/sub bus; single source of truth for all modules
-2. BLEService (ble.js) — GATT connection, characteristic notifications, DataView parsing, disconnect/reconnect with Promise.race timeout
-3. DSPEngine (dsp.js) — RR artifact rejection, circular buffer, Lomb-Scargle PSD (preferred) or FFT with cubic spline, coherence score
-4. AudioEngine (audio.js) — Lookahead scheduler using AudioContext.currentTime, breathing cue synthesis, three tone styles
-5. WaveformRenderer (renderer.js) — requestAnimationFrame loop, Canvas 2D draw from circular buffer, visual pacer circle animation synchronized to AudioEngine's nextCueTime
-6. OuraClient (oura.js) — OAuth2 PKCE flow, token storage, fetch overnight HRV/readiness from Oura API v2
-7. StorageService (storage.js) — IndexedDB wrapper (idb); session records written in single transaction at session end
-8. UI Panels — DOM manipulation, mode transitions (idle / discovery / practice / dashboard)
+**Component changes:**
+1. `state.js` (MODIFY) — Add `sessionMode`, `ieRatio`, `currentPhaseDuration`, `meditationPlaying/Duration/Position/AudioId`, `sonificationEnabled/Volume`, `activeSessionModule`
+2. `audio.js` (MODIFY) — Add `setIERatio()`, asymmetric scheduler, `getAudioContext()`, `startSonification()`, `updateSonification()`, `stopSonification()`, `setSonificationVolume()`, separate `_meditationGain` and `_sonificationGain` nodes
+3. `storage.js` (MODIFY) — Bump `DB_VERSION` to 2; add `audioFiles` object store; export `saveAudioFile`, `getAudioFile`, `deleteAudioFile`, `listAudioFiles`
+4. `renderer.js` (MODIFY) — Pacer circle reads `AppState.currentPhaseDuration` for asymmetric phase timing
+5. `js/preSleep.js` (NEW) — Pre-sleep session controller; I:E ratio wiring; no pace controller; saves `mode:'pre-sleep'`
+6. `js/meditation.js` (NEW) — Meditation session controller; no pacer; passive DSP tick; post-session report
+7. `js/meditationAudio.js` (NEW) — Guided audio playback engine using shared AudioContext
+8. `js/meditationLibrary.js` (NEW) — Static index of built-in audio scripts `{id, title, duration, file}`
+9. `audio/` (NEW) — Directory of built-in guided audio files served locally as MP3
+
+**Key patterns that must be followed:**
+- One AudioContext, multiple GainNodes (bowl, meditation, sonification) — never create a second AudioContext
+- AppState is the only inter-module data channel — modules never import siblings to read data
+- Call `updateSonification()` in the 1-second DSP tick, never in the 60fps rAF loop
+- Session controllers are mode monoliths — do not add `if (mode === 'x')` branches inside `practice.js`
+- Decode `AudioBuffer` once per file and cache in a module-level Map keyed by file ID
 
 ### Critical Pitfalls
 
-1. **RR resampling before FFT inflates LF power** — Use Lomb-Scargle periodogram on the unevenly-sampled RR tachogram directly. If FFT is used, acknowledge systematic overestimation and use only relative session-to-session comparisons. This decision must be made before coherence scoring is built.
+1. **No global session lock before building any mode** — Without `AppState.activeSessionModule`, switching modes with an active session runs two DSP intervals simultaneously, mixing trace data from two physiological states into one session record. Add the lock to AppState and check it in every mode start function before building any mode-specific UI.
 
-2. **RMSSD is the wrong metric for slow-breathing biofeedback** — RMSSD decreases during successful resonance frequency sessions because RSA oscillations move into the LF band (below RMSSD's sensitive frequency range). Use LF spectral power ratio as the live coherence signal. RMSSD is valid only for historical resting comparisons, never for real-time session display.
+2. **Asymmetric I:E breaks the audio scheduler and pacer circle in non-obvious ways** — Echo subdivisions use `halfPeriod / (ECHO_COUNT + 1)`, assuming 50/50 split. At 1:2, echoes cluster in the short inhale and spread too thin on the exhale. The pacer circle animation has the same hardcoded assumption. The phase lock synthetic pacer sine must also update to asymmetric timing or phase lock scores become meaningless in pre-sleep mode. Parameterize scheduler with `inhaleSeconds`/`exhaleSeconds`, not `halfPeriod`; update renderer and phase lock pacer signal together.
 
-3. **Single ectopic beat destroys HRV metrics** — Implement two-tier artifact rejection: absolute bounds (300ms–2000ms) AND relative bounds (>20% deviation from 5-beat running median). After rejection, interpolate rather than delete — deletion distorts spectral estimates. Standard 25% ectopic thresholds flag legitimate RSA swings as artifacts during deep slow breathing; use biofeedback-specific 20% threshold only.
+3. **IndexedDB migration can silently delete all session history** — The tutorial pattern of "delete and recreate object stores" during `onupgradeneeded` drops all user data. Only add new stores, never delete existing ones; guard with `if (!db.objectStoreNames.contains('audioFiles'))`; test by seeding data at v1 then loading v2 code.
 
-4. **Spectral window must be 120+ seconds for valid LF estimates** — LF band starts at 0.04 Hz; resolving it requires at least 25 seconds, but 90–120 seconds minimum for stable estimates. Show a "Calibrating" state for the first 2 minutes. A 30-second rolling window produces wildly unstable coherence scores.
+4. **Meditation DSP tick must branch — running phase lock during unguided breathing corrupts session data** — `phaseLock.js` generates a synthetic pacer sine at `AppState.pacingFreq`; during free breathing this produces meaninglessly low/random scores that get saved in the session summary. The pace controller also fires mutations on `pacingFreq`. Meditation DSP tick must skip `computePhaseLockScore()` and `paceControllerTick()` entirely and set `phaseLockScore: null`.
 
-5. **GATT reconnect promise hangs indefinitely** — Wrap every `device.gatt.connect()` in `Promise.race()` with a 10–15 second timeout. Re-register all characteristic notification listeners after successful reconnect — they are not automatically restored. Implement exponential backoff. This is a core reliability requirement, not a polish item.
+5. **Audio routing refactor must happen before any new audio feature ships** — Routing meditation audio or sonification through the existing `_masterGain` means the pacer volume slider controls all three streams simultaneously. Add `_meditationGain` and `_sonificationGain` nodes connecting directly to `ctx.destination`; expose independent volume setters. This is a prerequisite for both meditation mode and sonification.
 
-6. **Multiple RR intervals per BLE notification are routinely dropped** — The 0x2A37 characteristic can carry 0–9 RR values per notification. Parse all remaining byte pairs after the flag and HR value bytes, not just the first. Validate parsed beat count against expected (session_duration × avg_HR / 60).
-
-7. **Web Audio scheduling drift from setInterval** — Never use setInterval for breathing cue timing. Use the lookahead scheduler pattern: a 25ms setTimeout tick that looks 100ms ahead using AudioContext.currentTime and pre-schedules OscillatorNodes. This cannot be retrofitted — implement correctly from the start.
-
----
+6. **Large audio file decode blocks session start** — `decodeAudioData` on a 30-minute MP3 can take 2–5 seconds. Decoding on every session start causes a multi-second freeze. Cache the decoded `AudioBuffer` in a module-level Map keyed by file ID; decode once per file, reuse on subsequent plays.
 
 ## Implications for Roadmap
 
-Based on research, the build order is strictly determined by data dependencies. Each phase is blocked until its inputs exist. Suggested phase structure:
+Research reveals a clear dependency chain that dictates phase order. The session mode selector and audio routing refactor are infrastructure, not features — every v1.3 feature depends on them. Building them last is the most common mistake in feature-extension projects.
 
-### Phase 1: Foundation — AppState and StorageService
-**Rationale:** Every other module depends on AppState for communication. StorageService must exist before any session data can be saved. Zero external dependencies; provides the scaffolding for all later work.
-**Delivers:** Proxy-based reactive state store with pub/sub, IndexedDB session storage with date-indexed queries.
-**Addresses:** Session history (table stakes), architecture foundation
-**Avoids:** localStorage pitfall (10 MB cap, synchronous writes blocking main thread)
+### Phase 1: Session Mode Selector + Global Session Lock
+**Rationale:** Every subsequent phase depends on this. The mode selector is the entry point for pre-sleep and meditation. The global session lock (`AppState.activeSessionModule`) prevents the most critical pitfall (state accumulation from overlapping sessions) and must exist before any mode is coded. The full UI state machine (`{mode} × {view}` = 9 combinations) should be defined here with a single `_updatePracticeView(mode, view)` function — not discovered incrementally as each mode ships.
+**Delivers:** Mode selector UI (standard / pre-sleep / meditation tabs); global session guard in AppState; tab-switching confirmation dialog when session is active; skeletal placeholder states for each new mode
+**Addresses:** Session mode selector (P1 prerequisite)
+**Avoids:** Pitfall 1 (session accumulation), Pitfall 10 (UI state machine chaos with 9 combinations)
 
-### Phase 2: BLE Data Pipeline — Connection and RR Parsing
-**Rationale:** All data-dependent features are blocked without a verified RR stream. Must be solid before any analysis layer is built on top. Reconnection reliability is a core requirement, not polish.
-**Delivers:** Verified RR interval stream to AppState, connection status UI, robust reconnect with Promise.race timeout and exponential backoff.
-**Addresses:** Web Bluetooth sensor connection (table stakes critical path)
-**Avoids:** GATT promise hang (Pitfall 5), multiple RR intervals dropped (Pitfall 6)
-**Research flag:** Low — GATT Heart Rate Service is well-specified; reconnection patterns are documented.
+### Phase 2: Audio Routing Refactor
+**Rationale:** Infrastructure that meditation mode, pre-sleep mode, and sonification all require. Doing it after any of those features are built means rewiring live audio paths under a dependent feature. The refactor is low-complexity (add two GainNodes, expose two volume setters) but high-leverage — getting it wrong means every subsequent audio feature inherits the wrong architecture.
+**Delivers:** Three independent audio buses (bowl pacer, meditation, sonification) with independent GainNode volume control; `getAudioContext()` export from `audio.js`; two independent volume sliders scaffolded in session UI
+**Uses:** Web Audio API GainNode routing (existing API, configuration change only)
+**Implements:** "One AudioContext, multiple GainNodes" architectural pattern from ARCHITECTURE.md
+**Avoids:** Pitfall 5 (gain routing collision), Pitfall 6 (sonification oscillator in wrong gain path)
 
-### Phase 3: DSP Engine — Artifact Rejection and Spectral Analysis
-**Rationale:** Coherence scoring and all HRV metrics depend on clean RR data. The spectral method choice (Lomb-Scargle vs. FFT+resampling) must be made here — it cannot be swapped after coherence UI is built on top. Artifact rejection thresholds must use biofeedback-safe values, not standard HRV values.
-**Delivers:** Clean RR circular buffer in AppState, LF/HF power estimates, coherence score, session quality flags (>5% artifact rate).
-**Addresses:** Live coherence score (table stakes), RR artifact rejection (table stakes)
-**Avoids:** RR resampling spectral errors (Pitfall 1), wrong metric RMSSD (Pitfall 2), ectopic beat inflation (Pitfall 3), insufficient FFT window (Pitfall 4)
-**Research flag:** Medium — Lomb-Scargle browser JS port availability is LOW confidence; may need to evaluate fft.js + cubic spline as the practical implementation path.
+### Phase 3: Pre-Sleep Mode
+**Rationale:** Simpler of the two new modes — reuses the existing pacer, DSP tick, and pace controller with one key change (asymmetric I:E scheduling). Does not require audio file loading, new IndexedDB stores, or passive monitoring branching. Building before meditation mode validates the mode selector and audio routing refactor against a real feature before adding file management complexity.
+**Delivers:** Pre-sleep session controller (`preSleep.js`); asymmetric I:E pacer scheduler in `audio.js`; updated pacer circle animation in `renderer.js`; bowl echo subdivisions scaled to asymmetric phases; I:E ratio picker UI; elapsed-only timer; session records with `mode:'pre-sleep'` and `ieRatio` metadata; adaptive controller updated to preserve I:E ratio during period changes
+**Addresses:** Pre-sleep I:E ratio control, pacer refactor, adaptive controller I:E preservation, elapsed timer, mode label (all P1)
+**Avoids:** Pitfall 2 (asymmetric scheduler breakage) — requires auditing all three downstream consumers of `halfPeriod` together (audio scheduler, renderer, phase lock pacer sine)
 
-### Phase 4: Visualization — Waveform Renderer and Visual Pacer
-**Rationale:** Can be developed in parallel with DSP using AppState stubs (no BLE required). requestAnimationFrame loop decoupled from BLE data arrival is the correct pattern.
-**Delivers:** Scrolling HR waveform on Canvas 2D, expanding breathing circle animation synchronized to AudioEngine's nextCueTime.
-**Addresses:** Real-time HR waveform display (table stakes), visual breathing pacer (table stakes)
-**Avoids:** Canvas redraw on every BLE event anti-pattern, circular buffer wrap-around display errors
+### Phase 4: User File Management + IndexedDB Migration
+**Rationale:** Meditation mode requires audio file storage before it can be built. The IndexedDB migration (`DB_VERSION` 2, `audioFiles` store) is the riskiest data operation in v1.3 — it must be done in its own phase, explicitly tested against existing session data, before any file upload UI is layered on top.
+**Delivers:** `DB_VERSION` bump to 2; `audioFiles` IndexedDB object store; `saveAudioFile`, `getAudioFile`, `deleteAudioFile`, `listAudioFiles` in `storage.js`; File API upload handler; basic file library UI (list, delete, size display); `navigator.storage.persist()` on first upload; `navigator.storage.estimate()` quota check on startup
+**Uses:** idb v8.0.3 `put(storeName, arrayBuffer, key)` for binary blob storage; File API `FileReader.readAsArrayBuffer`
+**Avoids:** Pitfall 3 (DB migration deletes session history), Pitfall 4 (blob accumulation and quota exhaustion without user-visible size tracking and delete capability)
 
-### Phase 5: Audio Engine — Breathing Pacer
-**Rationale:** Entirely standalone — no dependency on BLE or DSP. Must implement lookahead scheduler from the start; cannot be retrofitted. AudioContext lifecycle must be gated on user gesture.
-**Delivers:** Sample-accurate breathing pace cues (at minimum: rising/falling pitch style), AudioContext state management.
-**Addresses:** Audio breathing pacer (table stakes), multi-style audio pacer (differentiator)
-**Avoids:** setInterval timing drift (Pitfall 7), AudioContext suspended on load (Pitfall 8)
-**Research flag:** Low — Web Audio lookahead scheduler is documented in Chris Wilson's web.dev article; pattern is well-established.
+### Phase 5: Meditation Mode
+**Rationale:** By Phase 5, all prerequisites are complete: mode selector, audio routing, and file storage. Meditation mode can now be built cleanly — passive DSP tick branching, `AudioBufferSourceNode` playback, decoded `AudioBuffer` caching, post-session report — without foundational infrastructure concerns.
+**Delivers:** Meditation session controller (`meditation.js`); `meditationAudio.js` playback engine; `meditationLibrary.js` with at least one built-in body scan script; audio file in `/audio/`; passive HRV + neural calm monitoring (phase lock and pace controller skipped); post-session physiological report; EEG headphone artifact disclosure note in setup UI; decoded `AudioBuffer` cache (module-level Map keyed by file ID)
+**Addresses:** Meditation mode built-in audio, passive monitoring, post-session report, user-uploaded audio, no pacer during meditation (all P1)
+**Avoids:** Pitfall 7 (large file decode freeze — cache required before any 20+ minute file), Pitfall 8 (DSP contamination — branch tick before first session save), Pitfall 9 (EEG headphone disclosure — add to setup UI copy)
 
-### Phase 6: Session Logic — Discovery Mode and Practice Mode
-**Rationale:** Integrates all Phase 1–5 components. Discovery mode is the core value proposition and must ship before Practice mode (Practice requires a saved resonance frequency from Discovery). This is the highest-complexity phase.
-**Delivers:** Full 5-block Discovery protocol (6.5–4.5 BPM, 2 min each, RSA amplitude comparison), resonance frequency save, Practice mode (20 min at saved frequency, live coherence).
-**Addresses:** Discovery mode (table stakes P1), Practice mode (table stakes P1), session timer
-**Avoids:** Coherence displayed before 120s buffer filled (UX pitfall — show calibrating state)
-**Research flag:** Low — clinical protocol steps are documented in PMC peer-reviewed literature.
-
-### Phase 7: Oura Integration and Recovery Dashboard
-**Rationale:** Entirely decoupled from the BLE stack. Can be built independently after Phase 1. Oura CORS behavior from a browser origin is LOW confidence — must smoke-test actual browser fetch before building dependent UI.
-**Delivers:** OAuth2 PKCE Oura authentication, overnight HRV data pull and cache, recovery dashboard with session coherence + Oura HRV overlay chart.
-**Addresses:** Oura Ring overnight HRV trend overlay (differentiator), recovery dashboard (differentiator)
-**Avoids:** Oura PAT deprecation (Pitfall 9), CORS blocking browser fetch (Pitfall 10)
-**Research flag:** High — Oura CORS behavior for direct browser fetch is not explicitly documented; must verify early. OAuth2 implicit vs PKCE flow for a client-only app needs validation against current Oura API behavior.
+### Phase 6: Phase Lock Audio Sonification
+**Rationale:** Sonification depends on the audio routing refactor (Phase 2) and benefits from having all three modes complete so it can be tested across every context. The trend-based design (update every 5–10s, encode direction not raw value) is a deliberate departure from the simpler raw-mapping approach and requires empirical tuning — it should be the last feature added, not the first tested.
+**Delivers:** Persistent `OscillatorNode` sonification in `audio.js` (`startSonification`, `updateSonification`, `stopSonification`); trend-based pitch mapping (5–10s update interval, pitch direction encodes delta over 10s window, not raw score); `AppState.sonificationEnabled` toggle per session; sonification called from each session controller's DSP tick; smooth `exponentialRampToValueAtTime` pitch transitions (2-second ramp, no audible clicks)
+**Addresses:** Phase lock sonification with trend-based design and on/off toggle (P1)
+**Avoids:** Pitfall 6 (sonification in wrong gain path — requires Phase 2 complete); anti-feature "continuous raw score sonification" explicitly rejected per Audio Mostly 2024 findings
 
 ### Phase Ordering Rationale
 
-- Phases 1–3 are strictly sequential: AppState before BLE, BLE before DSP.
-- Phases 4 and 5 are parallelizable with each other and with Phase 3 (using AppState stubs).
-- Phase 6 cannot start until Phases 1–5 are all complete.
-- Phase 7 is independent of Phases 2–6 and can start after Phase 1; the Oura smoke test should happen as an early sub-task regardless.
-- The critical path is 1 → 2 → 3 → 6, which is also where all the high-risk pitfalls are concentrated.
+- Phases 1–2 are infrastructure with no user-facing deliverable on their own, but every subsequent phase fails without them. This is the standard prerequisite pattern for feature-extension projects.
+- Phase 3 (pre-sleep) before Phase 5 (meditation) because pre-sleep validates the audio scheduler refactor with a simpler test case before the more complex audio file loading is introduced.
+- Phase 4 (file management) is isolated before Phase 5 because the IndexedDB migration carries data-loss risk and needs its own test window without the pressure of a half-built meditation mode depending on it.
+- Phase 6 (sonification) last because it integrates across all three modes — testing it last ensures all mode contexts exist for cross-mode validation.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
+Phases needing careful verification during implementation (patterns are known; execution discipline is the risk):
 
-- **Phase 3 (DSP Engine):** Lomb-Scargle browser JS implementation availability is LOW confidence. Evaluate als-fft (updated March 2026, supports STFT) as an alternative to fft.js. Determine whether cubic spline + FFT is the practical choice over LS for this scope.
-- **Phase 7 (Oura Integration):** Oura API CORS for direct browser fetch is not explicitly documented — run a browser smoke test before any dashboard work. Confirm current OAuth2 flow behavior (implicit vs PKCE) against live Oura API.
+- **Phase 2 (Audio Routing):** Verify the GainNode refactor does not change existing bowl pacer behavior. All existing audio paths must be regression-tested before any new mode depends on the new routing structure.
+- **Phase 3 (Pre-Sleep):** The asymmetric scheduler change has three downstream consumers that must be updated atomically: `_schedulerTick` in `audio.js`, the pacer circle animation in `renderer.js`, and the synthetic pacer sine in `phaseLock.js`. Updating any one without the others produces a silent failure where the session looks correct but phase lock scores are systematically wrong at 1:2 ratio.
+- **Phase 4 (File Management):** The IndexedDB v1→v2 migration must be tested with real seeded data (not a fresh browser) before this phase is considered done.
+- **Phase 5 (Meditation):** The DSP tick branching must be verified by watching `AppState.pacingFreq` during a live meditation session — it should never change. This is the type of bug that does not appear in code review, only in a running session.
 
-Phases with standard/well-documented patterns (research-phase optional):
-
-- **Phase 1 (AppState + Storage):** Proxy-based reactive store and idb wrapper are well-established patterns.
-- **Phase 2 (BLE):** GATT Heart Rate Service is Bluetooth SIG standard; reconnection patterns are documented in Chrome samples.
-- **Phase 4 (Visualization):** Canvas rAF waveform pattern is MDN-documented.
-- **Phase 5 (Audio Engine):** Lookahead scheduler pattern is web.dev-documented by the Web Audio API spec author.
-- **Phase 6 (Session Logic):** Discovery protocol steps are peer-reviewed and well-specified.
-
----
+Phases with standard patterns (implementation is straightforward, lower verification burden):
+- **Phase 1 (Mode Selector):** Standard UI state machine; show/hide pattern. The 9-combination matrix is larger than usual but not architecturally novel.
+- **Phase 6 (Sonification):** `OscillatorNode` + `exponentialRampToValueAtTime` is a documented Web Audio API pattern. Trend-based update logic (compare current to 10s-prior score) is simple arithmetic. Main risk is perceptual tuning of frequency range and update interval, not implementation correctness.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Core APIs verified against MDN and Chrome docs. fft.js is stable at 4.0.4 though last updated 2017; als-fft is actively maintained as a fallback. Oura OAuth2 is confirmed required but exact PKCE behavior LOW confidence. |
-| Features | MEDIUM | Core feature set grounded in 4 peer-reviewed papers and direct competitor analysis. UX specifics inferred from app screenshots/marketing; no access to internal competitor implementations. MVP definition is solid. |
-| Architecture | HIGH | Core patterns (AppState, BLE pipeline, lookahead scheduler, Canvas rAF) verified against official docs and spec sources. Lomb-Scargle JS port availability is LOW confidence — the algorithm is correct but browser-ready libraries are sparse. |
-| Pitfalls | MEDIUM-HIGH | Critical pitfalls are grounded in peer-reviewed papers and official spec behavior. Chrome-specific BLE bug details (GATT hung promise) are MEDIUM confidence — confirmed via WebBluetoothCG GitHub issues but browser version-specific behavior may vary. Oura CORS is LOW confidence — requires empirical verification. |
+| Stack | HIGH | All API choices verified against MDN + Chrome docs; no new libraries introduced; codebase already uses the relevant APIs in adjacent ways |
+| Features | MEDIUM | Competitor analysis from product pages only (not internal implementations); sonification design backed by two peer-reviewed papers; I:E ratio clinical evidence is mixed per 2024 PMC study |
+| Architecture | HIGH | Based on direct codebase analysis of all relevant source files; integration points are explicit and verified against actual module structure |
+| Pitfalls | HIGH for Web Audio API and IndexedDB behaviors (MDN + W3C confirmed); MEDIUM for I:E ratio audio cue alignment specifics (not yet tested in this codebase); LOW for EEG headphone artifact quantification |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall confidence:** HIGH for technical implementation; MEDIUM for clinical and perceptual outcomes
 
 ### Gaps to Address
 
-- **Lomb-Scargle JS availability:** Research flagged als-fft (updated March 2026) as the best alternative to fft.js for FFT needs, but a browser-ready Lomb-Scargle implementation was not confirmed. During Phase 3 planning, decide definitively: implement LS from scratch (Python/R reference implementation exists at Physionet), use fft.js + cubic spline with documented bias, or use als-fft's STFT for windowed analysis. This decision affects coherence score accuracy.
+- **Phase lock scoring validity at 1:2 I:E ratio:** The phase lock score is computed against a synthetic pacer sine at `AppState.pacingFreq`. In pre-sleep mode with asymmetric phases, the synthetic sine must also be asymmetric or phase lock scores will be systematically low during extended exhale. Verify empirically during Phase 3 by comparing phase lock scores at 1:1 vs. 1:2 with controlled breathing.
 
-- **Oura CORS behavior:** Oura API v2 CORS headers for browser-direct fetch from localhost are not explicitly documented. Run a browser fetch smoke test in Phase 7 before building any dashboard UI. If CORS blocks the request, a minimal localhost proxy (5 lines of Node.js) solves it.
+- **Extended exhale HRV benefit is not guaranteed:** A 2024 PMC study found mixed evidence for whether longer exhalations specifically increase HRV during slow-paced breathing. Pre-sleep mode should be framed as "sleep-preparation breathing practice" without claiming superior HRV benefit vs. standard mode. The post-session report should show HRV trend without implying causation from the I:E ratio.
 
-- **Oura PAT timeline:** PAT deprecation was targeted for end of 2025; actual cutoff date has LOW confidence. Implement OAuth2 PKCE from day one regardless — do not build on PAT assumption even for prototyping.
+- **Sonification perceptual calibration requires empirical testing:** The frequency mapping formula and 5–10s update interval are research-informed starting points, not validated parameters for this specific application. The "looks done but sounds wrong" risk is real — the sonification design needs a live user workflow test (breathing through a session eyes-closed, adjusting phase lock score deliberately, verifying pitch changes are perceptible and not anxiety-inducing) before it ships.
 
-- **Garmin HRM 600 open vs. bonded BLE modes:** Web Bluetooth does not support BLE bonding/SMP. The HRM 600 is stated to operate in open mode with new devices, but this should be verified empirically in Phase 2 with the actual hardware before assuming it.
-
----
+- **Yoga nidra content creation is not an engineering task:** The yoga nidra script is listed as a P2 feature but requires 30–40 minutes of recorded audio content creation. This should be explicitly scoped and assigned before the roadmap places it in a phase — it has no implementation dependency on any other phase but does have a production timeline of its own.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- MDN Web Bluetooth API — https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API
-- Bluetooth SIG Heart Rate Service v1.0 spec — https://www.bluetooth.com/specifications/specs/heart-rate-service-1-0/
-- Web Audio "A Tale of Two Clocks" (Chris Wilson, web.dev) — https://web.dev/articles/audio-scheduling
-- Oura API v2 authentication docs — https://cloud.ouraring.com/docs/authentication
-- A Practical Guide to Resonance Frequency Assessment for HRVB — PMC https://pmc.ncbi.nlm.nih.gov/articles/PMC7578229/
-- Methods for HRVB: Systematic Review — PMC https://pmc.ncbi.nlm.nih.gov/articles/PMC10412682/
-- Spectral Analysis of HRV: Time Window Matters — PMC https://pmc.ncbi.nlm.nih.gov/articles/PMC6548839/
-- RMSSD Not Valid for Parasympathetic Reactivity During Slow Breathing — AJP https://journals.physiology.org/doi/full/10.1152/ajpregu.00272.2022
-- Clifford et al.: Quantifying Errors in Spectral Estimates of HRV Due to Beat Replacement and Resampling — https://www.robots.ox.ac.uk/~gari/papers/CliffordTBME2004-Publish.pdf
+- MDN Web Docs — AudioBufferSourceNode, decodeAudioData, OscillatorNode, AudioParam scheduling methods, FileReader, Web Audio API best practices
+- MDN Web Docs — IndexedDB Using IndexedDB, onupgradeneeded pattern, Storage quotas and eviction criteria, URL.createObjectURL and revokeObjectURL
+- Chrome Developers — Audio Worklet available by default; Autoplay policy; Web Bluetooth API
+- Direct codebase analysis — `js/audio.js`, `js/practice.js`, `js/state.js`, `js/main.js`, `js/renderer.js`, `js/phaseLock.js`, `js/paceController.js`, `js/storage.js`, `js/dsp.js`, `index.html`
+- GitHub: jakearchibald/idb v8.0.3 — binary blob storage via `put(storeName, arrayBuffer, key)`
 
 ### Secondary (MEDIUM confidence)
-- GitHub: indutny/fft.js v4.0.4 — https://github.com/indutny/fft.js
-- GitHub: jakearchibald/idb v8.0.3 — https://github.com/jakearchibald/idb
-- Polar Verity BLE parsing walkthrough — https://dev.to/manufac/interacting-with-polar-verity-sense-using-web-bluetooth-553a
-- Kubios: Preprocessing of HRV Data — https://www.kubios.com/blog/preprocessing-of-hrv-data/
-- HRV4Biofeedback app features — https://www.hrv4biofeedback.com/the-app.html
-- Elite HRV resonance breathing — https://help.elitehrv.com/article/394-how-can-i-find-my-resonance-breathing-pace
-- Web Bluetooth reconnection pattern — https://googlechrome.github.io/samples/web-bluetooth/automatic-reconnect.html
-- Heart Rate Variability Biofeedback Global Study (Scientific Reports 2025) — https://www.nature.com/articles/s41598-025-87729-7
+- Audio Mostly 2024 — Comparing Trend-Based and Direct HRV Biofeedback in an Adaptive Game Environment (peer-reviewed; trend-based sonification superior to direct mapping)
+- Unwind 2018 — A Musical Biofeedback for Relaxation Assistance (peer-reviewed; sonification design principles)
+- PMC — The Relaxation Effect of Prolonged Expiratory Breathing (peer-reviewed; extended exhale autonomic effects confirmed)
+- PMC — Do Longer Exhalations Increase HRV During Slow-Paced Breathing? (peer-reviewed; mixed findings — extended exhale alone does not consistently increase HRV)
+- RxDB — IndexedDB Max Storage Limit (Chrome LRU eviction behavior; navigator.storage.estimate best practice)
+- HRV4Biofeedback, Elite HRV, Muse, OptimalHRV — product pages (competitor feature analysis; I:E ratio presets)
 
-### Tertiary (LOW confidence — needs validation)
-- Oura API CORS behavior for browser-direct fetch — not explicitly documented; requires empirical test
-- Garmin HRM 600 open BLE mode without bonding — stated in community sources; verify with hardware
-- als-fft 3.4.1 as Lomb-Scargle or FFT alternative — https://www.npmjs.com/package/als-fft (confirmed March 2026 update but full capability not verified)
-- WebBluetoothCG hung promise issue — https://github.com/WebBluetoothCG/web-bluetooth/issues/31 (Chrome version-specific behavior)
+### Tertiary (LOW confidence)
+- Academia.edu — Sonification of Autonomic Rhythms in the Frequency Spectrum of HRV (MIDI-based reference; Web Audio approach derived from same principles)
+- Elephant Journal — Yoga Nidra Script Length and Structure (content planning reference only; not a clinical source)
+- Bitbrain — EEG Artifacts (general reference for headphone artifact discussion; not Muse-S specific)
 
 ---
-*Research completed: 2026-03-21*
+*Research completed: 2026-04-06*
 *Ready for roadmap: yes*

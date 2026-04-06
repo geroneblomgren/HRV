@@ -1,57 +1,211 @@
 # Stack Research
 
 **Domain:** Real-time HRV biofeedback breathing web app (Vanilla JS, Desktop Chrome)
-**Researched:** 2026-03-21
+**Researched:** 2026-03-21 (original); 2026-04-06 (v1.3 additions)
 **Confidence:** HIGH for Web APIs (verified via MDN + Chrome docs); MEDIUM for FFT library (actively maintained but last updated 2017); MEDIUM for Oura Auth (PAT deprecation in progress)
 
 ---
 
-## Recommended Stack
+## v1.3 Stack Additions (Session Modes & Eyes-Closed Training)
+
+**What changed:** v1.3 adds three new capabilities to an already-working app. The existing stack (Web Audio API, Canvas, IndexedDB, Web Bluetooth) covers 90% of what's needed. The additions below are purely additive — no replacements, no new libraries.
+
+### New Capability 1: Asymmetric I:E Ratio Pacer (Pre-Sleep Mode)
+
+**What's needed:** The existing lookahead scheduler in `audio.js` hardcodes equal inhale/exhale halves (`halfPeriod = 1 / (pacingFreq * 2)`). Pre-sleep mode needs asymmetric timing — e.g., 1:2 ratio means inhale is 1/3 of the breath period and exhale is 2/3.
+
+**Stack addition:** None. This is a scheduler logic change, not a new API or library.
+
+The existing Web Audio API lookahead scheduler pattern already supports arbitrary timing. The scheduler tick needs to track separate inhale/exhale durations instead of a uniform half-period. `AudioContext.currentTime` scheduling remains unchanged. Echo subdivisions should adapt to the actual phase duration, not the half-period.
+
+**Integration point:** `audio.js` — change `_schedulerTick()` to accept `{ inhaleDuration, exhaleDuration }` rather than deriving from `pacingFreq * 2`. Add `AppState.breathRatio` (default `{ inhale: 1, exhale: 1 }`) to carry the setting. The pacer canvas in `renderer.js` will also need to know the ratio for the visual circle animation (expand for inhale duration, hold briefly if hold is added, contract for exhale duration).
+
+**Confidence:** HIGH — lookahead scheduler pattern is well-established, no new API surface required.
+
+---
+
+### New Capability 2: Meditation Audio Playback
+
+Two sub-cases: built-in scripts (bundled audio files) and user-uploaded audio files.
+
+#### 2a. Built-In Audio Files
+
+**What's needed:** Fetch a bundled `.mp3` or `.wav` file, decode it, play it through the existing AudioContext, mix with the existing bowl pacer at independent volume levels.
+
+**API:** `AudioContext.decodeAudioData()` + `AudioBufferSourceNode` — both part of the existing Web Audio API. No new library needed.
+
+**Pattern:**
+```javascript
+// Inside user gesture (already satisfied by existing session start flow)
+const response = await fetch('./audio/body-scan.mp3');
+const arrayBuffer = await response.arrayBuffer();
+const audioBuffer = await _ctx.decodeAudioData(arrayBuffer);
+
+const source = _ctx.createBufferSource();
+source.buffer = audioBuffer;
+source.connect(_meditationGain);  // separate GainNode from _masterGain
+source.start();
+source.onended = () => { /* meditation complete */ };
+```
+
+**Key constraints (HIGH confidence, MDN verified):**
+- `AudioBufferSourceNode` is single-use. After `start()`, create a new node if replay is needed. This is fine — meditation audio plays once per session.
+- `decodeAudioData()` consumes (detaches) the passed `ArrayBuffer`. If you need the raw bytes later, slice a copy first.
+- Mix with bowl pacer by routing both through separate `GainNode` instances that feed the same `AudioContext.destination`. The AudioContext is already initialized in `audio.js` via `initAudio()`.
+- The existing `_masterGain` controls bowl volume. Meditation audio needs its own `_meditationGain` node to allow independent volume control (user may want guided voice at full volume and bowl at 20%).
+
+**Suggested audio format:** MP3 at 128 kbps. Chrome supports MP3, WAV, OGG, AAC — MP3 is the smallest at acceptable quality for voice content. Body scan / yoga nidra scripts at 20–45 minutes will be 20–45 MB at 128 kbps, well within Chrome's IndexedDB quota.
+
+**Confidence:** HIGH — decodeAudioData / AudioBufferSourceNode are the canonical approach, verified on MDN.
+
+#### 2b. User-Uploaded Audio Files
+
+**What's needed:** Accept user audio file (`.mp3`, `.wav`, `.ogg`), decode it, play it through the AudioContext. Optionally persist it so it survives page reload without re-upload.
+
+**Upload API:** `FileReader.readAsArrayBuffer()` — browser built-in, no library. The File API has been stable since Chrome 13.
+
+**Pattern:**
+```javascript
+// File input change handler
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    const arrayBuffer = evt.target.result;
+    // Store raw bytes in IndexedDB BEFORE decoding (decodeAudioData detaches the buffer)
+    const bufferCopy = arrayBuffer.slice(0);
+    await saveUserAudio(file.name, bufferCopy);
+    // Decode for immediate playback
+    const audioBuffer = await _ctx.decodeAudioData(arrayBuffer);
+    AppState.userMeditationBuffer = audioBuffer;
+  };
+  reader.readAsArrayBuffer(file);
+});
+```
+
+**Persistence:** Store the raw `ArrayBuffer` in IndexedDB (not the decoded `AudioBuffer` — decoded buffers are not structured-cloneable). On next page load, retrieve the `ArrayBuffer` and decode again via `decodeAudioData()`. The existing `idb` library (already in the stack) handles this with a single `put()` call.
+
+**IndexedDB storage for audio (MEDIUM confidence, Chrome docs + RxDB):** Chrome allows up to 80% of disk space. A typical 40-minute guided meditation at 128 kbps MP3 is ~38 MB — easily within quota. Call `navigator.storage.persist()` to prevent eviction (one call on first audio store).
+
+**File format support:** MP3, WAV, OGG, AAC — all decoded by `decodeAudioData()` without any codec library. This is the browser's native decode; no third-party audio codec needed.
+
+**Confidence:** HIGH — FileReader + decodeAudioData is the standard browser pattern, no ambiguity.
+
+#### 2c. Passive Physiological Monitoring During Meditation
+
+**What's needed:** Continue running the existing DSP tick and phase lock/coherence/neural calm scoring during meditation playback without the breathing pacer audio active.
+
+**Stack addition:** None. Meditation mode simply continues the existing 1-second `setInterval` DSP tick from `practice.js` while running `AudioBufferSourceNode` playback instead of `startPacer()`. The only difference from practice mode is that the bowl pacer is muted or absent, and the session is flagged as `mode: 'meditation'` in the IndexedDB record.
+
+**Confidence:** HIGH — the existing architecture already separates DSP ticking from pacer audio.
+
+---
+
+### New Capability 3: Phase Lock Audio Sonification
+
+**What's needed:** Continuous audio feedback that maps the real-time phase lock score (0–100) to an audible parameter — pitch, volume, or timbre — updating smoothly as the score changes every second. Provides eyes-closed feedback across all session modes.
+
+**API:** `OscillatorNode` (persistent, started once per session) with `AudioParam` scheduling methods. Already part of the existing Web Audio API stack. No new library.
+
+**Sonification design (opinionated):**
+
+Map phase lock score to **pitch** (not volume). Pitch is more precise and less fatiguing than volume. Research on HRV sonification (Audio Mostly 2025) confirms pitch-mapped sonification provides more actionable feedback than volume-only. Volume can still be used as a secondary envelope for "warmth" but pitch carries the primary signal.
+
+Suggested mapping:
+- Score 0 → 80 Hz (low drone, almost subwoofer — indicates poor alignment)
+- Score 100 → 320 Hz (clear, warm drone — indicates full phase lock)
+- Mapping: `freq = 80 * Math.pow(4, score / 100)` (exponential — matches perceptual pitch linearity)
+
+Use `exponentialRampToValueAtTime()` for frequency transitions — smoother than linear for pitch because human hearing is logarithmic. Ramp over 2 seconds (longer than the 1-second update interval) to avoid abrupt jumps.
+
+**Pattern:**
+```javascript
+// Start sonification (once per session, after initAudio())
+function startSonification() {
+  _sonOsc = _ctx.createOscillator();
+  _sonGain = _ctx.createGain();
+  _sonOsc.type = 'sine';
+  _sonOsc.frequency.setValueAtTime(80, _ctx.currentTime);
+  _sonGain.gain.setValueAtTime(0.15, _ctx.currentTime);  // quiet, ambient
+  _sonOsc.connect(_sonGain);
+  _sonGain.connect(_masterGain);
+  _sonOsc.start();
+}
+
+// Called every second from DSP tick
+function updateSonification(phaseLockScore) {
+  const targetFreq = 80 * Math.pow(4, phaseLockScore / 100);
+  _sonOsc.frequency.exponentialRampToValueAtTime(
+    targetFreq,
+    _ctx.currentTime + 2.0  // 2-second smooth ramp
+  );
+}
+
+// Stop sonification
+function stopSonification() {
+  if (!_sonOsc) return;
+  _sonGain.gain.setTargetAtTime(0, _ctx.currentTime, 0.3);
+  _sonOsc.stop(_ctx.currentTime + 1);
+  _sonOsc = null;
+}
+```
+
+**Key constraint:** Unlike `AudioBufferSourceNode`, a persistent `OscillatorNode` CAN run continuously — it is not single-use as long as `stop()` is never called. Start once per session, update frequency params each second.
+
+**Mixing with bowl and meditation audio:** Route through a third dedicated `GainNode` (`_sonGain`) with low gain (~0.15) so it sits beneath the bowl strikes and meditation voice. User-controllable via a separate "Sonification volume" slider.
+
+**AudioWorklet not needed (MEDIUM confidence):** Sonification here is parameter automation on a persistent oscillator, not custom sample processing. `AudioWorkletNode` is the modern replacement for `ScriptProcessorNode` for custom DSP algorithms. This app does not need custom DSP in the audio thread — phase lock is computed in JavaScript on the main thread every second and fed to `AudioParam` scheduling. `AudioWorklet` would add complexity with no benefit for this use case.
+
+**Confidence:** HIGH for OscillatorNode continuous operation and AudioParam scheduling — verified MDN. MEDIUM for the specific frequency mapping formula — reasonable but perceptual tuning will need empirical adjustment.
+
+---
+
+## Full Recommended Stack (Original + v1.3 Additions)
 
 ### Core Technologies
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| Vanilla HTML/CSS/JS (ES2022+) | ES2022 | Application shell and all logic | No build toolchain needed; app is ~1000 lines; zero framework overhead is the right call for a personal tool of this scope |
-| Web Bluetooth API | Living standard (Chrome 130+) | Connect to Garmin HRM 600 over BLE, subscribe to Heart Rate Measurement characteristic (0x2A37) | Only viable browser API for BLE on desktop Chrome; requires HTTPS or localhost; fully supports standard GATT Heart Rate Service |
-| Web Audio API | Living standard (Chrome 130+) | Generate sine-wave breathing tones, volume swells, soft chimes | Native browser API; zero dependencies; OscillatorNode + GainNode covers all three audio styles with precise AudioContext scheduling |
-| Canvas 2D API | Living standard (Chrome 130+) | Real-time scrolling HR waveform and breathing circle animation | Canvas outperforms SVG by ~10x at continuous high-frequency redraws; direct pixel control at 60fps without DOM churn |
-| IndexedDB | Living standard (Chrome 130+) | Persist RR-interval session data, coherence scores, resonance frequency results | 80% disk quota in Chrome vs 10 MB localStorage cap; async so it doesn't block the main thread; stores structured objects without serialization |
+| Vanilla HTML/CSS/JS (ES2022+) | ES2022 | Application shell and all logic | No build toolchain needed; personal tool; zero framework overhead |
+| Web Bluetooth API | Living standard (Chrome 130+) | Garmin HRM 600 + Muse-S BLE connections | Only viable browser API for BLE desktop Chrome; HTTPS/localhost required |
+| Web Audio API | Living standard (Chrome 130+) | Bowl pacer, meditation audio playback, phase lock sonification | Single AudioContext; AudioBufferSourceNode for file playback; persistent OscillatorNode for sonification; GainNode for mixing |
+| File API (FileReader) | Living standard (Chrome 13+) | User-uploaded meditation audio files | Built-in; `readAsArrayBuffer()` → `decodeAudioData()` is the canonical browser file audio pattern |
+| Canvas 2D API | Living standard (Chrome 130+) | Real-time waveforms, ring gauges, breathing pacer animation | Canvas outperforms SVG at continuous 60fps redraws; no DOM churn |
+| IndexedDB | Living standard (Chrome 130+) | Session storage + user-uploaded audio persistence | 80% disk quota; stores raw ArrayBuffers; `navigator.storage.persist()` prevents eviction |
 
 ### Supporting Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| fft.js (indutny) | 4.0.4 | Radix-4/Radix-2 FFT for LF/HF spectral power bands | Use for all spectral analysis of resampled RR-interval time series; ~35,000 ops/sec at 2048-sample sizes, fastest pure-JS FFT available via CDN |
-| idb (jakearchibald) | 8.0.3 | Promise-based IndexedDB wrapper (~1.2kB brotli'd) | Use instead of raw IndexedDB to avoid callback pyramid; `openDB`, `get`, `put` cover all needed operations; tiny overhead |
+| fft.js (indutny) | 4.0.4 | Radix-4 FFT for LF/HF spectral power | Use for all spectral analysis; ~35K ops/sec at 2048 samples; fastest pure-JS FFT |
+| idb (jakearchibald) | 8.0.3 | Promise-based IndexedDB wrapper | Use for all IDB operations including user audio storage; `put(storeName, arrayBuffer, key)` covers audio persistence |
 
 ### Development Tools
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| Python `http.server` or `npx serve` | Local HTTPS-equivalent dev server | Web Bluetooth requires secure origin; `localhost` is treated as secure by Chrome, so plain `python -m http.server` on port 8080 works without SSL certs |
-| Chrome DevTools Bluetooth Internals | Debug BLE connections | Navigate to `chrome://bluetooth-internals` to inspect device logs and GATT characteristics during development |
-| Chrome DevTools Application tab | Inspect IndexedDB | Built-in; no extra tooling needed to browse stored sessions |
+| Python `http.server` or `npx serve` | Local dev server | `localhost` treated as secure by Chrome; Web Bluetooth requires secure origin |
+| Chrome DevTools Application tab | Inspect IndexedDB stores | Inspect stored audio ArrayBuffers directly |
+| Chrome DevTools Audio tab | Debug AudioContext graph | Shows live node connections; verify GainNode routing for bowl/meditation/sonification mix |
 
 ---
 
 ## Installation
 
-This is a no-build-tool project. Serve static files from disk.
+This is a no-build-tool project. No new packages required for v1.3.
 
 ```bash
-# Option 1: Python (zero dependencies)
-python -m http.server 8080
+# No new npm install — all v1.3 capabilities use existing Web APIs
 
-# Option 2: Node-based (if npm is already installed)
+# Serve static files as before:
+python -m http.server 8080
+# or
 npx serve .
 
-# No npm install needed for core APIs.
-# Load fft.js and idb via CDN in HTML:
-# <script src="https://cdn.jsdelivr.net/npm/fft.js@4.0.4/lib/fft.js"></script>
-# <script type="module">
-#   import { openDB } from 'https://cdn.jsdelivr.net/npm/idb@8.0.3/+esm';
-# </script>
+# Built-in meditation audio files: add to /audio/ directory as .mp3 files
+# User-uploaded audio: stored in IndexedDB, no server needed
 ```
 
 ---
@@ -60,11 +214,12 @@ npx serve .
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| fft.js 4.0.4 | als-fft 3.4.1 | als-fft is actively maintained (updated March 2026) and supports STFT natively. Switch to als-fft if you need short-time Fourier transform for windowed analysis during live streaming — fft.js requires you to implement windowing manually |
-| Canvas 2D | SVG | SVG only if you need DOM event handling on individual waveform data points (e.g., click-to-annotate). For scrolling waveform at 60fps, Canvas wins by a large margin |
-| idb 8.0.3 | Raw IndexedDB | Raw IndexedDB if you want zero dependencies and don't mind verbose callback/cursor boilerplate. idb is 1.2kB and saves significant code |
-| Web Audio API (native) | Tone.js | Tone.js if the audio requirements grow to sequenced multi-instrument patterns. For three oscillator types + gain envelope, native Web Audio API is far simpler and has no load overhead |
-| Vanilla JS | React/Vue/Svelte | A framework only if the UI grows beyond ~5 views with shared state. At current scope (one active session view + dashboard), vanilla JS with module pattern is cleaner |
+| Persistent OscillatorNode for sonification | New OscillatorNode each second | Never — creating/destroying oscillators each second creates audible clicks at note boundaries. Persistent oscillator with AudioParam ramping is click-free |
+| `exponentialRampToValueAtTime` for pitch transitions | `linearRampToValueAtTime` | Linear ramp if mapping a non-pitch parameter (e.g., filter cutoff). For pitch, exponential is mandatory — linear pitch changes sound unnatural because hearing is logarithmic |
+| FileReader + decodeAudioData for user audio | HTMLMediaElement (`<audio>` tag) | `<audio>` tag if you want streaming playback of large files without decoding into RAM. For typical meditation audio (under 100 MB), decodeAudioData is simpler and integrates cleanly with the AudioContext graph. The `<audio>` tag creates a MediaElementSourceNode that cannot be mixed as cleanly |
+| IndexedDB for audio persistence | localStorage | Never for binary audio data — localStorage is limited to 10 MB and requires base64 encoding, tripling the stored size |
+| Separate GainNode per audio stream | Single master GainNode for everything | Single GainNode if independent volume controls are not needed. v1.3 needs independent volume for: (1) bowl pacer, (2) meditation voice, (3) sonification drone |
+| MP3 at 128 kbps for built-in audio | WAV (uncompressed) | WAV only if audio quality is critical (e.g., professional music). For guided voice meditation, 128 kbps MP3 is indistinguishable and 10x smaller |
 
 ---
 
@@ -72,53 +227,54 @@ npx serve .
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| localStorage for RR-interval storage | 10 MB cap; synchronous writes block the main thread during streaming; binary RR data JSON-serialized is wasteful | IndexedDB via idb — async, no size pressure, stores typed arrays directly |
-| Tone.js | 200kB+ bundle; wraps Web Audio API in abstractions designed for music composition, not simple timed tones; AudioContext lifecycle management is already simple enough with vanilla API | Web Audio API OscillatorNode + GainNode directly |
-| d3.js for waveform rendering | D3 is a data-binding and SVG manipulation library; 85kB for DOM manipulation you don't need when Canvas draw calls are 5 lines of code | Canvas 2D `clearRect` + `lineTo` loop |
-| WebSockets or SSE | No server component exists; this is entirely a client-side app | Web Bluetooth `addEventListener('characteristicvaluechanged')` is the data stream |
-| React / Next.js / any framework | Build toolchain complexity is out of scope per PROJECT.md constraints; framework adds 40kB+ for no benefit at this scale | Vanilla JS ES modules |
-| Camera PPG (MediaDevices API) | Explicitly out of scope; also has higher latency and noise than chest-strap ECG; BLE is the correct data source | Web Bluetooth to Garmin HRM 600 |
+| `HTMLMediaElement` (`<audio>` tag) as primary audio source | Cannot be routed through Web Audio API graph cleanly without `createMediaElementSource()`, which adds complexity and restrictions; volume control and mixing are clumsier | `AudioBufferSourceNode` via `decodeAudioData()` — fully integrated into existing AudioContext graph |
+| `ScriptProcessorNode` for sonification | Deprecated since Chrome 64; runs on main thread; causes audio glitches under load | Not needed at all — persistent `OscillatorNode` with `AudioParam` scheduling covers sonification without custom sample processing |
+| `AudioWorklet` for sonification | Overkill — AudioWorklet adds worklet thread complexity for custom DSP algorithms. This app's sonification is oscillator frequency automation, not custom sample generation | `OscillatorNode.frequency.exponentialRampToValueAtTime()` |
+| Tone.js for meditation audio or sonification | 200kB+ bundle; wraps Web Audio API in music-composition abstractions not needed here | Native Web Audio API — the three nodes needed (OscillatorNode, AudioBufferSourceNode, GainNode) are already in use |
+| Separate `AudioContext` for meditation audio | Only one AudioContext should exist per page; second AudioContext cannot share nodes with the first and wastes resources | Reuse the existing AudioContext from `audio.js` — route meditation AudioBufferSourceNode and sonification OscillatorNode through it |
+| Web Workers for audio decoding | `decodeAudioData()` is already async/non-blocking; it does not block the main thread | Direct `await audioCtx.decodeAudioData(arrayBuffer)` — no worker needed |
 
 ---
 
-## Stack Patterns by Context
+## Stack Patterns by Variant
 
-**Web Bluetooth connection flow:**
-- Call `navigator.bluetooth.requestDevice()` inside a click handler (user gesture required)
-- Filter by `{services: ['heart_rate']}` (GATT UUID 0x180D) — no need to know Garmin's vendor prefix
-- Subscribe to `characteristic.startNotifications()` on 0x2A37
-- Parse the DataView: byte 0 is flags (bit 0 = 16-bit HR; bit 4 = RR-intervals present); RR fields start at byte offset 2 or 3 and are in units of 1/1024 seconds
+**If pre-sleep mode with 1:2 I:E ratio:**
+- Change `audio.js` scheduler to track separate `inhaleDuration` and `exhaleDuration` instead of uniform `halfPeriod`
+- `AppState.breathRatio = { inhale: 1, exhale: 2 }` controls the ratio
+- Default (standard mode) keeps `{ inhale: 1, exhale: 1 }` — backward compatible
+- Visual pacer circle in `renderer.js` must use same durations for animation sync
 
-**Garmin HRM 600 BLE notes:**
-- The HRM 600 supports both secure (bonded) and open BLE connection modes
-- Web Bluetooth does not support bonding/SMP; use the open connection type — the HRM 600 operates in open mode when paired with a new device without prior bonding
-- RR-interval flag (bit 4 of the flags byte in 0x2A37) is set by the HRM 600 when RR data is included
+**If meditation mode with built-in audio:**
+- `fetch('./audio/[name].mp3')` → `decodeAudioData()` → `AudioBufferSourceNode` routed through `_meditationGain`
+- Bowl pacer optional (can mute via `_masterGain.gain.value = 0`)
+- DSP tick continues unchanged — passive monitoring, no pacer required
 
-**FFT for HRV spectral analysis:**
-- RR intervals are unevenly spaced in time; resample to evenly spaced series at 4 Hz (standard for HRV) using linear or cubic spline interpolation before FFT
-- Apply a Hann window to the resampled series before calling `fft.realTransform()` to reduce spectral leakage
-- LF band = 0.04–0.15 Hz; HF band = 0.15–0.4 Hz; RSA/resonance peak will appear in LF near 0.08–0.12 Hz during coherent breathing at 5–6 breaths/min
-- A 2-minute window at 4 Hz yields 480 samples; use the next power of 2 (512) for FFT input
+**If meditation mode with user-uploaded audio:**
+- `FileReader.readAsArrayBuffer()` → store raw bytes in IndexedDB → `decodeAudioData()` → same playback path as built-in
+- On reload: retrieve ArrayBuffer from IndexedDB → `decodeAudioData()` again
+- Call `navigator.storage.persist()` on first upload to prevent eviction
 
-**Web Audio API breathing pacer:**
-- Create a single `AudioContext` on first user click (autoplay policy requires gesture)
-- Style 1 (pitch ramp): `OscillatorNode` at 300 Hz, ramp frequency to 400 Hz over inhale duration using `exponentialRampToValueAtTime`
-- Style 2 (volume swell): Fixed-frequency OscillatorNode through a `GainNode`; ramp gain 0→1 inhale, 1→0 exhale using `linearRampToValueAtTime`
-- Style 3 (soft chime): Short-duration OscillatorNode burst with fast gain decay for bell-like attack; trigger at inhale/exhale phase transitions only
-- All scheduling against `AudioContext.currentTime` for sample-accurate timing — never use `setTimeout` for audio events
+**If phase lock sonification across all modes:**
+- Single persistent `OscillatorNode` per session, started in `initAudio()` extension
+- Frequency updated via `exponentialRampToValueAtTime()` every second from DSP tick
+- Independent `_sonGain` GainNode allows user to zero-out sonification without affecting bowl or meditation audio
+- Sonification can run simultaneously with bowl pacer (standard/pre-sleep mode) or alone (meditation mode)
 
-**Oura API v2 authentication:**
-- Personal Access Tokens are deprecated and scheduled for removal by end of 2025. Do NOT build on PAT as primary auth
-- Implement OAuth2 Authorization Code Flow: redirect to `https://cloud.ouraring.com/oauth/authorize`, receive code, exchange at `https://api.ouraring.com/oauth/token`
-- Required scopes for this app: `daily` (sleep/readiness summaries) and `heartrate` (Gen 3+ time series)
-- Since this is a personal single-user tool, the OAuth2 redirect_uri can be `http://localhost:8080/callback` during dev — Chrome will receive the redirect on the local server
-- Store `access_token` and `refresh_token` in IndexedDB (not localStorage) to avoid the 10 MB cap; implement token refresh on 401 responses
+---
 
-**Canvas waveform rendering:**
-- Use `requestAnimationFrame` loop, not `setInterval`, for smooth 60fps waveform scroll
-- Maintain a circular buffer of the last N HR values (e.g., 300 for a 60-second window at ~5 Hz HR updates)
-- `clearRect` the entire canvas and redraw from buffer each frame — simpler than scrolling transforms and fast enough at these dimensions
-- Use `devicePixelRatio` to avoid blurry canvas on HiDPI displays: `canvas.width = canvas.clientWidth * devicePixelRatio`
+## Audio Node Graph (v1.3)
+
+```
+AudioContext.destination
+    ├── _masterGain (bowl volume slider)
+    │       └── OscillatorNode pairs (bowl strikes + echoes, scheduled)
+    ├── _meditationGain (meditation volume slider)
+    │       └── AudioBufferSourceNode (built-in or user audio, single-use per session)
+    └── _sonGain (sonification volume slider)
+            └── _sonOsc OscillatorNode (persistent, 80-320 Hz, frequency updated each second)
+```
+
+All three GainNodes connect to the same `AudioContext.destination`. The AudioContext instance lives in `audio.js` and is initialized once on first user gesture.
 
 ---
 
@@ -126,26 +282,36 @@ npx serve .
 
 | Package | Version | Compatible With | Notes |
 |---------|---------|-----------------|-------|
-| fft.js | 4.0.4 | Chrome ES5+ (no transpile needed) | UMD module; loads directly via `<script>` tag or ESM import; no dependencies |
-| idb | 8.0.3 | Chrome 86+ (requires `structuredClone` support) | ES module; load via `<script type="module">` or CDN ESM build; Chrome 86+ covers all desktop Chrome users as of 2026 |
+| fft.js | 4.0.4 | Chrome ES5+ | Unchanged from v1.0 |
+| idb | 8.0.3 | Chrome 86+ | `put(storeName, arrayBuffer, key)` works for binary audio storage; no version change needed |
+| Web Audio API | Living standard | Chrome 66+ (AudioWorklet); Chrome 130+ recommended | `decodeAudioData()` Promise form available since Chrome 49; `AudioBufferSourceNode.onended` since Chrome 43 |
+| File API | Living standard | Chrome 13+ | `FileReader.readAsArrayBuffer()` is universally available; no version concern |
 
 ---
 
 ## Sources
 
-- MDN Web Docs: Web Bluetooth API — https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API (verified: HTTPS requirement, user gesture, Chrome support)
-- Chrome Developers: Communicating with Bluetooth devices over JavaScript — https://developer.chrome.com/docs/capabilities/bluetooth (verified: security requirements, GATT access pattern)
-- Bluetooth SIG: Heart Rate Service 0x180D / 0x2A37 specification — https://www.bluetooth.com/specifications/specs/heart-rate-service-1-0/ (verified: RR-interval flag bit 4)
-- Oura API authentication docs — https://cloud.ouraring.com/docs/authentication (verified: OAuth2 only, PAT deprecated)
-- GitHub: indutny/fft.js — https://github.com/indutny/fft.js (version 4.0.4 confirmed; last commit 2017 but stable)
-- GitHub: jakearchibald/idb — https://github.com/jakearchibald/idb (version 8.0.3 confirmed; actively maintained)
-- npm: als-fft 3.4.1 — https://www.npmjs.com/package/als-fft (confirmed current as of March 2026; STFT support noted as alternative)
-- MDN: OscillatorNode, GainNode, AudioContext — https://developer.mozilla.org/en-US/docs/Web/API/OscillatorNode (Web Audio API patterns verified)
-- SVG vs Canvas performance 2025 — https://www.svggenie.com/blog/svg-vs-canvas-vs-webgl-performance-2025 (Canvas 10x faster for high-frequency redraws; MEDIUM confidence, single source)
-- RxDB: localStorage vs IndexedDB — https://rxdb.info/articles/localstorage-indexeddb-cookies-opfs-sqlite-wasm.html (storage limits and async benefits verified)
-- DEV Community: GATT RR-interval parsing — https://dev.to/manufac/interacting-with-polar-verity-sense-using-web-bluetooth-553a (flag byte parsing pattern; MEDIUM confidence, same GATT spec applies to Garmin)
+**Original stack (2026-03-21):**
+- MDN Web Docs: Web Bluetooth API — https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API
+- Chrome Developers: Communicating with Bluetooth devices — https://developer.chrome.com/docs/capabilities/bluetooth
+- GitHub: indutny/fft.js — https://github.com/indutny/fft.js
+- GitHub: jakearchibald/idb — https://github.com/jakearchibald/idb
+- MDN: OscillatorNode, GainNode, AudioContext — https://developer.mozilla.org/en-US/docs/Web/API/OscillatorNode
+
+**v1.3 additions (2026-04-06):**
+- MDN: AudioBufferSourceNode — https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode (HIGH confidence — verified single-use constraint, onended event, buffer property)
+- MDN: BaseAudioContext.decodeAudioData() — https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/decodeAudioData (HIGH confidence — verified Promise form, ArrayBuffer detachment behavior)
+- MDN: FileReader.readAsArrayBuffer() — https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsArrayBuffer (HIGH confidence — standard pattern for file-to-audio pipeline)
+- MDN: AudioParam scheduling methods — https://developer.mozilla.org/en-US/docs/Web/API/AudioParam (HIGH confidence — verified setValueAtTime, exponentialRampToValueAtTime, setTargetAtTime)
+- MDN: OscillatorNode.frequency — https://developer.mozilla.org/en-US/docs/Web/API/OscillatorNode/frequency (HIGH confidence — a-rate AudioParam, widely available since 2015)
+- MDN: Web Audio API overview — https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API (HIGH confidence — ScriptProcessorNode deprecated, AudioWorklet recommended for custom DSP)
+- Chrome Developers: Audio Worklet available by default — https://developer.chrome.com/blog/audio-worklet (HIGH confidence — confirmed deprecated ScriptProcessorNode since Chrome 64)
+- RxDB: IndexedDB storage limits — https://rxdb.info/articles/indexeddb-max-storage-limit.html (MEDIUM confidence — 80% disk quota confirmed, Snappy compression in Chrome noted)
+- Audio Mostly 2025: Comparing Trend-Based and Direct HRV Biofeedback sonification — https://dl.acm.org/doi/10.1145/3771594.3771636 (MEDIUM confidence — pitch mapping research supports sonification design)
+- Academia.edu: Sonification of Autonomic Rhythms in HRV Frequency Spectrum — https://www.academia.edu/68951529/Sonification_of_Autonomic_Rhythms_in_the_Frequency_Spectrum_of_Heart_Rate_Variability (LOW confidence — describes MIDI-based sonification; Web Audio approach derived from same principles)
 
 ---
 
 *Stack research for: ResonanceHRV — real-time HRV biofeedback breathing trainer*
-*Researched: 2026-03-21*
+*Original research: 2026-03-21*
+*v1.3 additions: 2026-04-06*

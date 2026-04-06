@@ -1,293 +1,357 @@
 # Architecture Research
 
-**Domain:** Real-time HRV biofeedback web app (vanilla JS, Web Bluetooth, Web Audio API)
-**Researched:** 2026-03-21
-**Confidence:** HIGH (core patterns verified against MDN official docs and Web Audio API spec)
-
-## Standard Architecture
-
-### System Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          UI / View Layer                             │
-│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  ┌─────────┐ │
-│  │  BLE Panel  │  │  Session     │  │  Waveform     │  │Dashboard│ │
-│  │  (connect)  │  │  Controls    │  │  Canvas       │  │ (Oura)  │ │
-│  └──────┬──────┘  └──────┬───────┘  └───────┬───────┘  └────┬────┘ │
-├─────────┼────────────────┼──────────────────┼───────────────┼──────┤
-│         │        Event Bus / AppState        │               │      │
-│         │    (Pub/Sub + JS Proxy object)     │               │      │
-├─────────┼────────────────┼──────────────────┼───────────────┼──────┤
-│         ↓                ↓                  ↓               ↓      │
-│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  ┌─────────┐ │
-│  │  BLEService │  │  DSP Engine  │  │  AudioEngine  │  │  Oura   │ │
-│  │  (GATT/RR)  │  │  (FFT/RSA)   │  │  (scheduler)  │  │  Client │ │
-│  └──────┬──────┘  └──────┬───────┘  └───────────────┘  └────┬────┘ │
-├─────────┼────────────────┼────────────────────────────────────┼──────┤
-│         ↓                ↓                                   ↓      │
-│  ┌─────────────────────────────────────────────────────────────────┐│
-│  │                       StorageService                            ││
-│  │              (IndexedDB — sessions, RR arrays, scores)          ││
-│  └─────────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Communicates With |
-|-----------|----------------|-------------------|
-| BLEService | Device discovery, GATT connection, characteristic notifications, DataView parsing, disconnect/reconnect | Emits events → AppState |
-| DSPEngine | RR artifact rejection, circular buffer, Lomb-Scargle PSD, RSA amplitude, coherence score | Reads from BLEService via AppState; writes metrics → AppState |
-| AudioEngine | Lookahead scheduler, breathing cue synthesis (tone/chime/swell), AudioContext lifecycle | Reads pace from AppState; no output — pure scheduling |
-| WaveformRenderer | requestAnimationFrame loop, Canvas 2D draw, circular buffer display, scrolling HR line | Reads RR/HR buffer from AppState |
-| OuraClient | OAuth2 PKCE flow, token storage in localStorage, fetch overnight HRV/readiness | Reads/writes AppState.ouraData |
-| StorageService | IndexedDB wrapper — append session records, query by date range | Called by AppState on session end |
-| AppState | Single source of truth, Proxy-reactive state, Pub/Sub event bus | All components read/write through this |
-| UI Panels | DOM manipulation, user input, mode transitions (discovery/practice/dashboard) | Read AppState; dispatch actions |
+**Domain:** Vanilla JS real-time biofeedback app — new session modes + audio features
+**Researched:** 2026-04-06
+**Confidence:** HIGH (direct codebase analysis, no guesswork)
 
 ---
 
-## Recommended Project Structure
+## Existing Architecture Summary
+
+Before describing what changes, this is how the app is actually structured today.
 
 ```
-/
-├── index.html               # Single HTML entry point, import map, module script tag
-├── styles.css               # Global styles (no preprocessor needed)
-├── js/
-│   ├── main.js              # Bootstrap: init AppState, wire modules, start BLE scan UI
-│   ├── state.js             # AppState: Proxy-based reactive store + Pub/Sub bus
-│   ├── ble.js               # BLEService: Web Bluetooth connect/notify/parse/reconnect
-│   ├── dsp.js               # DSPEngine: artifact rejection, RR buffer, Lomb-Scargle, RSA
-│   ├── audio.js             # AudioEngine: AudioContext, lookahead scheduler, tone synthesis
-│   ├── renderer.js          # WaveformRenderer: Canvas rAF loop, circular buffer display
-│   ├── oura.js              # OuraClient: OAuth2, token mgmt, API fetch, data transform
-│   └── storage.js           # StorageService: IndexedDB open/add/query helpers
-└── .planning/               # Research and roadmap (not served)
+┌─────────────────────────────────────────────────────────────────┐
+│                        index.html (3 tabs)                       │
+│         Discovery | Practice | Dashboard                         │
+├─────────────────────────────────────────────────────────────────┤
+│                          main.js                                 │
+│  Bootstrap, BLE connect handlers, nav tab switching,            │
+│  AppState subscriptions for UI-level concerns                    │
+├────────────┬───────────────┬────────────┬────────────────────────┤
+│ discovery  │  practice.js  │ dashboard  │  oura.js               │
+│   .js      │  Session flow │   .js      │  OAuth + cache         │
+│  (mode     │  Tuning →     │  (data     │                        │
+│  controller│  session      │   viz)     │                        │
+├────────────┴───────────────┴────────────┴────────────────────────┤
+│                      Shared Services Layer                        │
+│  audio.js       dsp.js          renderer.js     storage.js       │
+│  AudioContext   FFT/RSA/        Canvas RAF       IndexedDB        │
+│  Bowl pacer     Coherence       Waveform/Gauge   sessions/        │
+│  scheduler      PhaseLock       Pacer anim       settings/        │
+│                 tick/sec                         oura cache       │
+│                                                                   │
+│  phaseLock.js   paceController.js   tuning.js                    │
+│  Covariance     Adaptive pace       RF candidate                  │
+│  score          drift controller   scanning                       │
+├─────────────────────────────────────────────────────────────────┤
+│                      Device Layer                                 │
+│  DeviceManager.js  HRMAdapter.js    MuseAdapter.js               │
+│  Capability        Garmin BLE       Muse BLE EEG+PPG             │
+│  routing           RR intervals     Signal processing            │
+├─────────────────────────────────────────────────────────────────┤
+│                      Reactive State Bus                           │
+│  state.js — Proxy-based AppState + pub/sub subscribe()           │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Structure Rationale
+### Key Architectural Facts
 
-- **Flat js/ directory:** App is ~800-1000 lines total; subdirectory nesting adds navigation cost with no benefit at this scale.
-- **One module per concern:** Each file exports a single object or set of functions. Cross-concern communication happens only through AppState, not direct imports between siblings.
-- **main.js as the wiring layer:** Imports all modules and subscribes them to AppState events. Nothing else imports from main.js. This makes the dependency graph acyclic and readable.
-- **No import maps required but optionally useful:** Since there are no external npm dependencies, relative imports in `<script type="module">` are sufficient.
+- **AppState is the single data bus.** Every module writes to AppState properties; every module that cares subscribes. No direct inter-module calls for data sharing.
+- **Session controllers are mode-specific monoliths.** `practice.js` owns everything for a practice session: tuning phase, DSP tick loop, pacer start/stop, rendering, summary, and IndexedDB save. `discovery.js` is the same for discovery mode.
+- **audio.js owns a single AudioContext.** `initAudio()` is idempotent — safe to call every session start. The context is never closed, only suspended. All audio nodes connect to `_masterGain → destination`.
+- **renderer.js runs a single rAF loop.** `startRendering()` begins one `requestAnimationFrame` loop reading from AppState; `stopRendering()` cancels it. All canvas elements (waveform, gauge, pacer, neural calm, EEG, coherence) are passed in at start.
+- **No build tools, no bundling, no framework.** ES modules loaded directly by the browser. CDN imports (idb, DSP FFT) are pinned URLs.
+- **IndexedDB schema is versioned at DB_VERSION = 1.** Any new session fields can be added to `saveSession()` without a schema migration — the object store uses schemaless put. A DB_VERSION bump is only needed for new indexes or object stores.
+
+---
+
+## Feature Integration Analysis
+
+### Feature 1: Pre-Sleep Mode (Extended Exhale RFB, Adjustable I:E Ratio)
+
+**What it needs:**
+- Asymmetric inhale/exhale durations (current pacer uses 50/50 split: `halfPeriod = 1 / (freq * 2)`)
+- UI: I:E ratio selector (e.g., 1:2, 1:3) and a mode selector to reach this session type
+- Session saved with `mode: 'pre-sleep'` and I:E ratio metadata
+
+**Where the current pacer fails:**
+In `audio.js`, `_schedulerTick()` computes `halfPeriod` as equal halves and `_scheduleCue()` alternates inhale/exhale with the same duration. The pacer circle animation in `renderer.js` also assumes symmetric half-periods via `pacerEpoch` + `pacingFreq`.
+
+**Integration approach — MODIFY existing files:**
+
+`audio.js`: Add `_inhaleRatio` / `_exhaleRatio` to module state (default 0.5/0.5). Expose `setIERatio(inhale, exhale)`. Change `_schedulerTick` to compute asymmetric phase durations:
+```
+const period = 1 / AppState.pacingFreq;
+const inhaleDur = period * _inhaleRatio;
+const exhaleDur = period * _exhaleRatio;
+```
+The cue scheduler alternates: if `_nextPhase === 'inhale'` advance by `inhaleDur`, else by `exhaleDur`. Write `AppState.currentPhaseDuration` on each cue so the renderer can normalize circle animation to the actual phase length.
+
+`renderer.js`: The pacer circle expansion/contraction timing must read `AppState.currentPhaseDuration` instead of computing a symmetric half-period from `pacingFreq`. This is the only renderer change needed for pre-sleep.
+
+`state.js`: Add `sessionMode: 'standard' | 'pre-sleep' | 'meditation'`, `ieRatio: { inhale: 1, exhale: 2 }`, and `currentPhaseDuration: 0`.
+
+**New file needed:** `js/preSleep.js` (preferred over adding branches to `practice.js`). The pre-sleep controller is functionally ~80% identical to `practice.js` — same tuning phase, same DSP tick, same save structure — with the meaningful differences being I:E ratio wiring and no adaptive pace controller.
+
+---
+
+### Feature 2: Meditation Mode (Guided Audio Playback + Passive HRV/EEG Monitoring)
+
+**What it needs:**
+- Audio file playback (built-in scripts + user-uploaded files)
+- Passive HRV and Neural Calm monitoring during playback (no active breathing pacer)
+- Post-session physiological report
+- User file management (upload, select, delete)
+
+**The fundamental constraint with the current architecture:**
+
+`audio.js` owns the single `AudioContext`. The bowl pacer uses `OscillatorNode` chains. Audio file playback uses `AudioBufferSourceNode` or `MediaElementAudioSourceNode`. These are compatible — they can coexist in the same context connecting to separate `GainNode` outputs. But: **do not create a second AudioContext**. Chrome enforces per-page limits, and mixing audio from two separate contexts is impossible at the platform level.
+
+**Integration approach:**
+
+`audio.js`: Export `getAudioContext()` returning `_ctx`. This is the only change to `audio.js` required for meditation playback support — the shared context is exposed, nothing else about audio.js changes.
+
+**New file: `js/meditationAudio.js`**
+
+Responsibilities:
+- Calls `initAudio()` to ensure context is running, then `getAudioContext()` to get the shared context
+- For built-in scripts: fetch the file, `ctx.decodeAudioData()`, play via `AudioBufferSourceNode` (fully loaded in RAM, best for seeking and looping)
+- For user uploads: connect via `MediaElementAudioSourceNode` wrapping an HTML5 `<audio>` element (handles large files without full decode-to-buffer; allows streaming playback)
+- Owns its own `GainNode` → `ctx.destination` (independent volume from bowl pacer)
+- Exposes: `load(source)`, `play()`, `pause()`, `stop()`, `seek(seconds)`, `setVolume(0-1)`
+- Writes to AppState: `meditationPlaying`, `meditationDuration`, `meditationPosition`
+
+**Built-in scripts:** Served as audio files in `/audio/` directory. Indexed in a static `js/meditationLibrary.js` config (array of `{id, title, duration, file}`). No external fetch.
+
+**User uploads:** Use the File API + IndexedDB. Store audio blobs in a new `'audioFiles'` object store (requires storage.js DB_VERSION bump to 2). Store metadata (filename, duration, date added) separately in `'settings'` under key `'userAudioFiles'` as a JSON array. Do not use localStorage — binary blobs exceed the 5-10MB quota immediately.
+
+`storage.js` changes:
+- Bump `DB_VERSION` to 2
+- Add `'audioFiles'` object store in the `upgrade()` callback
+- Export `saveAudioFile(blob, metadata)`, `getAudioFile(id)`, `deleteAudioFile(id)`, `listAudioFiles()`
+
+**New file: `js/meditation.js`** (session controller, mirrors `practice.js` structure)
+
+Responsibilities:
+- Mode selector and audio source selection UI wiring
+- Session start: `initAudio()` → load audio → `startRendering(...)` in passive mode (no pacer canvas passed) → DSP tick interval for HRV + Neural Calm trace collection
+- No `startPacer()` call — meditation mode is breath-permissive
+- No `initPaceController()` call
+- Session end: `stopRendering()` → compute summary → `showMeditationReport()` → `saveSession({mode: 'meditation', ...})`
+- Post-session report overlays average phase lock, neural calm, and HRV trend during the session
+
+**State additions to `state.js`:**
+```
+meditationPlaying: false,
+meditationDuration: 0,       // total seconds of loaded audio
+meditationPosition: 0,       // current playback position in seconds
+meditationAudioId: null,     // id of selected audio (null = passive monitoring only)
+```
+
+---
+
+### Feature 3: Phase Lock Audio Sonification
+
+**What it needs:**
+- A continuous audio tone whose pitch tracks `AppState.phaseLockScore` in real time
+- Must not interfere with the bowl breathing pacer
+- Works across all modes (standard practice, pre-sleep, meditation)
+- Eyes-closed use — smooth pitch transitions, not sudden jumps
+
+**Integration approach — MODIFY `audio.js`:**
+
+Add a persistent `_sonificationOsc` + `_sonificationGain` within the existing AudioContext. Unlike bowl strikes (short-lived nodes created per strike), sonification uses one long-lived oscillator with continuously scheduled frequency automation.
+
+The pitch update is called from the 1-second DSP tick interval in each session controller. Map `phaseLockScore` (0-100) to a frequency range (e.g., 180 Hz at score=0, 440 Hz at score=100). Use `setTargetAtTime` with a 500ms time constant for smooth glide — no audible clicks.
+
+New exports in `audio.js`:
+- `startSonification()` — creates `_sonificationOsc` (sine, starts at 180 Hz), connects to `_sonificationGain` at near-zero initial volume, starts oscillator
+- `stopSonification()` — ramps `_sonificationGain` to 0 over 200ms, then disconnects and nulls refs
+- `updateSonification(phaseLockScore)` — maps score to Hz, calls `setTargetAtTime`
+- `setSonificationVolume(value)` — separate from master bowl volume
+
+Sonification `_sonificationGain` connects to `_ctx.destination` directly, parallel to `_masterGain`. This gives fully independent volume control.
+
+**Session controller integration:**
+
+Each mode controller (`practice.js`, `preSleep.js`, `meditation.js`) opts in:
+- Call `startSonification()` after `initAudio()` if `AppState.sonificationEnabled`
+- Call `updateSonification(AppState.phaseLockScore)` inside the DSP tick interval
+- Call `stopSonification()` in the stop/teardown function
+- Add sonification volume slider to mode UI
+
+**State additions:**
+```
+sonificationEnabled: true,    // user toggle (persisted via setSetting)
+sonificationVolume: 0.15,     // 0-1 (persisted via setSetting)
+```
+
+---
+
+## Component Responsibility Map
+
+| Component | Status | Change |
+|-----------|--------|--------|
+| `state.js` | MODIFY | Add `sessionMode`, `ieRatio`, `currentPhaseDuration`, `meditationPlaying`, `meditationDuration`, `meditationPosition`, `meditationAudioId`, `sonificationEnabled`, `sonificationVolume` |
+| `audio.js` | MODIFY | Add `setIERatio()`, asymmetric phase scheduling, `AppState.currentPhaseDuration` writes, `startSonification()`, `stopSonification()`, `updateSonification()`, `setSonificationVolume()`, `getAudioContext()` |
+| `renderer.js` | MODIFY | Pacer circle reads `AppState.currentPhaseDuration` instead of computing symmetric half-period; pass `null` for pacer canvas in meditation mode |
+| `storage.js` | MODIFY | Bump `DB_VERSION` to 2; add `audioFiles` object store; add `saveAudioFile`, `getAudioFile`, `deleteAudioFile`, `listAudioFiles` |
+| `main.js` | MODIFY | Wire mode selector UI; call `initPreSleepUI()` and `initMeditationUI()` in `init()` |
+| `index.html` | MODIFY | Mode selector; pre-sleep UI sections (I:E ratio picker); meditation UI sections (audio player, library) |
+| `styles.css` | MODIFY | Mode selector, audio player, I:E ratio picker styles |
+| `practice.js` | NO CHANGE | Standard mode unchanged |
+| `discovery.js` | NO CHANGE | Unaffected |
+| `dsp.js` | NO CHANGE | Session-mode-agnostic; reads RR buffer regardless of mode |
+| `phaseLock.js` | NO CHANGE | Score computed from RR data regardless of mode |
+| `paceController.js` | NO CHANGE | Not called by pre-sleep or meditation controllers |
+| `tuning.js` | NO CHANGE | Pre-sleep may optionally run tuning; meditation skips it; either way `tuning.js` itself is unchanged |
+| Device adapters | NO CHANGE | Mode-agnostic |
+
+**New files:**
+
+| File | Purpose |
+|------|---------|
+| `js/preSleep.js` | Pre-sleep session controller — I:E ratio wiring, no pace controller, saves with `mode:'pre-sleep'` |
+| `js/meditation.js` | Meditation session controller — no pacer, passive monitoring, post-session report |
+| `js/meditationAudio.js` | Guided audio playback engine using shared AudioContext |
+| `js/meditationLibrary.js` | Static index of built-in meditation scripts with `{id, title, duration, file}` metadata |
+| `audio/` | Directory of built-in guided audio files served locally |
+
+---
+
+## Data Flow Changes
+
+### Pre-Sleep Session Flow
+
+```
+User selects pre-sleep mode + I:E ratio (e.g., 1:2)
+    ↓
+preSleep.js: initAudio() → setIERatio(1, 2) → [optional tuning phase]
+    ↓
+startPacer(resonanceFreqHz)
+  audio.js: period = 1/freq; inhaleDur = period * 1/3; exhaleDur = period * 2/3
+  AppState.currentPhaseDuration updated each cue
+    ↓
+startRendering(...) — renderer reads currentPhaseDuration for circle timing
+    ↓
+DSP tick every 1s:
+  tick() → phaseLockScore
+  updateSonification(score)
+  push traces (no paceControllerTick)
+    ↓
+stopPreSleep() → saveSession({mode:'pre-sleep', ieRatio:{inhale:1,exhale:2}, ...})
+```
+
+### Meditation Session Flow
+
+```
+User selects meditation mode → picks audio source (built-in or uploaded)
+    ↓
+meditation.js: initAudio() → meditationAudio.load(source) → startSonification()
+    ↓
+meditationAudio.play() — AudioBufferSourceNode or MediaElementAudioSourceNode
+    ↓
+startRendering(waveform, null, gauge, null, start, 0, neuralCalm, eeg, coherence)
+  (sessionDuration=0 means no countdown timer — open-ended session)
+    ↓
+DSP tick every 1s:
+  tick() → phaseLockScore, neuralCalm (passive)
+  updateSonification(score)
+  meditationAudio updates AppState.meditationPosition
+    ↓
+Audio ends OR user stops →
+  saveSession({mode:'meditation', audioId, meanPhaseLock, meanNeuralCalm, ...})
+  showMeditationReport()
+```
+
+### Sonification Update Flow
+
+```
+DSP tick interval (1s, inside session controller)
+    ↓
+tick() updates AppState.phaseLockScore
+    ↓
+updateSonification(AppState.phaseLockScore) — called in same tick callback
+    ↓
+audio.js: targetHz = 180 + (score / 100) * 260  // 180-440 Hz range
+  _sonificationOsc.frequency.setTargetAtTime(targetHz, _ctx.currentTime, 0.5)
+  (500ms time constant = gradual, musically smooth pitch glide)
+```
+
+### Asymmetric Pacer Scheduling
+
+```
+_schedulerTick() — same 25ms loop interval, unchanged
+    ↓
+period = 1 / AppState.pacingFreq
+currentDur = (_nextPhase === 'inhale') ? period * _inhaleRatio : period * _exhaleRatio
+    ↓
+AppState.currentPhaseDuration = currentDur   [NEW write]
+AppState.nextCueTime = _nextCueTime          [unchanged]
+AppState.nextCuePhase = _nextPhase           [unchanged]
+    ↓
+_scheduleCue(_nextCueTime, _nextPhase, currentDur)
+_nextCueTime += currentDur
+    ↓
+renderer.js rAF loop:
+  phaseFraction = elapsed within current phase / AppState.currentPhaseDuration
+  circle radius = f(phaseFraction, currentPhase)  [normalized correctly]
+```
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: Proxy-Based AppState as Single Source of Truth
+### Pattern 1: Session Controller as Mode Monolith
 
-**What:** A plain JavaScript object wrapped in `Proxy` intercepts all property assignments and fires named events to subscribed listeners. No framework needed.
+**What:** Each session mode is a self-contained controller owning its full lifecycle — start, DSP tick loop, audio, rendering, summary, save. Shared services are called via their public APIs, not subclassed or wrapped.
 
-**When to use:** When multiple independent modules (BLE, audio, canvas) need to react to the same state changes (new RR interval, session start/end, coherence update) without being directly coupled to each other.
+**When to use:** Every new session mode. Do not add `if (mode === 'x')` branches inside `practice.js`.
 
-**Trade-offs:** Simple to implement and debug. Cannot batch updates; very high-frequency writes (each RR notification) should write to a circular buffer in state rather than triggering a re-render on every write.
+**Trade-offs:** Duplication of boilerplate (DSP tick setup, RMSSD helper, trace collection). Acceptable — the alternative (a generic session runner with plugin modes) is overengineered for a 4-mode personal app. If duplication becomes painful, extract shared utilities to `dsp.js` exports.
 
-**Example:**
-```javascript
-// state.js
-const listeners = {};
-export const AppState = new Proxy({
-  connected: false,
-  rrBuffer: new Float32Array(512),  // circular buffer of recent RR intervals
-  rrHead: 0,
-  currentHR: 0,
-  coherenceScore: 0,
-  sessionPhase: 'idle',             // 'idle' | 'discovery' | 'practice' | 'dashboard'
-  pacingFreq: 0.1,                  // Hz (breaths/sec)
-  ouraData: null,
-}, {
-  set(target, key, value) {
-    target[key] = value;
-    (listeners[key] || []).forEach(fn => fn(value));
-    return true;
-  }
-});
+### Pattern 2: AppState as the Only Inter-Module Data Channel
 
-export function subscribe(key, fn) {
-  listeners[key] = listeners[key] || [];
-  listeners[key].push(fn);
-}
-```
+**What:** Modules never import from each other to read data. They write to AppState; subscribers read. Direct imports between modules are only for function calls (start/stop/init), never for data exchange.
 
-### Pattern 2: BLE Data Pipeline — Notification to RR Integer Array
+**When to use:** All new features. `meditationAudio.js` writes `meditationPosition` to AppState; `meditation.js` subscribes for UI updates. Never reach into `meditationAudio.js` to read position directly.
 
-**What:** A deterministic byte-parsing pipeline that converts raw `characteristicvaluechanged` DataView payloads from GATT characteristic 0x2A37 into cleaned millisecond RR values appended to AppState's circular buffer.
+**Trade-offs:** AppState grows. Mitigate by grouping fields with section comments (already the pattern in `state.js`).
 
-**When to use:** Always. This is the only correct interpretation of the Heart Rate Measurement characteristic per the Bluetooth GATT spec. The HRM 600 uses the standard BLE Heart Rate Service.
+### Pattern 3: One AudioContext, Multiple Gain Nodes
 
-**Trade-offs:** The characteristic can carry 0, 1, or multiple RR values per notification (depending on HR). Parse all of them. RR values from Garmin are in units of 1/1024 second; convert to milliseconds on ingestion.
+**What:** One `AudioContext` in `audio.js`, exposed via `getAudioContext()`. Each audio concern (bowl pacer, sonification, meditation playback) creates its own `GainNode` connected to `ctx.destination`. Volume control is per-concern, not per-context.
 
-**Example:**
-```javascript
-// ble.js — parse characteristicvaluechanged
-function parseHRMNotification(event) {
-  const view = event.target.value;
-  const flags = view.getUint8(0);
-  const hrFormat16bit = flags & 0x01;
-  const rrPresent = flags & 0x10;
+**When to use:** Every audio addition. Always call `initAudio()` first inside a user gesture handler.
 
-  let offset = hrFormat16bit ? 3 : 2;  // skip flags + HR value
-
-  const rrValues = [];
-  if (rrPresent) {
-    while (offset + 1 < view.byteLength) {
-      const rawRR = view.getUint16(offset, /*littleEndian=*/true);
-      const ms = (rawRR / 1024) * 1000;  // Garmin: 1/1024 sec resolution
-      offset += 2;
-      rrValues.push(ms);
-    }
-  }
-  return rrValues;  // array of ms values, may be empty
-}
-```
-
-### Pattern 3: Lookahead Audio Scheduler for Breathing Pace
-
-**What:** A `setTimeout`-driven scheduler fires every 25ms, looks 100ms ahead using `AudioContext.currentTime`, and queues Web Audio API oscillator/gain nodes to start at precisely scheduled future times. This is "A Tale of Two Clocks" (Chris Wilson, web.dev).
-
-**When to use:** Any periodic audio cue where drift would be perceptible. Direct `setTimeout`/`setInterval` causes audible timing errors at HRV-relevant frequencies (4-6 breaths/min = 5-7.5 second cycles with potentially noticeable drift over 20 minutes).
-
-**Trade-offs:** The scheduler loop must be started after a user gesture (AudioContext.resume() requirement). Visual UI updates (circle animation) must be decoupled from this loop — they run in requestAnimationFrame, synchronizing to the same `nextCueTime` value stored in AppState.
-
-**Example:**
-```javascript
-// audio.js — lookahead scheduler
-const LOOKAHEAD_MS = 25;
-const SCHEDULE_AHEAD_SEC = 0.1;
-
-function scheduleBreathCue(time, phase) {
-  // 'phase' = 'inhale' | 'exhale'
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  // ... configure tone based on selected audio style
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(time);
-  osc.stop(time + 0.3);
-  // Store scheduled time for visual sync
-  AppState.nextCueTime = time;
-  AppState.nextCuePhase = phase;
-}
-
-function scheduler() {
-  const breathPeriod = 1 / AppState.pacingFreq;
-  while (nextCueTime < ctx.currentTime + SCHEDULE_AHEAD_SEC) {
-    scheduleBreathCue(nextCueTime, currentPhase);
-    nextCueTime += breathPeriod / 2;  // alternate inhale/exhale
-    currentPhase = currentPhase === 'inhale' ? 'exhale' : 'inhale';
-  }
-  timerID = setTimeout(scheduler, LOOKAHEAD_MS);
-}
-```
-
-### Pattern 4: Circular Buffer + requestAnimationFrame Waveform Renderer
-
-**What:** AppState holds a fixed-size `Float32Array` (circular buffer) of recent HR values. The canvas renderer runs a `requestAnimationFrame` loop that reads the buffer and redraws the waveform each frame.
-
-**When to use:** Real-time scrolling waveforms where data arrives asynchronously (from BLE) and rendering runs independently (at display frame rate). This decouples data arrival from rendering — BLE pushes every ~800ms, canvas redraws at 60fps.
-
-**Trade-offs:** The renderer must handle the circular buffer wrap-around to draw values in correct time order. Cap deltaTime to 100ms on tab refocus to prevent waveform jump after tab was hidden. Use `ctx.clearRect` + full redraw each frame (not canvas scrolling tricks) for simplicity at this scale.
-
-**Example:**
-```javascript
-// renderer.js
-let rafId = null;
-
-export function startRenderer(canvas, appState) {
-  const ctx = canvas.getContext('2d');
-  let lastTime = 0;
-
-  function draw(timestamp) {
-    const delta = Math.min(timestamp - lastTime, 100);
-    lastTime = timestamp;
-    // shift existing content left by (delta * pixelsPerMs)
-    // append new HR samples from appState.rrBuffer in correct order
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawWaveform(ctx, appState.rrBuffer, appState.rrHead, canvas.width, canvas.height);
-    rafId = requestAnimationFrame(draw);
-  }
-  rafId = requestAnimationFrame(draw);
-}
-```
+**Trade-offs:** All audio must coordinate on the single context. No cross-context mixing is possible — this is a hard browser constraint, not a design choice.
 
 ---
 
-## Data Flow
+## Anti-Patterns
 
-### BLE Notification to Coherence Score
+### Anti-Pattern 1: Adding Mode Branching to practice.js
 
-```
-Garmin HRM 600 (BLE)
-    ↓  characteristicvaluechanged event
-BLEService.parseHRMNotification()
-    ↓  array of raw RR ms values (0-3 per notification)
-DSPEngine.ingest(rrValues)
-    ├→  Artifact rejection (< 300ms, > 2000ms, > 20% delta from rolling median)
-    ├→  Append clean values to AppState.rrBuffer (circular, 512 samples = ~7 min)
-    ├→  Every 30s: Lomb-Scargle PSD on buffer → extract LF/HF power
-    └→  Coherence score = LF peak power normalized / total power
-          AppState.coherenceScore = score
-              ↓
-         WaveformRenderer reads AppState.rrBuffer each rAF frame
-         UI panels subscribe to AppState.coherenceScore
-```
+**What people do:** Add `if (sessionMode === 'pre-sleep') { ... }` throughout `practice.js`.
 
-### Audio Scheduling
+**Why it's wrong:** `practice.js` is 683 lines and already at the monolith size limit. Mode-specific branches buried in an existing controller become hard to reason about and test. Pre-sleep has genuinely different behavior: no pace controller, different audio scheduling, potentially no tuning.
 
-```
-AppState.pacingFreq (Hz) + AppState.sessionPhase
-    ↓
-AudioEngine.scheduler() — runs every 25ms via setTimeout
-    ↓  looks 100ms ahead via AudioContext.currentTime
-    ↓  schedules OscillatorNode.start(futureTime)
-Web Audio hardware clock — zero-drift playback
-    ↓  futureTime stored in AppState.nextCueTime
-WaveformRenderer reads AppState.nextCueTime to sync circle animation
-```
+**Do this instead:** Create `preSleep.js` as a peer controller alongside `practice.js`.
 
-### Session Persistence
+### Anti-Pattern 2: Creating a Second AudioContext for Meditation Audio
 
-```
-User ends session
-    ↓
-AppState.sessionPhase = 'idle'
-    ↓
-StorageService.saveSession({
-  timestamp, durationMs,
-  rrIntervals: AppState.rrBuffer snapshot,
-  coherenceScores: [...],
-  pacingFreq: AppState.pacingFreq
-})
-    ↓  IndexedDB transaction (async, non-blocking)
-    ↓
-Dashboard queries StorageService.querySessions({ limit: 30 })
-    ↓  renders trend chart (Canvas 2D)
-```
+**What people do:** `const ctx = new AudioContext()` inside `meditationAudio.js` to avoid coupling to `audio.js`.
 
-### Oura Integration
+**Why it's wrong:** Chrome enforces an AudioContext limit per page (typically 6, but the practical constraint is that mixing audio from two separate contexts is architecturally impossible — you cannot connect nodes across contexts). Pre-existing bowl pacer audio would become unmixable with meditation audio.
 
-```
-User clicks "Connect Oura"
-    ↓
-OuraClient.startOAuth2()
-    ↓  redirect to cloud.ouraring.com/oauth/authorize?response_type=token&...
-    ↓  (implicit/client-side flow — no backend needed)
-    ↓  callback URL fragment contains access_token
-OuraClient.handleCallback()
-    ↓  store token in localStorage (30-day expiry)
-    ↓
-Dashboard.load()
-    ↓
-OuraClient.fetchDailyReadiness(last30Days)
-OuraClient.fetchHeartRate(last30Days)   // overnight HRV proxy
-    ↓  fetch('https://api.ouraring.com/v2/usercollection/daily_readiness', ...)
-AppState.ouraData = transformedTrends
-    ↓
-Dashboard renderer draws combined session + Oura trend
-```
+**Do this instead:** Export `getAudioContext()` from `audio.js`. Call `initAudio()` to ensure the context exists and is running, then `getAudioContext()` to get the reference.
+
+### Anti-Pattern 3: Storing Audio Blobs in localStorage
+
+**What people do:** `localStorage.setItem('audioFile', btoa(arrayBuffer))`.
+
+**Why it's wrong:** localStorage quota is 5-10MB. A single 20-minute guided meditation at 128kbps MP3 is ~18MB. The write will silently fail or throw a quota error.
+
+**Do this instead:** IndexedDB handles binary blobs natively without serialization and supports hundreds of MB. The new `audioFiles` object store in storage.js is the right place.
+
+### Anti-Pattern 4: Calling updateSonification from the rAF Loop
+
+**What people do:** Update sonification pitch inside `renderer.js`'s 60fps animation loop.
+
+**Why it's wrong:** `phaseLockScore` updates at 1Hz. Calling `setTargetAtTime` at 60fps creates 60 redundant scheduled automation events per second with no effect. It adds unnecessary work on the audio scheduler thread.
+
+**Do this instead:** Call `updateSonification()` inside the 1-second DSP tick interval in each session controller, exactly where `phaseLockTrace.push()` already lives.
 
 ---
 
@@ -295,133 +359,34 @@ Dashboard renderer draws combined session + Oura trend
 
 ### External Services
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Garmin HRM 600 | Web Bluetooth GATT, service 0x180D, characteristic 0x2A37, notifications | Disconnect: listen `gattserverdisconnected` on device object; attempt auto-reconnect via `device.gatt.connect()` |
-| Oura API v2 | OAuth2 implicit flow (client-side only, no backend); Bearer token in Authorization header | Personal Access Tokens **deprecated** — removal targeted end-of-2025 (LOW confidence on exact date). Use OAuth2 implicit flow with `response_type=token`. Token expires 30 days; re-auth required. CORS is supported for direct browser fetch. |
-| Browser IndexedDB | Async IDB transactions via thin wrapper; object store keyed by sessionId (timestamp) | No third-party library needed; raw IDB API is verbose but manageable for 2-3 object stores |
+| Service | Integration | Notes |
+|---------|-------------|-------|
+| Web Audio API | Single AudioContext in `audio.js`, shared via `getAudioContext()` | All audio nodes must be created from this context |
+| IndexedDB (idb v8) | `storage.js` abstraction, DB_VERSION bump to 2 for audioFiles store | Upgrade callback must handle both v1 and v2 migrations |
+| File API | `meditationAudio.js` reads `File` objects from `<input type="file">` | No server involvement — purely client-side |
 
 ### Internal Boundaries
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| BLEService ↔ DSPEngine | AppState.rrBuffer (circular array write/read) | DSPEngine does not import BLEService directly. BLEService writes to AppState; DSPEngine subscribes |
-| DSPEngine ↔ WaveformRenderer | AppState.rrBuffer + AppState.coherenceScore | Renderer only reads; no writes back |
-| AudioEngine ↔ WaveformRenderer | AppState.nextCueTime + AppState.nextCuePhase | Visual pacer circle reads these to sync animation phase to scheduled audio |
-| OuraClient ↔ StorageService | No direct dependency | Dashboard reads both independently and merges in UI layer |
-| All modules ↔ AppState | Import `{ AppState, subscribe }` from state.js | Only AppState is a shared dependency; modules do not import each other |
-
----
-
-## Suggested Build Order
-
-Dependencies determine the order. Each phase can only be built once its inputs exist.
-
-```
-Phase 1: AppState + StorageService
-    No dependencies. Everything else depends on these.
-    AppState must exist before any module can communicate.
-    StorageService must exist before sessions can be saved.
-
-Phase 2: BLEService
-    Depends on: AppState (to write RR values)
-    Delivers: verified RR data stream for DSP work
-
-Phase 3: DSPEngine
-    Depends on: AppState (reads rrBuffer), BLEService (provides data)
-    Delivers: coherenceScore and processed metrics
-    NOTE: Can stub BLEService with synthetic RR data during development
-
-Phase 4: WaveformRenderer + Visual Pacer
-    Depends on: AppState (reads rrBuffer, nextCueTime), Canvas API
-    Can be developed with AppState stubs — no BLE required
-
-Phase 5: AudioEngine
-    Depends on: AppState (reads pacingFreq, sessionPhase)
-    Entirely standalone — no dependency on BLE or DSP
-    Must be wired to user gesture for AudioContext.resume()
-
-Phase 6: Session UI + Session Logic
-    Depends on: BLEService, DSPEngine, AudioEngine, WaveformRenderer, StorageService
-    Integrates all Phase 1-5 components into discovery and practice flows
-
-Phase 7: OuraClient + Dashboard
-    Depends on: StorageService (session history), AppState (ouraData)
-    Entirely decoupled from BLE stack — can be built independently after Phase 1
-```
-
----
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Triggering Canvas Redraw on Every RR Event
-
-**What people do:** Subscribe the canvas renderer directly to BLE events and call `drawWaveform()` inside the BLE notification handler.
-
-**Why it's wrong:** BLE notifications arrive every ~800ms, but intermediate visual states are lost; more critically, drawing inside an event handler (not rAF) causes janky rendering and can block the main thread during burst notifications.
-
-**Do this instead:** Write RR values to the circular buffer in AppState; let `requestAnimationFrame` drive all rendering independently. The renderer always draws whatever is currently in the buffer.
-
-### Anti-Pattern 2: Using setInterval for Audio Scheduling
-
-**What people do:** `setInterval(playTone, breathPeriodMs / 2)` for inhale/exhale cues.
-
-**Why it's wrong:** JavaScript timers are not precise to the audio clock. Over a 20-minute session at 0.1 Hz, `setInterval` accumulates drift that makes the pacer audibly unstable. User will lose sync between audio cues and the visual circle.
-
-**Do this instead:** Lookahead scheduler with `AudioContext.currentTime` as the reference (Pattern 3 above). Schedule 100ms ahead; update AppState with scheduled times for visual sync.
-
-### Anti-Pattern 3: Calling `navigator.bluetooth.requestDevice()` Programmatically
-
-**What people do:** Attempt to connect on page load or automatically without a user click.
-
-**Why it's wrong:** Web Bluetooth requires a "transient activation" (direct user gesture). Programmatic calls throw `SecurityError`. This is enforced by the browser, not configurable.
-
-**Do this instead:** Gate all `requestDevice()` calls behind a button click handler. Reconnect (to a previously paired device) can use `device.gatt.connect()` which does NOT require a gesture.
-
-### Anti-Pattern 4: Applying FFT to Unevenly-Sampled RR Intervals Directly
-
-**What people do:** Treat the RR array as a uniformly-sampled time series and feed it directly to a standard radix-2 FFT.
-
-**Why it's wrong:** RR intervals are inherently unevenly spaced in time (each interval has a different duration). FFT assumes uniform sampling. Applying it directly to the raw RR series without resampling produces spectral smearing and incorrect LF/HF power estimates.
-
-**Do this instead:** Either (a) resample the RR series to a uniform grid (4 Hz is standard) using cubic spline interpolation before FFT, or (b) use the Lomb-Scargle periodogram which is designed for unevenly sampled data and avoids the interpolation artifact. For a single-user personal tool where implementation complexity matters, cubic spline + FFT is simpler to implement correctly. Lomb-Scargle is more principled but requires porting from Python/R.
-
-### Anti-Pattern 5: Storing RR Arrays in localStorage
-
-**What people do:** `localStorage.setItem('session_123', JSON.stringify(rrArray))`.
-
-**Why it's wrong:** localStorage is synchronous, limited to ~5MB, and JSON stringification of large Float32Array data blocks the main thread. A 20-minute session at ~70 BPM produces ~1400 RR values; multiply by weeks of sessions.
-
-**Do this instead:** Use IndexedDB with asynchronous transactions. Store RR arrays as binary `Float32Array` or typed arrays directly — IndexedDB handles structured data natively without JSON serialization.
-
----
-
-## Scalability Considerations
-
-This is a single-user personal tool. "Scaling" means data growth over months of daily sessions.
-
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 1 user, 1 week | localStorage could work, but IndexedDB is the right choice from day one (no migration cost) |
-| 1 user, 1 year (~365 sessions) | IndexedDB handles this trivially; query by date range using index on `timestamp` key |
-| Data export | Add a JSON export button in dashboard — reads IndexedDB, creates Blob URL. Single function addition, no architecture change. |
-
-There is no multi-user concern. Cloud sync is explicitly out of scope. The only growth dimension is accumulated local session data.
+| `preSleep.js` ↔ `audio.js` | Direct calls: `setIERatio()`, `startPacer()`, `stopPacer()`, sonification functions | Call `setIERatio` before `startPacer` |
+| `meditation.js` ↔ `meditationAudio.js` | Direct calls: `load()`, `play()`, `stop()`, `pause()` | `meditationAudio` writes AppState for position/duration/playing |
+| `meditationAudio.js` ↔ `audio.js` | Direct calls: `initAudio()`, `getAudioContext()` | Must be in user gesture chain |
+| `meditation.js` ↔ `storage.js` | `listAudioFiles()`, `getAudioFile(id)` | Async — await before playback |
+| All session controllers ↔ `audio.js` | `startSonification()`, `updateSonification(score)`, `stopSonification()` | `updateSonification` in 1s tick, not rAF |
+| `main.js` ↔ new controllers | `initPreSleepUI()`, `initMeditationUI()` in `init()` | Same pattern as `initPracticeUI()` |
+| `dashboard.js` ↔ new session data | `querySessions()` already returns all modes | Dashboard needs `mode` field filtering to render pre-sleep and meditation entries meaningfully |
 
 ---
 
 ## Sources
 
-- MDN Web Bluetooth API — https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API (HIGH confidence)
-- Bluetooth GATT Heart Rate Service Spec — https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/HRS_v1.0/ (HIGH confidence)
-- Web Audio "A Tale of Two Clocks" (Chris Wilson, web.dev) — https://web.dev/articles/audio-scheduling (HIGH confidence)
-- MDN Web Audio Advanced Techniques — https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Advanced_techniques (HIGH confidence)
-- Oura API OAuth2 authentication docs — https://cloud.ouraring.com/docs/authentication (MEDIUM confidence — PAT deprecation timeline LOW confidence)
-- Polar Verity BLE parsing walkthrough — https://dev.to/manufac/interacting-with-polar-verity-sense-using-web-bluetooth-553a (MEDIUM confidence)
-- Lomb-Scargle for HRV — ADInstruments blog, Physionet archive — https://archive.physionet.org/physiotools/lomb/ (HIGH confidence for algorithm, LOW for browser JS port availability)
-- Artifact rejection methodology — Kubios blog https://www.kubios.com/blog/preprocessing-of-hrv-data/ (MEDIUM confidence)
-- Canvas rAF waveform pattern — MDN Basic Animations https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Basic_animations (HIGH confidence)
+- Direct codebase analysis: `js/audio.js`, `js/practice.js`, `js/state.js`, `js/main.js`, `js/renderer.js`, `js/phaseLock.js`, `js/paceController.js`, `js/storage.js`, `js/dsp.js`, `index.html`
+- Web Audio API single-context constraint: HIGH confidence — MDN Web Audio API spec, confirmed by browser behavior
+- IndexedDB blob storage capacity vs localStorage limits: HIGH confidence — well-established browser storage constraints
+- `setTargetAtTime` for smooth audio parameter automation: HIGH confidence — Web Audio API spec, standard practice
 
 ---
-*Architecture research for: ResonanceHRV — real-time HRV biofeedback web app*
-*Researched: 2026-03-21*
+
+*Architecture research for: ResonanceHRV v1.3 session modes and audio features*
+*Researched: 2026-04-06*
