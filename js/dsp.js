@@ -238,39 +238,53 @@ function findPeakBin(psd, lowHz, highHz) {
 // ---- Coherence Score ----
 
 /**
- * Compute coherence score from PSD using spectral concentration.
+ * Compute coherence score from PSD using spectral entropy.
  *
- * Measures what fraction of total HRV power is concentrated at one frequency.
- * Higher concentration = more coherent heart rhythm.
+ * Spectral entropy measures how "spread out" power is across frequency bins.
+ * Low entropy = power concentrated at one frequency = coherent rhythm.
+ * High entropy = power distributed across many frequencies = incoherent.
  *
- * Original HeartMath ratio formula saturates at 100 with detrended signals
- * (post Phase 11 linear detrending removes VLF drift, making the peak so
- * dominant that the multiplicative ratio always exceeds the cap).
+ * Score = (1 - normalizedEntropy) * 100, so:
+ * - All power at one frequency → entropy=0 → score=100
+ * - Power uniformly distributed → entropy=1 → score=0
+ * - Steady breathing → 2-4 bins dominate → score ~70-90
+ * - Erratic breathing → many bins share power → score ~30-50
  *
- * Spectral concentration approach: peakPower / totalPower, scaled so that
- * ~75% concentration = score of 100. Provides meaningful differentiation
- * across breathing quality levels.
+ * Previous approaches (HeartMath ratio, spectral concentration) both saturate
+ * at 100 with detrended signals because the narrow 0.04-0.26 Hz analysis range
+ * means any dominant peak captures most of the power.
  *
  * @param {Float32Array} psd - power spectral density array
  * @returns {number} coherence score 0-100
  */
 export function computeCoherenceScore(psd) {
-  const totalPower = integrateBand(psd, LF_LOW_HZ, TOTAL_HIGH_HZ);
+  const lowBin = Math.max(0, hzToBin(LF_LOW_HZ));
+  const highBin = Math.min(psd.length - 1, hzToBin(TOTAL_HIGH_HZ));
+  const binCount = highBin - lowBin + 1;
+  if (binCount < 2) return 0;
+
+  // Compute total power in analysis range
+  let totalPower = 0;
+  for (let i = lowBin; i <= highBin; i++) {
+    totalPower += psd[i];
+  }
   if (totalPower === 0) return 0;
 
-  // Find dominant peak in analysis range
-  const peakBin = findPeakBin(psd, LF_LOW_HZ, TOTAL_HIGH_HZ);
-  const peakFreq = binToHz(peakBin);
+  // Compute Shannon entropy of the normalized PSD
+  let entropy = 0;
+  for (let i = lowBin; i <= highBin; i++) {
+    const p = psd[i] / totalPower;
+    if (p > 0) {
+      entropy -= p * Math.log(p);
+    }
+  }
 
-  // Integrate +/-0.015 Hz window around peak
-  const peakPower = integrateBand(psd, peakFreq - 0.015, peakFreq + 0.015);
+  // Normalize by max possible entropy (uniform distribution)
+  const maxEntropy = Math.log(binCount);
+  const normalizedEntropy = entropy / maxEntropy;
 
-  // Spectral concentration: what fraction of power is at the peak?
-  const concentration = peakPower / totalPower;
-
-  // Scale so ~75% concentration → 100, with good spread below that
-  // 90% → 100, 50% → 67, 30% → 40, 10% → 13
-  return Math.min(100, Math.round(concentration * 133));
+  // Invert: low entropy = high coherence
+  return Math.min(100, Math.round((1 - normalizedEntropy) * 100));
 }
 
 // ---- HR Array ----

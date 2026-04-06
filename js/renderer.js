@@ -698,10 +698,10 @@ function drawCoherenceGauge() {
   const radius = Math.min(w, h) * 0.35;
   const lineWidthBase = 12;
 
-  // Calibration state — mirrors phase lock calibration display (80s warmup)
+  // Calibration state — coherence FFT needs 120s of data (MIN_WINDOW_SECONDS in dsp.js)
   if (AppState.calibrating) {
     const elapsed = _sessionStartTime ? (Date.now() - _sessionStartTime) / 1000 : 0;
-    const remaining = Math.max(0, Math.ceil(80 - elapsed));
+    const remaining = Math.max(0, Math.ceil(120 - elapsed));
 
     // Grey background ring
     ctx.beginPath();
@@ -719,7 +719,7 @@ function drawCoherenceGauge() {
     ctx.fillText(`${remaining}s`, cx, cy + 14);
 
     // Progress bar below ring
-    const progress = Math.min(1, elapsed / 80);
+    const progress = Math.min(1, elapsed / 120);
     const barW = radius * 1.2;
     const barH = 3;
     const barX = cx - barW / 2;
