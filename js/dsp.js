@@ -238,21 +238,20 @@ function findPeakBin(psd, lowHz, highHz) {
 // ---- Coherence Score ----
 
 /**
- * Compute coherence score from PSD using spectral entropy.
+ * Compute coherence score from PSD using calibrated spectral entropy.
  *
  * Spectral entropy measures how "spread out" power is across frequency bins.
  * Low entropy = power concentrated at one frequency = coherent rhythm.
  * High entropy = power distributed across many frequencies = incoherent.
  *
- * Score = (1 - normalizedEntropy) * 100, so:
- * - All power at one frequency → entropy=0 → score=100
- * - Power uniformly distributed → entropy=1 → score=0
- * - Steady breathing → 2-4 bins dominate → score ~70-90
- * - Erratic breathing → many bins share power → score ~30-50
+ * Raw normalized entropy (0-1) doesn't map well to a 0-100 score because
+ * Hann windowing spreads power to neighboring bins, so even a perfect
+ * single-frequency signal has ~0.45 normalized entropy. The practical range
+ * for real HRV signals is approximately:
+ *   - Best (clean resonance breathing): ~0.45
+ *   - Worst (random/no pattern):        ~0.85
  *
- * Previous approaches (HeartMath ratio, spectral concentration) both saturate
- * at 100 with detrended signals because the narrow 0.04-0.26 Hz analysis range
- * means any dominant peak captures most of the power.
+ * We remap this practical range to 0-100.
  *
  * @param {Float32Array} psd - power spectral density array
  * @returns {number} coherence score 0-100
@@ -283,8 +282,13 @@ export function computeCoherenceScore(psd) {
   const maxEntropy = Math.log(binCount);
   const normalizedEntropy = entropy / maxEntropy;
 
-  // Invert: low entropy = high coherence
-  return Math.min(100, Math.round((1 - normalizedEntropy) * 100));
+  // Remap practical range to 0-100
+  // Best achievable (clean single peak + Hann leakage): ~0.45
+  // Random/incoherent (no clear pattern): ~0.85
+  const ENTROPY_BEST = 0.45;
+  const ENTROPY_WORST = 0.85;
+  const score = (ENTROPY_WORST - normalizedEntropy) / (ENTROPY_WORST - ENTROPY_BEST) * 100;
+  return Math.min(100, Math.max(0, Math.round(score)));
 }
 
 // ---- HR Array ----
