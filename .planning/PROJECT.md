@@ -51,9 +51,24 @@ Real-time HRV biofeedback during breathing sessions — seeing your heart rate o
 - ✓ Adaptive pace controller micro-adjusts breathing rate to maximize phase alignment — v1.2
 - ✓ Session summary and dashboard use phase lock with legacy labeling for old coherence data — v1.2
 
+## Current Milestone: v1.3 Session Modes & Eyes-Closed Training
+
+**Goal:** Add pre-sleep and meditation session modes with passive physiological monitoring, plus audio sonification for eyes-closed biofeedback training.
+
+**Target features:**
+- Pre-sleep mode with extended exhale RFB (adjustable I:E ratio)
+- Meditation mode with built-in and user-uploaded guided audio, passive HRV+EEG monitoring
+- Phase lock sonification for eyes-closed training across all modes
+
 ### Active
 
-(None — planning next milestone)
+- [ ] Pre-sleep mode: extended exhale RFB with adjustable I:E ratio (default 1:2)
+- [ ] Meditation mode: guided audio playback with passive HRV + neural calm tracking
+- [ ] Built-in meditation scripts (body scan, yoga nidra, loving-kindness)
+- [ ] User-uploaded audio support for meditation mode
+- [ ] Post-session physiological report for meditation sessions
+- [ ] Phase lock audio sonification for eyes-closed biofeedback
+- [ ] Session mode selector (standard, pre-sleep, meditation)
 
 ### Out of Scope
 
@@ -108,5 +123,22 @@ Real-time HRV biofeedback during breathing sessions — seeing your heart rate o
 | PLV over 10 samples | Single-snapshot phase error unstable under baroreflex delay; PLV averaging provides stable scores | ✓ Good |
 | Covariance-based phase lock | FFT bin extraction replaced with covariance method after debugging; produces meaningful 0-100 scores | ✓ Good |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-04-06 after v1.2 milestone*
+*Last updated: 2026-04-06 after v1.3 milestone started*

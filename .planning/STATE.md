@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Adaptive Closed-Loop Biofeedback
-status: complete
+milestone: v1.3
+milestone_name: Session Modes & Eyes-Closed Training
+status: active
 last_updated: "2026-04-06"
 last_activity: 2026-04-06
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -19,15 +19,15 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-04-06)
 
-**Core value:** Real-time HRV biofeedback during breathing sessions — the app actively optimizes your breathing to maximize autonomic training — right frequency, right phase alignment, every session.
-**Current focus:** Planning next milestone
+**Core value:** Real-time HRV biofeedback during breathing sessions — seeing your heart rate oscillate in sync with your breath and knowing you're training at your exact resonance frequency, not guessing.
+**Current focus:** Defining requirements for v1.3
 
 ## Current Position
 
-Milestone: v1.2 Adaptive Closed-Loop Biofeedback — COMPLETE (shipped 2026-04-06)
-Last activity: 2026-04-06
-
-Progress: [####################] v1.2 complete (4/4 phases, 12/12 plans)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-06 — Milestone v1.3 started
 
 ## Performance Metrics
 
@@ -45,9 +45,9 @@ Progress: [####################] v1.2 complete (4/4 phases, 12/12 plans)
 
 ### Blockers / Concerns
 
-(None — milestone complete)
+(None)
 
 ## Session Continuity
 
 Last session: 2026-04-06
-Next step: `/gsd-new-milestone` to plan next version
+Next step: Define requirements for v1.3
