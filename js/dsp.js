@@ -238,13 +238,18 @@ function findPeakBin(psd, lowHz, highHz) {
 // ---- Coherence Score ----
 
 /**
- * Compute HeartMath-derived coherence score from PSD.
- * 1. Find dominant peak in 0.04-0.26 Hz
- * 2. Integrate +/-0.015 Hz around peak
- * 3. Compute power below and above peak window
- * 4. Coherence Ratio: CR = (peakPower/below) * (peakPower/above)
- * 5. CS = ln(CR + 1)
- * 6. Map to 0-100: min(100, round((CS / 3.0) * 100))
+ * Compute coherence score from PSD using spectral concentration.
+ *
+ * Measures what fraction of total HRV power is concentrated at one frequency.
+ * Higher concentration = more coherent heart rhythm.
+ *
+ * Original HeartMath ratio formula saturates at 100 with detrended signals
+ * (post Phase 11 linear detrending removes VLF drift, making the peak so
+ * dominant that the multiplicative ratio always exceeds the cap).
+ *
+ * Spectral concentration approach: peakPower / totalPower, scaled so that
+ * ~75% concentration = score of 100. Provides meaningful differentiation
+ * across breathing quality levels.
  *
  * @param {Float32Array} psd - power spectral density array
  * @returns {number} coherence score 0-100
@@ -253,26 +258,19 @@ export function computeCoherenceScore(psd) {
   const totalPower = integrateBand(psd, LF_LOW_HZ, TOTAL_HIGH_HZ);
   if (totalPower === 0) return 0;
 
-  // 1. Find dominant peak in full analysis range
+  // Find dominant peak in analysis range
   const peakBin = findPeakBin(psd, LF_LOW_HZ, TOTAL_HIGH_HZ);
   const peakFreq = binToHz(peakBin);
 
-  // 2. Integrate +/-0.015 Hz window around peak
+  // Integrate +/-0.015 Hz window around peak
   const peakPower = integrateBand(psd, peakFreq - 0.015, peakFreq + 0.015);
 
-  // 3. Power below and above peak window
-  const powerBelow = integrateBand(psd, LF_LOW_HZ, peakFreq - 0.015);
-  const powerAbove = integrateBand(psd, peakFreq + 0.015, TOTAL_HIGH_HZ);
+  // Spectral concentration: what fraction of power is at the peak?
+  const concentration = peakPower / totalPower;
 
-  // 4. Coherence Ratio
-  const cr = (peakPower / Math.max(powerBelow, 0.001)) *
-             (peakPower / Math.max(powerAbove, 0.001));
-
-  // 5. Natural log transform
-  const cs = Math.log(cr + 1);
-
-  // 6. Map to 0-100
-  return Math.min(100, Math.round((cs / 3.0) * 100));
+  // Scale so ~75% concentration → 100, with good spread below that
+  // 90% → 100, 50% → 67, 30% → 40, 10% → 13
+  return Math.min(100, Math.round(concentration * 133));
 }
 
 // ---- HR Array ----
@@ -440,10 +438,12 @@ export function initDSP() {
  * @param {number} sessionElapsedSeconds - seconds since session started
  */
 export function tick(sessionElapsedSeconds) {
-  // Calibration gate: must accumulate MIN_WINDOW_SECONDS of data
+  // Phase lock uses 30s covariance — runs before the 120s FFT gate
+  computePhaseLockScore(30, AppState.pacingFreq, sessionElapsedSeconds);
+
+  // FFT calibration gate: must accumulate MIN_WINDOW_SECONDS of data
   if (sessionElapsedSeconds < MIN_WINDOW_SECONDS) {
     AppState.calibrating = true;
-    AppState.phaseLockCalibrating = true;
     return;
   }
 
@@ -488,7 +488,4 @@ export function tick(sessionElapsedSeconds) {
   AppState.spectralBuffer = psd;
   AppState.lfPower = integrateBand(psd, LF_LOW_HZ, LF_HIGH_HZ);
   AppState.coherenceScore = computeCoherenceScore(psd);
-
-  // Phase lock score — MUST run after spectralBuffer and coherenceScore are written
-  computePhaseLockScore(20, AppState.pacingFreq, sessionElapsedSeconds);
 }
