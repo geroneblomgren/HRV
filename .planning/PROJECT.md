@@ -4,16 +4,18 @@
 
 A personal web-based adaptive resonance frequency breathing trainer with closed-loop HRV biofeedback and neural calm monitoring. Connects to a Garmin HRM 600 chest strap and/or Muse-S headband via Web Bluetooth. The app automatically tunes to the user's current resonance frequency before each session and micro-adjusts breathing pace in real-time to maximize cardiorespiratory phase alignment — converting casual breathing practice into clinical-grade autonomic training. Oura Ring integration tracks overnight recovery to measure long-term impact.
 
-## Current Milestone: v1.2 Adaptive Closed-Loop Biofeedback
+## Current State
 
-**Goal:** Convert from open-loop breathing pacer to closed-loop autonomic training system. Auto-tune resonance frequency before each session and optimize breath-heart phase alignment in real-time.
+**Latest shipped:** v1.2 Adaptive Closed-Loop Biofeedback (2026-04-06)
+**Codebase:** 7,407 LOC vanilla JS/CSS/HTML across 19 files
+**Milestones shipped:** v1.0 (2026-03-22), v1.1 (2026-04-03), v1.2 (2026-04-06)
 
-**Target features:**
-- 60-second pre-session tuning phase to find current resonance frequency (RF drifts in 67% of people)
-- Resonance frequency trend tracking on dashboard correlated with Oura recovery
-- Phase lock score replacing coherence (Hilbert transform measures actual breath-heart synchronization)
-- Adaptive pace controller that micro-adjusts breathing rate to maximize phase alignment
-- Smooth audio drift so pace changes are felt, not seen (bowl echo timing shifts naturally)
+**v1.2 delivered:**
+- 60-second pre-session resonance frequency tuning from live RSA analysis
+- Phase lock score (Hilbert transform) as primary biofeedback metric alongside restored coherence
+- Adaptive pace controller with smooth bowl echo drift (±0.01 Hz/30s, bounded ±0.5 BPM)
+- Three live ring gauges during sessions (coherence, phase lock, neural calm)
+- Dashboard with phase lock + coherence split trends, RF trend line, legacy session labeling
 
 ## Core Value
 
@@ -43,14 +45,15 @@ Real-time HRV biofeedback during breathing sessions — seeing your heart rate o
 - ✓ Neural Calm trend on recovery dashboard — v1.1
 - ✓ Bowl echo subdivisions for eyes-closed pace tracking — v1.1
 - ✓ Session summary with HR, HRV (RMSSD), and Neural Calm line graphs — v1.1
+- ✓ Pre-session tuning phase identifies current resonance frequency from live RSA analysis — v1.2
+- ✓ Resonance frequency trend tracked over sessions and displayed on dashboard — v1.2
+- ✓ Phase lock score (Hilbert transform) as primary biofeedback metric alongside coherence — v1.2
+- ✓ Adaptive pace controller micro-adjusts breathing rate to maximize phase alignment — v1.2
+- ✓ Session summary and dashboard use phase lock with legacy labeling for old coherence data — v1.2
 
 ### Active
 
-- [ ] Pre-session tuning phase identifies current resonance frequency from live RSA analysis
-- [ ] Resonance frequency trend tracked over sessions and displayed on dashboard
-- [ ] Phase lock score (Hilbert transform) replaces coherence as primary biofeedback metric
-- [ ] Adaptive pace controller micro-adjusts breathing rate to maximize phase alignment
-- [ ] Session summary and dashboard use phase lock instead of coherence (legacy labeling for old data)
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -99,9 +102,11 @@ Real-time HRV biofeedback during breathing sessions — seeing your heart rate o
 | PPG standalone HRV attempt | Muse PPG at 64 Hz provides usable RR intervals; IR channel best; chest strap remains gold standard | ✓ Good |
 | EEG calm as parallel metric | Alpha/beta ratio from TP9/TP10 validated empirically; displayed alongside HRV | ✓ Good |
 | Bowl-only audio with echo subdivisions | Quarter-beat echoes for eyes-closed pace tracking; removed unused pitch/swell styles | ✓ Good |
-| Phase lock replacing coherence | Hilbert transform measures actual breath-heart phase alignment; coherence is an indirect proxy | — Pending |
-| Pre-session RF tuning | RF drifts in 67% of people; 60s tuning ensures every session uses current optimal frequency | — Pending |
-| Adaptive pace control | Smooth drift ±0.01 Hz/30s bounded to ±0.5 BPM from tuned frequency | — Pending |
+| Phase lock alongside coherence | Hilbert transform measures actual breath-heart phase alignment; coherence restored as secondary metric — three gauges total | ✓ Good |
+| Pre-session RF tuning | RF drifts in 67% of people; 60s tuning ensures every session uses current optimal frequency | ✓ Good |
+| Adaptive pace control | Smooth drift ±0.01 Hz/30s bounded to ±0.5 BPM from tuned frequency; bowl echo timing shifts naturally | ✓ Good |
+| PLV over 10 samples | Single-snapshot phase error unstable under baroreflex delay; PLV averaging provides stable scores | ✓ Good |
+| Covariance-based phase lock | FFT bin extraction replaced with covariance method after debugging; produces meaningful 0-100 scores | ✓ Good |
 
 ---
-*Last updated: 2026-04-04 after v1.2 milestone start*
+*Last updated: 2026-04-06 after v1.2 milestone*
