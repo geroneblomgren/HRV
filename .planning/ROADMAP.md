@@ -5,6 +5,7 @@
 - ✅ **v1.0 Core HRV Biofeedback** - Phases 1-5 (shipped 2026-03-22)
 - ✅ **v1.1 Muse-S Neurocardiac Integration** - Phases 6-9 (shipped 2026-04-03)
 - ✅ **v1.2 Adaptive Closed-Loop Biofeedback** - Phases 10-13 (shipped 2026-04-06)
+- 🚧 **v1.3 Session Modes & Eyes-Closed Training** - Phases 14-19 (in progress)
 
 ## Phases
 
@@ -169,12 +170,105 @@ Plans:
 
 </details>
 
+### 🚧 v1.3 Session Modes & Eyes-Closed Training (In Progress)
+
+**Milestone Goal:** Add pre-sleep and meditation session modes with passive physiological monitoring, plus audio sonification for eyes-closed biofeedback training across all modes.
+
+- [ ] **Phase 14: Mode Selector + Session Lock** - Session mode selector UI with global session guard
+- [ ] **Phase 15: Audio Routing Refactor** - Independent gain nodes for pacer, meditation audio, and sonification
+- [ ] **Phase 16: Pre-Sleep Mode** - Asymmetric I:E breathing with adaptive pacer and mode-labeled sessions
+- [ ] **Phase 17: File Management + IndexedDB Migration** - User audio upload, DB v2 migration, audio library UI
+- [ ] **Phase 18: Meditation Mode** - Guided audio playback with passive HRV + EEG monitoring and post-session report
+- [ ] **Phase 19: Phase Lock Sonification** - Trend-based audio pitch feedback for eyes-closed training across all modes
+
+## Phase Details
+
+### Phase 14: Mode Selector + Session Lock
+**Goal**: Users can choose a session mode before starting, and the app enforces that only one mode runs at a time — establishing the state machine and UI scaffolding every subsequent phase depends on.
+**Depends on**: Phase 13
+**Requirements**: INFRA-01, INFRA-02
+**Success Criteria** (what must be TRUE):
+  1. User sees a mode selector with three options (Standard, Pre-Sleep, Meditation) before starting any session; the currently selected mode is visually distinct
+  2. Switching modes while no session is active instantly updates the UI to show the correct mode's controls; existing standard session behavior is unchanged
+  3. Attempting to start a second session while one is already active is blocked — either via a confirmation dialog or by disabling mode-switch controls during an active session
+  4. Each mode's placeholder view is rendered (even if skeletal) so the full `{mode} × {view}` state matrix is wired before any mode-specific logic ships
+**Plans**: TBD
+
+Plans: TBD
+
+### Phase 15: Audio Routing Refactor
+**Goal**: The audio system exposes three independent gain-controlled buses (bowl pacer, meditation audio, sonification) so each can be mixed, muted, or volume-controlled without affecting the others — a prerequisite every Phase 16-19 audio feature depends on.
+**Depends on**: Phase 14
+**Requirements**: INFRA-03
+**Success Criteria** (what must be TRUE):
+  1. Existing bowl pacer audio behavior is unchanged — timing, echo subdivisions, and volume control all work identically after the refactor
+  2. The audio module exports `getAudioContext()` so other modules can share the single AudioContext without creating a second instance
+  3. Independent volume setters exist for pacer, meditation, and sonification buses — adjusting one does not affect the others
+**Plans**: TBD
+
+Plans: TBD
+
+### Phase 16: Pre-Sleep Mode
+**Goal**: Users can run a pre-sleep breathing session with an adjustable I:E ratio (default 1:2), where the pacer audio, visual circle, echo subdivisions, and phase lock computation all honor the asymmetric timing — and the session is saved with a "pre-sleep" mode label.
+**Depends on**: Phase 15
+**Requirements**: SLEEP-01, SLEEP-02, SLEEP-03, SLEEP-04, SLEEP-05, SLEEP-06, SLEEP-07
+**Success Criteria** (what must be TRUE):
+  1. User selects Pre-Sleep mode, picks an I:E ratio from presets (1:1, 1:1.5, 1:2), and the breathing circle visibly holds the exhale longer than the inhale at 1:2
+  2. Bowl pacer strikes and echo subdivisions are timed to the asymmetric inhale/exhale durations — echoes are correctly distributed within each phase, not clustered at the transition
+  3. The 60-second RF tuning phase runs before a pre-sleep session begins, identical to standard mode
+  4. The session timer shows elapsed time only (no countdown) and the session ends when the user manually stops it
+  5. Completed pre-sleep sessions appear on the recovery dashboard with a "pre-sleep" label and can be distinguished from standard sessions
+**Plans**: TBD
+
+Plans: TBD
+
+### Phase 17: File Management + IndexedDB Migration
+**Goal**: Users can upload MP3 audio files that are stored persistently in IndexedDB, viewable in a file library, and available for use in meditation sessions — with the DB migration preserving all existing session history.
+**Depends on**: Phase 14
+**Requirements**: MED-02, MED-03
+**Success Criteria** (what must be TRUE):
+  1. User uploads an MP3 via a file picker and it appears in a library list showing file name and size; the file persists across browser restarts
+  2. All existing session history is intact after the IndexedDB upgrade from v1 to v2 — no sessions are lost during migration
+  3. User can delete an uploaded file from the library; the file is removed from IndexedDB and no longer appears in the list
+  4. On first upload, the browser prompts to persist storage; the library shows a storage usage estimate
+**Plans**: TBD
+
+Plans: TBD
+
+### Phase 18: Meditation Mode
+**Goal**: Users can run a guided meditation session that plays audio (built-in script or user-uploaded file) while passively tracking HRV and neural calm — with no breathing pacer active — and receive a post-session physiological report.
+**Depends on**: Phase 15, Phase 17
+**Requirements**: MED-01, MED-04, MED-05, MED-06, MED-07
+**Success Criteria** (what must be TRUE):
+  1. User selects Meditation mode, picks a built-in script (body scan), and the audio plays through the meditation gain node with a visible volume control; no bowl pacer sounds during playback
+  2. User selects a previously uploaded MP3 from the file library and it plays as a meditation session with the same controls as built-in scripts
+  3. HRV (RMSSD) and neural calm are tracked continuously during the session and displayed as live metrics; phase lock score and pace controller are not active
+  4. Post-session report shows HR, HRV (RMSSD), and neural calm trend lines for the full session duration
+  5. Completed meditation sessions are saved with a "meditation" label and the script or file name; they appear on the dashboard with that label
+**Plans**: TBD
+
+Plans: TBD
+
+### Phase 19: Phase Lock Sonification
+**Goal**: Users can enable an audio tone during any session mode that encodes the direction of phase lock change — pitch rises when phase lock is improving, falls when it degrades — providing ears-only biofeedback for eyes-closed training.
+**Depends on**: Phase 15, Phase 16, Phase 18
+**Requirements**: SONI-01, SONI-02, SONI-03, SONI-04
+**Success Criteria** (what must be TRUE):
+  1. User enables sonification via a per-session toggle; a tone is audible and perceptually distinct from the bowl pacer within 10 seconds of session start
+  2. When the user breathes well and phase lock is visibly improving on the gauge, the tone pitch rises; when phase lock drops, the pitch falls — the mapping is perceptible without watching the screen
+  3. Sonification is available and behaves correctly in standard, pre-sleep, and meditation modes — toggling it on in any mode produces the same feedback behavior
+  4. Pitch transitions are smooth (no audible clicks or jumps) and the tone updates on a 5-10 second interval, not continuously
+**Plans**: TBD
+
+Plans: TBD
+
 ## Progress
 
 **Execution Order:**
 v1.0: 1 → 2 → 3 → 4 → 5 (complete)
 v1.1: 6 → 7 → 8 → 9 (complete)
-v1.2: 10 → 11 → 12 → 13
+v1.2: 10 → 11 → 12 → 13 (complete)
+v1.3: 14 → 15 → 16 → 17 → 18 → 19 (note: 17 can run parallel to 16 — both depend on 14, not each other)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -191,3 +285,9 @@ v1.2: 10 → 11 → 12 → 13
 | 11. Phase Lock Engine | v1.2 | 3/3 | Complete | 2026-04-04 |
 | 12. Adaptive Pace Controller | v1.2 | 3/3 | Complete | 2026-04-05 |
 | 13. Dashboard Integration | v1.2 | 3/3 | Complete | 2026-04-06 |
+| 14. Mode Selector + Session Lock | v1.3 | 0/TBD | Not started | - |
+| 15. Audio Routing Refactor | v1.3 | 0/TBD | Not started | - |
+| 16. Pre-Sleep Mode | v1.3 | 0/TBD | Not started | - |
+| 17. File Management + IndexedDB Migration | v1.3 | 0/TBD | Not started | - |
+| 18. Meditation Mode | v1.3 | 0/TBD | Not started | - |
+| 19. Phase Lock Sonification | v1.3 | 0/TBD | Not started | - |

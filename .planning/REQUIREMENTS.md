@@ -78,33 +78,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| SLEEP-01 | — | Pending |
-| SLEEP-02 | — | Pending |
-| SLEEP-03 | — | Pending |
-| SLEEP-04 | — | Pending |
-| SLEEP-05 | — | Pending |
-| SLEEP-06 | — | Pending |
-| SLEEP-07 | — | Pending |
-| MED-01 | — | Pending |
-| MED-02 | — | Pending |
-| MED-03 | — | Pending |
-| MED-04 | — | Pending |
-| MED-05 | — | Pending |
-| MED-06 | — | Pending |
-| MED-07 | — | Pending |
-| SONI-01 | — | Pending |
-| SONI-02 | — | Pending |
-| SONI-03 | — | Pending |
-| SONI-04 | — | Pending |
+| INFRA-01 | Phase 14 | Pending |
+| INFRA-02 | Phase 14 | Pending |
+| INFRA-03 | Phase 15 | Pending |
+| SLEEP-01 | Phase 16 | Pending |
+| SLEEP-02 | Phase 16 | Pending |
+| SLEEP-03 | Phase 16 | Pending |
+| SLEEP-04 | Phase 16 | Pending |
+| SLEEP-05 | Phase 16 | Pending |
+| SLEEP-06 | Phase 16 | Pending |
+| SLEEP-07 | Phase 16 | Pending |
+| MED-01 | Phase 18 | Pending |
+| MED-02 | Phase 17 | Pending |
+| MED-03 | Phase 17 | Pending |
+| MED-04 | Phase 18 | Pending |
+| MED-05 | Phase 18 | Pending |
+| MED-06 | Phase 18 | Pending |
+| MED-07 | Phase 18 | Pending |
+| SONI-01 | Phase 19 | Pending |
+| SONI-02 | Phase 19 | Pending |
+| SONI-03 | Phase 19 | Pending |
+| SONI-04 | Phase 19 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after initial definition*
+*Last updated: 2026-04-06 after roadmap creation*
