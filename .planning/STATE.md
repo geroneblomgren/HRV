@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Adaptive Closed-Loop Biofeedback
-status: in_progress
-last_updated: "2026-04-04T22:15:00.000Z"
+status: unknown
+last_updated: "2026-04-06T15:02:35.187Z"
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 27
-  completed_plans: 27
+  total_phases: 13
+  completed_phases: 13
+  total_plans: 30
+  completed_plans: 30
 ---
 
 # Project State
