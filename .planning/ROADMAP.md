@@ -192,9 +192,11 @@ Plans:
   2. Switching modes while no session is active instantly updates the UI to show the correct mode's controls; existing standard session behavior is unchanged
   3. Attempting to start a second session while one is already active is blocked — either via a confirmation dialog or by disabling mode-switch controls during an active session
   4. Each mode's placeholder view is rendered (even if skeletal) so the full `{mode} × {view}` state matrix is wired before any mode-specific logic ships
-**Plans**: TBD
+**Plans**: 2 plans
 
-Plans: TBD
+Plans:
+- [ ] 14-01-PLAN.md — State primitives: sessionMode field + isSessionActive helper, sessionMode.js (persistence + legacy-record normalization), flip practice.js mode label to 'standard', normalize 'practice'→'standard' at read time
+- [ ] 14-02-PLAN.md — UI layer: 3-pill mode picker at top of Practice panel, Pre-Sleep/Meditation placeholder panels with disabled Start buttons, session-lock subscription disables pills + start buttons + nav tabs during active session, human smoke-test checkpoint
 
 ### Phase 15: Audio Routing Refactor
 **Goal**: The audio system exposes three independent gain-controlled buses (bowl pacer, meditation audio, sonification) so each can be mixed, muted, or volume-controlled without affecting the others — a prerequisite every Phase 16-19 audio feature depends on.
