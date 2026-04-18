@@ -161,6 +161,13 @@
       </div>
     </section>
     <section id="tab-practice" class="tab-panel">
+      <!-- Mode Picker (Phase 14 — INFRA-01) — stays visible during active session, disabled per D-03 -->
+      <div class="mode-picker" id="practice-mode-picker" role="tablist" aria-label="Session mode">
+        <button class="mode-btn active" data-mode="standard" role="tab" aria-selected="true">Standard</button>
+        <button class="mode-btn" data-mode="pre-sleep" role="tab" aria-selected="false">Pre-Sleep</button>
+        <button class="mode-btn" data-mode="meditation" role="tab" aria-selected="false">Meditation</button>
+      </div>
+
       <!-- Tuning phase overlay (Phase 10) -->
       <div id="tuning-overlay" style="display: none;" class="tuning-overlay">
         <canvas id="tuning-ring-canvas" width="280" height="280"></canvas>
@@ -267,18 +274,37 @@
         <button id="practice-done-btn" class="connect-button practice-done-btn">Done</button>
       </div>
 
-      <!-- Placeholder: shown when idle -->
+      <!-- Placeholder: shown when idle. Wraps 3 mode-panels, only one visible at a time (Phase 14). -->
       <div class="placeholder-content" id="practice-placeholder">
-        <h2>Practice Mode</h2>
-        <p id="practice-freq-display" class="practice-freq-display">No frequency set — complete Discovery first.</p>
-        <div class="duration-picker" id="practice-duration-picker">
-          <button class="duration-btn" data-minutes="10">10 min</button>
-          <button class="duration-btn" data-minutes="15">15 min</button>
-          <button class="duration-btn active" data-minutes="20">20 min</button>
-          <button class="duration-btn" data-minutes="30">30 min</button>
+
+        <!-- Standard mode (today's Practice UI, unchanged per D-08) -->
+        <div class="mode-panel" data-mode="standard" id="mode-panel-standard">
+          <h2>Practice Mode</h2>
+          <p id="practice-freq-display" class="practice-freq-display">No frequency set — complete Discovery first.</p>
+          <div class="duration-picker" id="practice-duration-picker">
+            <button class="duration-btn" data-minutes="10">10 min</button>
+            <button class="duration-btn" data-minutes="15">15 min</button>
+            <button class="duration-btn active" data-minutes="20">20 min</button>
+            <button class="duration-btn" data-minutes="30">30 min</button>
+          </div>
+          <button id="practice-start-btn" class="connect-button practice-start-btn" disabled>Start Session</button>
+          <p id="practice-hint" class="hint">Connect your HRM to begin.</p>
         </div>
-        <button id="practice-start-btn" class="connect-button practice-start-btn" disabled>Start Session</button>
-        <p id="practice-hint" class="hint">Connect your HRM to begin.</p>
+
+        <!-- Pre-Sleep placeholder (Phase 14 scaffolding; implementation lands in Phase 16 per D-07) -->
+        <div class="mode-panel" data-mode="pre-sleep" id="mode-panel-pre-sleep" hidden>
+          <h2>Pre-Sleep Mode</h2>
+          <p class="mode-panel-description">Extended-exhale breathing to down-regulate before sleep.</p>
+          <button id="pre-sleep-start-btn" class="connect-button practice-start-btn" disabled title="Implemented in Phase 16">Start Session</button>
+        </div>
+
+        <!-- Meditation placeholder (Phase 14 scaffolding; implementation lands in Phase 18 per D-07) -->
+        <div class="mode-panel" data-mode="meditation" id="mode-panel-meditation" hidden>
+          <h2>Meditation Mode</h2>
+          <p class="mode-panel-description">Guided audio with passive HRV and neural calm monitoring.</p>
+          <button id="meditation-start-btn" class="connect-button practice-start-btn" disabled title="Implemented in Phase 18">Start Session</button>
+        </div>
+
       </div>
     </section>
     <section id="tab-dashboard" class="tab-panel">
