@@ -2,6 +2,7 @@
 // Wraps IndexedDB with typed async methods for sessions, settings, and Oura cache.
 
 import { openDB } from 'https://cdn.jsdelivr.net/npm/idb@8.0.3/+esm';
+import { normalizeMode } from './sessionMode.js';
 
 const DB_NAME = 'resonancehrv';
 const DB_VERSION = 1;
@@ -84,5 +85,7 @@ export async function setOuraCache(data) {
  */
 export async function querySessions({ limit = 30 } = {}) {
   const all = await _db.getAllFromIndex('sessions', 'timestamp');
-  return all.slice(-limit);
+  // Phase 14 (D-11): normalize legacy mode === 'practice' records to 'standard' at read time.
+  // No DB rewrite — full schema migration is deferred to Phase 17 (IDB v1→v2).
+  return all.slice(-limit).map(normalizeMode);
 }

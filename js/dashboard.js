@@ -4,6 +4,7 @@
 import { getHrvData, getStoredToken, storeToken, tryPatAuth, setProxyBase } from './oura.js';
 import { querySessions } from './storage.js';
 import { AppState } from './state.js';
+import { normalizeMode } from './sessionMode.js';
 
 // ---------------------------------------------------------------------------
 // Route through same-origin proxy (no CORS issues, no separate proxy process)
@@ -328,7 +329,8 @@ async function _getSessionsByDay(rangeDays) {
   /** @type {Object.<string, {cohTotal: number, cohCount: number, durationSeconds: number, calmTotal: number, calmCount: number, rfTotal: number, rfCount: number, plTotal: number, plCount: number}>} */
   const byDay = {};
 
-  for (const s of raw) {
+  for (const rawSession of raw) {
+    const s = normalizeMode(rawSession);
     // s.date is an ISO string from practice.js
     const day = typeof s.date === 'string' ? s.date.slice(0, 10) : new Date(s.timestamp).toISOString().slice(0, 10);
     if (day < cutoff) continue;
