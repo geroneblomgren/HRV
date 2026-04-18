@@ -3,7 +3,7 @@
 // Collects a per-second phase lock trace, chimes at timer zero,
 // shows summary, and saves the full session to IndexedDB.
 
-import { AppState, subscribe, unsubscribe } from './state.js';
+import { AppState, subscribe, unsubscribe, isSessionActive } from './state.js';
 import { initAudio, startPacer, stopPacer, playChime, setVolume } from './audio.js';
 import { initDSP, tick, computeSpectralRSA } from './dsp.js';
 import { startRendering, stopRendering, startTuningRenderer, stopTuningRenderer } from './renderer.js';
@@ -56,7 +56,7 @@ function _hide(el) {
  * at the tuned resonance frequency.
  */
 export async function startPractice() {
-  if (_active) return;
+  if (isSessionActive()) return;
 
   _active = true;
   _chimePlayed = false;

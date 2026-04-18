@@ -2,7 +2,7 @@
 // Guides user through 5 breathing-rate blocks (6.5→4.5 BPM) to find resonance frequency.
 // Captures RSA amplitude per block, displays comparison chart, saves chosen frequency.
 
-import { AppState, subscribe, unsubscribe } from './state.js';
+import { AppState, subscribe, unsubscribe, isSessionActive } from './state.js';
 import { initAudio, startPacer, stopPacer, playChime } from './audio.js';
 import { initDSP, tick, computeSpectralRSA } from './dsp.js';
 import { startRendering, stopRendering } from './renderer.js';
@@ -170,7 +170,7 @@ export function initPacePicker() {
  * Sets up DSP, starts countdown, then runs 5 block protocol.
  */
 export function startDiscovery() {
-  if (_phase !== 'idle') return;
+  if (isSessionActive()) return;
 
   // Reset state
   _blockResults = [];

@@ -935,7 +935,7 @@ function drawBreathingCircle() {
   ctx.fillText(timeStr, cx, cy + dim * 0.04);
 
   // BPM badge — always visible during practice sessions
-  if (AppState.sessionPhase === 'practice') {
+  if (AppState.sessionPhase === 'standard') {
     const bpm = (AppState.pacingFreq * 60).toFixed(1);
     const isAtBound = AppState.pacerAtBound;
     const badgeColor = isAtBound ? '#f59e0b' : '#14b8a6';  // amber when clamped, teal normally
