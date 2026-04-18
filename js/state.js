@@ -2,6 +2,8 @@
 // Central data bus for all modules. All inter-module communication
 // goes through AppState subscriptions, not direct imports.
 
+import { loadSelectedMode } from './sessionMode.js';
+
 const _listeners = {};
 
 export const AppState = new Proxy({
@@ -21,8 +23,13 @@ export const AppState = new Proxy({
   currentHR: 0,                     // bpm computed from last clean RR interval
 
   // Session state (used by phases 3-4)
-  sessionPhase: 'idle',             // 'idle' | 'discovery' | 'practice'
+  sessionPhase: 'idle',             // 'idle' | 'discovery' | 'standard' | 'pre-sleep' | 'meditation'
   sessionStartTime: null,
+
+  // Session mode (Phase 14 — INFRA-01)
+  // User's currently-selected mode. Independent of sessionPhase: this is 'what will run next',
+  // while sessionPhase is 'what IS running now'. Restored from sessionStorage on tab reload (D-09).
+  sessionMode: loadSelectedMode(),   // 'standard' | 'pre-sleep' | 'meditation'
 
   // DSP results (populated by Phase 2)
   coherenceScore: 0,
@@ -134,4 +141,23 @@ export function unsubscribe(key, fn) {
   if (_listeners[key]) {
     _listeners[key] = _listeners[key].filter(f => f !== fn);
   }
+}
+
+/**
+ * Returns true when any session is active (Discovery + any of the 3 modes).
+ * Single source of truth for the Phase 14 session lock (D-04 / INFRA-02).
+ * @returns {boolean}
+ */
+export function isSessionActive() {
+  return AppState.sessionPhase !== 'idle';
+}
+
+/**
+ * Returns the currently-selected session mode (Phase 14 — INFRA-01).
+ * This is the mode that will run when the user next starts a session,
+ * NOT the mode that is currently running (use sessionPhase for that).
+ * @returns {'standard'|'pre-sleep'|'meditation'}
+ */
+export function getEffectiveMode() {
+  return AppState.sessionMode;
 }
