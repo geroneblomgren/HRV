@@ -1,5 +1,6 @@
 // js/main.js — App bootstrap: init modules, wire subscriptions, register SW
-import { AppState, subscribe } from './state.js';
+import { AppState, subscribe, isSessionActive } from './state.js';
+import { saveSelectedMode, VALID_MODES } from './sessionMode.js';
 import { initStorage, getSetting } from './storage.js';
 import { init as initDeviceManager, connectChestStrap, connectMuse, disconnectAll } from './devices/DeviceManager.js';
 import { setVolume } from './audio.js';
@@ -33,6 +34,9 @@ const eyesOpenWarningEl = document.getElementById('eyes-open-warning');
 const ppgQualityCell = document.getElementById('ppg-quality-cell');
 const ppgQualityDot = document.getElementById('ppg-quality-dot');
 const ppgQualityText = document.getElementById('ppg-quality-text');
+const modePicker = document.getElementById('practice-mode-picker');
+const modePills = document.querySelectorAll('#practice-mode-picker .mode-btn');
+const modePanels = document.querySelectorAll('#tab-practice .mode-panel');
 
 // ---- Uptime timer ----
 let uptimeInterval = null;
@@ -254,10 +258,83 @@ subscribe('ppgSignalQuality', quality => {
   }
 });
 
+// ---- Phase 14: Mode Picker + Session Lock (INFRA-01 / INFRA-02) ----
+
+/**
+ * Apply the currently-selected mode to the picker pills and mode-panels.
+ * Idempotent — safe to call on init AND after any pill click.
+ * @param {'standard'|'pre-sleep'|'meditation'} mode
+ */
+function applyModeToUI(mode) {
+  if (!VALID_MODES.includes(mode)) mode = 'standard';
+  modePills.forEach(pill => {
+    const isActive = pill.dataset.mode === mode;
+    pill.classList.toggle('active', isActive);
+    pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  modePanels.forEach(panel => {
+    const isVisible = panel.dataset.mode === mode;
+    panel.hidden = !isVisible;
+  });
+}
+
+// Mode pill click handler — blocked during active session (D-05, belt + suspenders with disabled attr)
+modePills.forEach(pill => {
+  pill.addEventListener('click', () => {
+    if (isSessionActive()) return;
+    const newMode = pill.dataset.mode;
+    if (!VALID_MODES.includes(newMode)) return;
+    if (AppState.sessionMode === newMode) return;
+    AppState.sessionMode = newMode;
+    saveSelectedMode(newMode);
+    applyModeToUI(newMode);
+  });
+});
+
+// Restore initial mode (AppState.sessionMode was initialized from sessionStorage in state.js).
+applyModeToUI(AppState.sessionMode);
+
+// Keep picker + panels in sync if sessionMode is ever set from elsewhere (future-proofing)
+subscribe('sessionMode', (mode) => applyModeToUI(mode));
+
+// Session-lock enforcement (D-05 / INFRA-02): disable everything when sessionPhase becomes non-'idle'.
+// End Session buttons are deliberately excluded from the disable set below — D-06 escape hatch.
+subscribe('sessionPhase', () => {
+  const active = isSessionActive();
+
+  // Mode pills
+  if (modePicker) modePicker.classList.toggle('disabled', active);
+  modePills.forEach(pill => { pill.disabled = active; });
+
+  // Start buttons (NOT end buttons — D-06 escape hatch stays always enabled)
+  const startButtonIds = ['discovery-start-btn', 'practice-start-btn', 'pre-sleep-start-btn', 'meditation-start-btn'];
+  startButtonIds.forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    if (active) {
+      btn.disabled = true;
+    } else {
+      // Returning to idle — re-enable based on each button's own constraints.
+      // discovery-start-btn and practice-start-btn gate on AppState.connected (existing behavior).
+      // pre-sleep-start-btn and meditation-start-btn stay disabled until Phase 16/18.
+      if (id === 'discovery-start-btn' || id === 'practice-start-btn') {
+        btn.disabled = !AppState.connected;
+      } else {
+        btn.disabled = true;  // Pre-Sleep / Meditation — placeholder-only until Phase 16 / 18
+      }
+    }
+  });
+
+  // Nav tabs
+  navTabs.forEach(tab => tab.classList.toggle('disabled', active));
+});
+
 // ---- Nav tab switching ----
 
 navTabs.forEach(tab => {
   tab.addEventListener('click', () => {
+    // Phase 14 (D-05, INFRA-02): block nav switches during an active session.
+    if (isSessionActive()) return;
     const target = tab.dataset.tab;
 
     navTabs.forEach(t => t.classList.remove('active'));
