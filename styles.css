@@ -1303,3 +1303,66 @@ body {
   text-align: center;
   max-width: 300px;
 }
+
+/* ===== Phase 14: Mode Selector + Session Lock ===== */
+
+/* Mode picker container — clones .duration-picker aesthetic (D-02). */
+.mode-picker {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  padding: 16px 16px 0;
+  flex-wrap: wrap;
+}
+
+/* Mode pill — clones .duration-btn aesthetic (D-02). */
+.mode-btn {
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s, opacity 0.2s;
+}
+
+.mode-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.mode-btn.active {
+  background: var(--accent-action);
+  border-color: var(--accent-action);
+  color: #fff;
+}
+
+/* Session-active disabled state — D-05 (pills stay visible, just greyed). */
+.mode-btn:disabled,
+.mode-picker.disabled .mode-btn {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.mode-picker.disabled .mode-btn:hover {
+  /* Suppress hover when disabled */
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+/* Mode panel — visibility is driven by the `hidden` HTML attribute. */
+/* The browser default `[hidden] { display: none }` is sufficient; no extra rule needed. */
+.mode-panel-description {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 12px 0 20px;
+  text-align: center;
+}
+
+/* Disabled nav tab during active session — D-05. */
+.nav-tab.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
