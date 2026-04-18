@@ -156,7 +156,7 @@ export async function startPractice() {
   _sessionStart = Date.now();
   _sessionDurationMs = _selectedDuration * 60 * 1000;
 
-  AppState.sessionPhase = 'practice';
+  AppState.sessionPhase = 'standard';
   AppState.pacingFreq = result.freqHz;
   AppState.savedResonanceFreq = result.freqHz;
   AppState.sessionStartTime = _sessionStart;
@@ -688,7 +688,7 @@ function _drawTraceGraph(canvasId, data, color, label, autoRange = false, fixedM
 async function _saveSession(summary) {
   try {
     await saveSession({
-      mode: 'practice',
+      mode: 'standard',
       date: new Date().toISOString(),
       durationSeconds: summary.durationSeconds,
       frequencyHz: AppState.pacingFreq,
