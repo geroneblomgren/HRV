@@ -67,7 +67,7 @@ export async function connect() {
   // Always use the picker for Muse — getDevices() returns remembered devices
   // but Chrome requires a fresh requestDevice() for GATT access on non-HRS devices.
   _device = await navigator.bluetooth.requestDevice({
-    filters: [{ namePrefix: 'Muse' }],
+    filters: [{ services: [MUSE_SERVICE], namePrefix: 'Muse' }],
     optionalServices: [MUSE_SERVICE],
   });
   await _connectGATT();
