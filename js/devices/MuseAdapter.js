@@ -66,10 +66,17 @@ export async function connect() {
 
   // Always use the picker for Muse — getDevices() returns remembered devices
   // but Chrome requires a fresh requestDevice() for GATT access on non-HRS devices.
-  _device = await navigator.bluetooth.requestDevice({
-    filters: [{ services: [MUSE_SERVICE], namePrefix: 'Muse' }],
-    optionalServices: [MUSE_SERVICE],
-  });
+  try {
+    _device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [MUSE_SERVICE], namePrefix: 'Muse' }],
+      optionalServices: [MUSE_SERVICE],
+    });
+  } catch (err) {
+    // DIAGNOSTIC (Phase 20 Bluefy triage): surface real error in-band so we can see it without a web inspector.
+    // Remove before phase sign-off.
+    alert('Muse requestDevice error: ' + (err && err.name ? err.name : 'Unknown') + ': ' + (err && err.message ? err.message : 'no message'));
+    throw err;
+  }
   await _connectGATT();
 }
 
