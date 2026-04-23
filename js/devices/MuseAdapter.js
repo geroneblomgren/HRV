@@ -64,17 +64,24 @@ export async function connect() {
   // Try quick reconnect if we have a saved name
   const savedName = await getSetting('museName');
 
-  // Always use the picker for Muse — getDevices() returns remembered devices
-  // but Chrome requires a fresh requestDevice() for GATT access on non-HRS devices.
+  // DIAGNOSTIC (Phase 20 Bluefy triage): acceptAllDevices test — widest possible filter.
+  // If the picker appears with this, Bluefy's Web BLE works; our filter shape is the issue.
+  // If this ALSO fails with empty error, something more fundamental is wrong.
+  // Revert to real filter before phase sign-off.
   try {
     _device = await navigator.bluetooth.requestDevice({
-      filters: [{ services: [MUSE_SERVICE], namePrefix: 'Muse' }],
+      acceptAllDevices: true,
       optionalServices: [MUSE_SERVICE],
     });
   } catch (err) {
-    // DIAGNOSTIC (Phase 20 Bluefy triage): surface real error in-band so we can see it without a web inspector.
-    // Remove before phase sign-off.
-    alert('Muse requestDevice error: ' + (err && err.name ? err.name : 'Unknown') + ': ' + (err && err.message ? err.message : 'no message'));
+    let diag = 'acceptAllDevices test failed\n';
+    diag += 'typeof: ' + (typeof err) + '\n';
+    diag += 'String(err): ' + String(err) + '\n';
+    diag += 'name: ' + (err && err.name !== undefined ? String(err.name) : '(undefined)') + '\n';
+    diag += 'message: ' + (err && err.message !== undefined ? String(err.message) : '(undefined)') + '\n';
+    try { diag += 'JSON: ' + JSON.stringify(err) + '\n'; } catch (e) { diag += 'JSON: (unserializable)\n'; }
+    diag += 'keys: ' + (err && typeof err === 'object' ? Object.getOwnPropertyNames(err).join(',') : '(n/a)');
+    alert(diag);
     throw err;
   }
   await _connectGATT();
