@@ -13,8 +13,9 @@ import { initPPGPipeline, stopPPGPipeline, initEEGPipeline, stopEEGPipeline } fr
 
 const CONNECT_TIMEOUT_MS = 12000;
 
-// Primary Muse service UUID
-const MUSE_SERVICE = 0xfe8d;
+// Primary Muse service UUID — full 128-bit form (Bluefy on iOS rejects numeric short UUIDs
+// with CoreBluetooth error 2; Chrome desktop accepts both forms).
+const MUSE_SERVICE = '0000fe8d-0000-1000-8000-00805f9b34fb';
 
 // Control characteristic — used to send preset + start commands
 const MUSE_CONTROL_UUID = '273e0001-4c4d-454d-96be-f03bac821358';
@@ -64,17 +65,16 @@ export async function connect() {
   // Try quick reconnect if we have a saved name
   const savedName = await getSetting('museName');
 
-  // DIAGNOSTIC (Phase 20 Bluefy triage): acceptAllDevices test — widest possible filter.
-  // If the picker appears with this, Bluefy's Web BLE works; our filter shape is the issue.
-  // If this ALSO fails with empty error, something more fundamental is wrong.
-  // Revert to real filter before phase sign-off.
+  // Real filter with full 128-bit string UUID (Bluefy requirement confirmed via diag: numeric
+  // short UUIDs throw CoreBluetooth error 2). Diagnostic alert kept on the failure path so any
+  // remaining issue surfaces without a web inspector. Remove before phase sign-off.
   try {
     _device = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
+      filters: [{ services: [MUSE_SERVICE] }],
       optionalServices: [MUSE_SERVICE],
     });
   } catch (err) {
-    let diag = 'acceptAllDevices test failed\n';
+    let diag = 'Muse requestDevice failed (string UUID)\n';
     diag += 'typeof: ' + (typeof err) + '\n';
     diag += 'String(err): ' + String(err) + '\n';
     diag += 'name: ' + (err && err.name !== undefined ? String(err.name) : '(undefined)') + '\n';
