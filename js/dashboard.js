@@ -1,16 +1,10 @@
 // js/dashboard.js — Recovery Dashboard: Oura HRV trend + session coherence chart
 // ES module — no build tools, no external libraries
 
-import { getHrvData, getStoredToken, storeToken, tryPatAuth, setProxyBase } from './oura.js';
+import { getHrvData, getStoredToken, storeToken, tryPatAuth } from './oura.js';
 import { querySessions } from './storage.js';
 import { AppState } from './state.js';
 import { normalizeMode } from './sessionMode.js';
-
-// ---------------------------------------------------------------------------
-// Route through same-origin proxy (no CORS issues, no separate proxy process)
-// /api/oura/* is proxied to api.ouraring.com by server.js
-// ---------------------------------------------------------------------------
-setProxyBase('/api/oura');
 
 // ---------------------------------------------------------------------------
 // Module state
